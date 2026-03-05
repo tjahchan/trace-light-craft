@@ -57,12 +57,10 @@ export default function Community() {
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Leaderboard</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Compete with your highest daily streak of the month</p>
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-            <RefreshCw className="h-3.5 w-3.5" />
-          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><RefreshCw className="h-3.5 w-3.5" /></Button>
         </div>
 
-        <div className="glass-card overflow-hidden">
+        <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/[0.06] text-muted-foreground text-xs uppercase tracking-wider">
@@ -90,18 +88,13 @@ export default function Community() {
 
         {/* Forum */}
         <div className="mt-6 space-y-3">
-          <a
-            href="https://t.me/tradelog"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="glass-card p-3 flex items-center justify-between text-sm text-primary hover:bg-white/[0.06] transition-colors block"
-          >
+          <a href="https://t.me/tradelog" target="_blank" rel="noopener noreferrer" className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-3 flex items-center justify-between text-sm text-primary hover:bg-white/[0.06] transition-colors block">
             <span>Join our Telegram community →</span>
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
 
           {forumPosts.map((post, i) => (
-            <div key={i} className="glass-card p-4 space-y-2">
+            <div key={i} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-foreground">{post.user}</span>
                 <span className="text-[10px] text-muted-foreground">{post.time}</span>
@@ -122,20 +115,20 @@ export default function Community() {
 
       {/* Right — Challenge Info */}
       <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="w-full xl:w-80 shrink-0 space-y-4">
-        <div className="glass-card p-5 text-center">
+        <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 text-center">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Challenge ends in</p>
           <p className="text-2xl font-mono font-medium text-foreground">{countdown}</p>
           <p className="text-[10px] text-muted-foreground mt-1">Resets April 1, 2026 at 00:00</p>
         </div>
 
-        <div className="glass-card p-5">
+        <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Your Position</p>
           <p className="text-lg font-mono text-foreground">#42 <span className="text-xs text-muted-foreground">of 1,247</span></p>
           <p className="text-sm font-mono text-foreground mt-1">Score: 5 days</p>
           <span className="inline-block mt-2 px-2 py-0.5 rounded-md text-[10px] bg-profit/20 text-profit">Logged today ✓</span>
         </div>
 
-        <div className="glass-card p-5">
+        <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
           <p className="text-sm font-semibold text-foreground mb-2">Monthly Streak Challenge</p>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Top 3 traders each month receive a free PRO subscription. Log daily and climb the board.

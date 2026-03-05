@@ -5,7 +5,6 @@ import {
   Upload,
   RefreshCw,
   ArrowUpRight,
-  ArrowDownRight,
   Filter,
   Pin,
   Flame,
@@ -27,6 +26,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TradeImportModal } from "@/components/TradeImportModal";
+import { CSVImportModal } from "@/components/CSVImportModal";
 
 const balanceHistory = [
   { date: "Jan", balance: 10000 },
@@ -42,45 +42,9 @@ const balanceHistory = [
 const openPositions: any[] = [];
 
 const closedPositions = [
-  {
-    id: "1",
-    tags: ["Scalp"],
-    alias: "Morning Dip",
-    closedAt: "2026-03-04 14:32",
-    symbol: "EUR/USD",
-    side: "Long",
-    qty: 1.5,
-    entry: 1.0842,
-    exit: 1.0891,
-    pnl: 73.5,
-    session: "London",
-  },
-  {
-    id: "2",
-    tags: ["Swing"],
-    alias: "Gold Short",
-    closedAt: "2026-03-03 19:15",
-    symbol: "XAU/USD",
-    side: "Short",
-    qty: 0.5,
-    entry: 2045.3,
-    exit: 2058.1,
-    pnl: -64.0,
-    session: "New York",
-  },
-  {
-    id: "3",
-    tags: ["Breakout"],
-    alias: "",
-    closedAt: "2026-03-02 03:45",
-    symbol: "GBP/JPY",
-    side: "Long",
-    qty: 2.0,
-    entry: 189.42,
-    exit: 190.18,
-    pnl: 152.0,
-    session: "Tokyo",
-  },
+  { id: "1", tags: ["Scalp"], alias: "Morning Dip", closedAt: "2026-03-04 14:32", symbol: "EUR/USD", side: "Long", qty: 1.5, entry: 1.0842, exit: 1.0891, pnl: 73.5, session: "London", hasNote: true },
+  { id: "2", tags: ["Swing"], alias: "Gold Short", closedAt: "2026-03-03 19:15", symbol: "XAU/USD", side: "Short", qty: 0.5, entry: 2045.3, exit: 2058.1, pnl: -64.0, session: "New York", hasNote: false },
+  { id: "3", tags: ["Breakout"], alias: "", closedAt: "2026-03-02 03:45", symbol: "GBP/JPY", side: "Long", qty: 2.0, entry: 189.42, exit: 190.18, pnl: 152.0, session: "Tokyo", hasNote: true },
 ];
 
 const streakDays = [true, true, true, false, true, true, false];
@@ -88,49 +52,43 @@ const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function Dashboard() {
   const [importOpen, setImportOpen] = useState(false);
+  const [csvOpen, setCsvOpen] = useState(false);
 
   return (
     <div className="flex gap-6 flex-col xl:flex-row">
       {/* Left Panel */}
       <div className="w-full xl:w-80 shrink-0 space-y-4">
-        <Select defaultValue="main">
-          <SelectTrigger className="glass-card border-white/[0.08] bg-white/[0.04]">
-            <SelectValue placeholder="Select account" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="main">Main Account</SelectItem>
-            <SelectItem value="demo">Demo Account</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Account Selector Card */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
+          <Select defaultValue="main">
+            <SelectTrigger className="bg-white/[0.04] border-white/[0.08]">
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="main">Main Account</SelectItem>
+              <SelectItem value="demo">Demo Account</SelectItem>
+            </SelectContent>
+          </Select>
+        </motion.div>
 
-        <div className="space-y-2">
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-2 glass-card border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] text-foreground"
-            onClick={() => setImportOpen(true)}
-          >
+        {/* Actions Card */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 space-y-2">
+          <h3 className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Actions</h3>
+          <Button variant="outline" className="w-full justify-start gap-2 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground" onClick={() => setImportOpen(true)}>
             <Plus className="h-4 w-4" /> Manual Trade Import
           </Button>
-          <Button variant="outline" className="w-full justify-start gap-2 glass-card border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] text-foreground">
+          <Button variant="outline" className="w-full justify-start gap-2 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground" onClick={() => setCsvOpen(true)}>
             <Upload className="h-4 w-4" /> CSV / AI Import
           </Button>
-          <Button variant="outline" className="w-full justify-start gap-2 glass-card border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] text-foreground">
+          <Button variant="outline" className="w-full justify-start gap-2 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground">
             <RefreshCw className="h-4 w-4" /> Sync with Broker
           </Button>
-        </div>
+        </motion.div>
 
         {/* Balance Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-5"
-        >
-          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">
-            Total Balance
-          </p>
-          <p className="text-3xl font-mono font-medium text-foreground">
-            $13,500.00
-          </p>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Total Balance</p>
+          <p className="text-3xl font-mono font-medium text-foreground">$13,500.00</p>
           <div className="flex items-center gap-2 mt-1">
             <ArrowUpRight className="h-3.5 w-3.5 text-profit" />
             <span className="text-sm font-mono text-profit">+$245.00 today</span>
@@ -138,38 +96,18 @@ export default function Dashboard() {
           <div className="mt-4 h-24">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={balanceHistory}>
-                <Line
-                  type="monotone"
-                  dataKey="balance"
-                  stroke="hsl(217, 91%, 60%)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(150, 8%, 8%)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    fontFamily: "DM Mono",
-                    fontSize: "12px",
-                  }}
-                />
+                <Line type="monotone" dataKey="balance" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
+                <Tooltip contentStyle={{ background: "rgba(0,0,0,0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff", fontFamily: "DM Mono", fontSize: "12px" }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <Button variant="outline" size="sm" className="w-full mt-3 glass-card border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] text-foreground text-xs">
+          <Button variant="outline" size="sm" className="w-full mt-3 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground text-xs">
             Deposit / Withdraw
           </Button>
         </motion.div>
 
-        {/* Streak Tracker */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-card p-5"
-        >
+        {/* Streak Tracker Card */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-3">
             <Flame className="h-5 w-5 text-orange-400" />
             <span className="font-semibold text-foreground">5 day streak</span>
@@ -179,13 +117,7 @@ export default function Dashboard() {
             {dayLabels.map((d, i) => (
               <div key={i} className="flex flex-col items-center gap-1">
                 <span className="text-[10px] text-muted-foreground">{d}</span>
-                <div
-                  className={`h-3 w-3 rounded-full ${
-                    streakDays[i]
-                      ? "bg-profit"
-                      : "bg-white/[0.08]"
-                  } ${i === 5 ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
-                />
+                <div className={`h-3 w-3 rounded-full ${streakDays[i] ? "bg-profit" : "bg-white/[0.08]"} ${i === 5 ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`} />
               </div>
             ))}
           </div>
@@ -194,50 +126,28 @@ export default function Dashboard() {
 
       {/* Main Panel */}
       <div className="flex-1 space-y-6 min-w-0">
-        {/* Open Positions */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-        >
+        {/* Open Positions Card */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              Open Orders & Positions
-            </h2>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-              <Filter className="h-3.5 w-3.5" />
-            </Button>
+            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Open Orders & Positions</h2>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><Filter className="h-3.5 w-3.5" /></Button>
           </div>
-          <div className="glass-card overflow-hidden">
-            {openPositions.length === 0 ? (
-              <div className="p-12 text-center text-muted-foreground text-sm">
-                No orders to display. Create your first order.
-              </div>
-            ) : null}
-          </div>
+          {openPositions.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">No orders to display. Create your first order.</div>
+          ) : null}
         </motion.div>
 
-        {/* Closed Positions */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
+        {/* Closed Positions Card */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              Closed Positions
-            </h2>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-              <Filter className="h-3.5 w-3.5" />
-            </Button>
+            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Closed Positions</h2>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><Filter className="h-3.5 w-3.5" /></Button>
           </div>
-          <div className="glass-card overflow-x-auto">
+          <div className="overflow-x-auto -mx-6 px-6">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06] text-muted-foreground text-xs uppercase tracking-wider">
-                  <th className="p-3 text-left font-medium">
-                    <Pin className="h-3 w-3" />
-                  </th>
+                  <th className="p-3 text-left font-medium"><Pin className="h-3 w-3" /></th>
                   <th className="p-3 text-left font-medium">Tags</th>
                   <th className="p-3 text-left font-medium">Alias</th>
                   <th className="p-3 text-left font-medium">Closed At</th>
@@ -248,60 +158,35 @@ export default function Dashboard() {
                   <th className="p-3 text-right font-medium">Exit</th>
                   <th className="p-3 text-right font-medium">PnL</th>
                   <th className="p-3 text-left font-medium">Session</th>
+                  <th className="p-3 text-center font-medium">📓</th>
                 </tr>
               </thead>
               <tbody>
                 {closedPositions.map((pos) => (
-                  <tr
-                    key={pos.id}
-                    className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors"
-                  >
-                    <td className="p-3">
-                      <Pin className="h-3 w-3 text-muted-foreground cursor-pointer hover:text-foreground" />
-                    </td>
+                  <tr key={pos.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+                    <td className="p-3"><Pin className="h-3 w-3 text-muted-foreground cursor-pointer hover:text-foreground" /></td>
                     <td className="p-3">
                       <div className="flex gap-1">
                         {pos.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.06] text-muted-foreground"
-                          >
-                            {t}
-                          </span>
+                          <span key={t} className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.06] text-muted-foreground">{t}</span>
                         ))}
                       </div>
                     </td>
                     <td className="p-3 text-foreground">{pos.alias || "—"}</td>
-                    <td className="p-3 font-mono text-xs text-muted-foreground">
-                      {pos.closedAt}
+                    <td className="p-3 font-mono text-xs text-muted-foreground">{pos.closedAt}</td>
+                    <td className="p-3 font-mono font-medium text-foreground">{pos.symbol}</td>
+                    <td className="p-3"><span className={pos.side === "Long" ? "badge-long" : "badge-short"}>{pos.side}</span></td>
+                    <td className="p-3 text-right font-mono text-foreground">{pos.qty}</td>
+                    <td className="p-3 text-right font-mono text-foreground">{pos.entry}</td>
+                    <td className="p-3 text-right font-mono text-foreground">{pos.exit}</td>
+                    <td className={`p-3 text-right font-mono font-medium ${pos.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                      {pos.pnl >= 0 ? "+" : ""}${Math.abs(pos.pnl).toFixed(2)}
                     </td>
-                    <td className="p-3 font-mono font-medium text-foreground">
-                      {pos.symbol}
-                    </td>
-                    <td className="p-3">
-                      <span className={pos.side === "Long" ? "badge-long" : "badge-short"}>
-                        {pos.side}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right font-mono text-foreground">
-                      {pos.qty}
-                    </td>
-                    <td className="p-3 text-right font-mono text-foreground">
-                      {pos.entry}
-                    </td>
-                    <td className="p-3 text-right font-mono text-foreground">
-                      {pos.exit}
-                    </td>
-                    <td
-                      className={`p-3 text-right font-mono font-medium ${
-                        pos.pnl >= 0 ? "text-profit" : "text-loss"
-                      }`}
-                    >
-                      {pos.pnl >= 0 ? "+" : ""}
-                      ${Math.abs(pos.pnl).toFixed(2)}
-                    </td>
-                    <td className="p-3 text-xs text-muted-foreground">
-                      {pos.session}
+                    <td className="p-3 text-xs text-muted-foreground">{pos.session}</td>
+                    <td className="p-3 text-center">
+                      {pos.hasNote && (
+                        <span className="cursor-pointer hover:opacity-80" title="View linked note">📓</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -312,6 +197,7 @@ export default function Dashboard() {
       </div>
 
       <TradeImportModal open={importOpen} onOpenChange={setImportOpen} />
+      <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} />
     </div>
   );
 }
