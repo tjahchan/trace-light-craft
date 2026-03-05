@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { BackgroundProvider } from "@/contexts/BackgroundContext";
 import Dashboard from "./pages/Dashboard";
 import Overview from "./pages/Overview";
 import Journal from "./pages/Journal";
@@ -20,20 +21,22 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/overview" element={<Overview />} />
-            <Route path="/journal" element={<Journal />} />
-            <Route path="/watchlist" element={<Watchlist />} />
-            <Route path="/community" element={<Community />} />
-            <Route path="/learning" element={<Learning />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
-      </BrowserRouter>
+      <BackgroundProvider>
+        <BrowserRouter>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/overview" element={<Overview />} />
+              <Route path="/journal" element={<Journal />} />
+              <Route path="/watchlist" element={<Watchlist />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/learning" element={<Learning />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Layout>
+        </BrowserRouter>
+      </BackgroundProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

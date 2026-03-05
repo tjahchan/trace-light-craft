@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, Clock, BookOpen } from "lucide-react";
+import { ChevronRight, Clock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
@@ -67,13 +67,7 @@ export default function Learning() {
       <Tabs defaultValue={categories[0]}>
         <TabsList className="bg-white/[0.04] border border-white/[0.08] flex-wrap h-auto gap-1 p-1">
           {categories.map((cat) => (
-            <TabsTrigger
-              key={cat}
-              value={cat}
-              className="data-[state=active]:bg-white/[0.08] text-xs"
-            >
-              {cat}
-            </TabsTrigger>
+            <TabsTrigger key={cat} value={cat} className="data-[state=active]:bg-white/[0.08] text-xs">{cat}</TabsTrigger>
           ))}
         </TabsList>
 
@@ -86,20 +80,14 @@ export default function Learning() {
                   <motion.div
                     key={card.title}
                     layout
-                    className={`glass-card-hover p-5 cursor-pointer ${
-                      isExpanded ? "md:col-span-2 xl:col-span-3" : ""
-                    }`}
+                    className={`backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-5 cursor-pointer transition-all hover:bg-black/50 hover:border-white/[0.14] ${isExpanded ? "md:col-span-2 xl:col-span-3" : ""}`}
                     onClick={() => setExpandedCard(isExpanded ? null : card.title)}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <Badge variant="secondary" className={`text-[10px] ${difficultyColors[card.difficulty]}`}>
-                            {card.difficulty}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-2.5 w-2.5" /> {card.readTime}
-                          </span>
+                          <Badge variant="secondary" className={`text-[10px] ${difficultyColors[card.difficulty]}`}>{card.difficulty}</Badge>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {card.readTime}</span>
                         </div>
                         <h3 className="text-sm font-semibold text-foreground">{card.title}</h3>
                         <p className="text-xs text-muted-foreground mt-0.5">{card.desc}</p>
@@ -107,11 +95,7 @@ export default function Learning() {
                       <ChevronRight className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                     </div>
                     {isExpanded && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        className="mt-4 pt-4 border-t border-white/[0.06]"
-                      >
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-4 pt-4 border-t border-white/[0.06]">
                         <p className="text-sm text-foreground/80 leading-relaxed">{card.content}</p>
                       </motion.div>
                     )}

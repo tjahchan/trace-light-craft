@@ -1,20 +1,34 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import { TopNav } from "@/components/TopNav";
+import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
+import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const { theme } = useBackground();
+  const bg = backgrounds[theme];
+
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-12 flex items-center border-b border-white/[0.06] px-4 shrink-0">
-            <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
-          </header>
-          <main className="flex-1 overflow-auto p-6 page-transition">
-            {children}
-          </main>
+    <div className="min-h-screen flex flex-col relative">
+      {/* Background Layer */}
+      {bg.image && (
+        <div
+          className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${bg.image})` }}
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
         </div>
+      )}
+      {!bg.image && <div className="fixed inset-0 z-0 bg-background" />}
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <TopNav />
+        <main className="flex-1 overflow-auto p-6 page-transition">
+          {children}
+        </main>
       </div>
-    </SidebarProvider>
+
+      {/* Background Switcher */}
+      <BackgroundSwitcher />
+    </div>
   );
 }

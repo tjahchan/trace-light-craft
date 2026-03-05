@@ -1,8 +1,17 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+interface WatchlistItem {
+  symbol: string;
+  direction: string;
+  entry: number;
+  current: number;
+  target: number;
+  stop: number;
+  notes: string;
+}
 
 const watchlistItems = [
   { symbol: "EUR/USD", direction: "Long", entry: 1.0842, current: 1.0891, target: 1.095, stop: 1.08, notes: "Bullish structure" },
@@ -17,7 +26,7 @@ const holdingsItems = [
 
 function WatchlistTable({ items }: { items: typeof watchlistItems }) {
   return (
-    <div className="glass-card overflow-x-auto">
+    <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-white/[0.06] text-muted-foreground text-xs uppercase tracking-wider">
@@ -36,12 +45,7 @@ function WatchlistTable({ items }: { items: typeof watchlistItems }) {
             const pctFromEntry = ((item.current - item.entry) / item.entry) * 100;
             const isUp = item.current >= item.entry;
             return (
-              <tr
-                key={item.symbol}
-                className={`border-b border-white/[0.04] transition-colors ${
-                  isUp ? "hover:bg-profit/[0.03]" : "hover:bg-loss/[0.03]"
-                }`}
-              >
+              <tr key={item.symbol} className={`border-b border-white/[0.04] transition-colors ${isUp ? "hover:bg-profit/[0.03]" : "hover:bg-loss/[0.03]"}`}>
                 <td className="p-3 font-mono font-medium text-foreground">{item.symbol}</td>
                 <td className="p-3"><span className="badge-long">{item.direction}</span></td>
                 <td className="p-3 text-right font-mono text-foreground">{item.entry}</td>
@@ -67,9 +71,7 @@ export default function Watchlist() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-foreground">Watchlist</h1>
-        <Button size="sm" className="gap-1.5">
-          <Plus className="h-3.5 w-3.5" /> Add Position
-        </Button>
+        <Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add Position</Button>
       </div>
 
       <Tabs defaultValue="active">
@@ -77,13 +79,10 @@ export default function Watchlist() {
           <TabsTrigger value="active" className="data-[state=active]:bg-white/[0.08]">Active Watchlist</TabsTrigger>
           <TabsTrigger value="holdings" className="data-[state=active]:bg-white/[0.08]">Long-Term Holdings</TabsTrigger>
         </TabsList>
-        <TabsContent value="active" className="mt-4">
-          <WatchlistTable items={watchlistItems} />
-        </TabsContent>
-        <TabsContent value="holdings" className="mt-4">
-          <WatchlistTable items={holdingsItems} />
-        </TabsContent>
+        <TabsContent value="active" className="mt-4"><WatchlistTable items={watchlistItems} /></TabsContent>
+        <TabsContent value="holdings" className="mt-4"><WatchlistTable items={holdingsItems} /></TabsContent>
       </Tabs>
     </motion.div>
   );
 }
+
