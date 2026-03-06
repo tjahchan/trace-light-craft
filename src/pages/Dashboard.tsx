@@ -628,7 +628,7 @@ export default function Dashboard() {
             </Button>
           </div>
 
-          <ClosedPositionsFilter open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} onApply={setFilters} symbols={uniqueSymbols} />
+          <ClosedPositionsFilter open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} onApply={handleFiltersApply} symbols={uniqueSymbols} />
 
           {!accountsLoaded ? (
             <div className="p-8 text-center">
@@ -655,7 +655,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPositions.map((pos) => {
+                  {paginatedClosed.map((pos) => {
                     const risk = getRiskPercent(pos.entry, pos.sl, pos.qty, pos.symbol, displayBalance);
                     return (
                       <tr key={pos.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer" onClick={() => navigate(`/trade/${pos.id}`)}>
@@ -700,6 +700,54 @@ export default function Dashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {filteredPositions.length > ROWS_PER_PAGE && (
+            <div className="flex items-center justify-between mt-4 px-1">
+              <span className="text-xs text-muted-foreground">
+                Showing {((closedPageClamped - 1) * ROWS_PER_PAGE) + 1}–{Math.min(closedPageClamped * ROWS_PER_PAGE, filteredPositions.length)} of {filteredPositions.length} trades
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setClosedPage((p) => Math.max(1, p - 1))}
+                  disabled={closedPageClamped <= 1}
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                {Array.from({ length: closedTotalPages }, (_, i) => i + 1).map((page) => {
+                  // Show first, last, current, and neighbors; ellipsis for gaps
+                  if (closedTotalPages <= 7 || page === 1 || page === closedTotalPages || Math.abs(page - closedPageClamped) <= 1) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setClosedPage(page)}
+                        className={cn(
+                          "h-7 min-w-[28px] rounded-md text-xs font-medium transition-colors",
+                          page === closedPageClamped
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-white/[0.06]"
+                        )}
+                      >
+                        {page}
+                      </button>
+                    );
+                  }
+                  if (page === 2 || page === closedTotalPages - 1) {
+                    return <span key={page} className="text-xs text-muted-foreground px-1">…</span>;
+                  }
+                  return null;
+                })}
+                <button
+                  onClick={() => setClosedPage((p) => Math.min(closedTotalPages, p + 1))}
+                  disabled={closedPageClamped >= closedTotalPages}
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           )}
         </motion.div>
