@@ -133,6 +133,7 @@ type BalancePeriod = "week" | "month" | "year";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [importOpen, setImportOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -145,11 +146,28 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
   const [filters, setFilters] = useState<ClosedPositionFilters>(emptyFilters);
+  const [dbTrades, setDbTrades] = useState<any[]>([]);
 
   const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
   const streakDays = getWeekDots();
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? accounts[0];
+
+  const fetchTrades = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("trades" as any)
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "closed")
+      .order("close_time", { ascending: false });
+    if (!error && data) {
+      console.log("[Dashboard] Loaded", data.length, "closed trades from DB");
+      setDbTrades(data as any[]);
+    }
+  }, [user]);
+
+  useEffect(() => { fetchTrades(); }, [fetchTrades]);
 
   const handleTransaction = (
     tx: Omit<Transaction, "id">,
