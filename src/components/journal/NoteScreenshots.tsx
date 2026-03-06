@@ -42,8 +42,8 @@ export function NoteScreenshots({ screenshots, entryId, userId, onUploaded, onDe
         continue;
       }
 
-      await supabase.from("trade_screenshots" as any).insert({
-        trade_id: entryId,
+      await supabase.from("note_screenshots" as any).insert({
+        entry_id: entryId,
         user_id: userId,
         storage_path: path,
         label: file.name.replace(/\.[^.]+$/, ""),
@@ -57,7 +57,7 @@ export function NoteScreenshots({ screenshots, entryId, userId, onUploaded, onDe
 
   const handleDelete = async (screenshot: NoteScreenshot) => {
     await supabase.storage.from("chart-screenshots").remove([screenshot.storage_path]);
-    await supabase.from("trade_screenshots" as any).delete().eq("id", screenshot.id);
+    await supabase.from("note_screenshots" as any).delete().eq("id", screenshot.id);
     onDeleted(screenshot.id);
   };
 
