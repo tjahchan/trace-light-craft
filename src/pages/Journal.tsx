@@ -22,6 +22,7 @@ import { NotebookSidebar } from "@/components/journal/NotebookSidebar";
 import { RichTextEditor } from "@/components/journal/RichTextEditor";
 import { NoteScreenshots } from "@/components/journal/NoteScreenshots";
 import { AiInsightPanel } from "@/components/journal/AiInsightPanel";
+import { JournalOnboardingTour } from "@/components/journal/JournalOnboardingTour";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Trade {
@@ -509,6 +510,11 @@ export default function Journal() {
           animate={{ opacity: 1, x: 0 }}
           className={cn(
             "w-72 shrink-0 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl flex flex-col overflow-hidden",
+            isMobile && mobilePanel !== "list" && "hidden"
+          )}
+          data-tour="notebook-sidebar"
+        >
+          <NotebookSidebar
             isMobile && mobilePanel !== "list" && "hidden"
           )}
         >
