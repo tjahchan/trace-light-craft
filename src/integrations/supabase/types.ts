@@ -213,6 +213,80 @@ export type Database = {
           },
         ]
       }
+      trades: {
+        Row: {
+          account_id: string
+          close_time: string | null
+          commissions: number | null
+          created_at: string
+          entry_price: number
+          exit_price: number | null
+          id: string
+          note: string | null
+          open_time: string | null
+          pnl: number | null
+          quantity: number
+          side: string
+          sl: number | null
+          status: string
+          symbol: string
+          tags: string[] | null
+          tp: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          close_time?: string | null
+          commissions?: number | null
+          created_at?: string
+          entry_price?: number
+          exit_price?: number | null
+          id?: string
+          note?: string | null
+          open_time?: string | null
+          pnl?: number | null
+          quantity?: number
+          side?: string
+          sl?: number | null
+          status?: string
+          symbol: string
+          tags?: string[] | null
+          tp?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          close_time?: string | null
+          commissions?: number | null
+          created_at?: string
+          entry_price?: number
+          exit_price?: number | null
+          id?: string
+          note?: string | null
+          open_time?: string | null
+          pnl?: number | null
+          quantity?: number
+          side?: string
+          sl?: number | null
+          status?: string
+          symbol?: string
+          tags?: string[] | null
+          tp?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trades_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string
