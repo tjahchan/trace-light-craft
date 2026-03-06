@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { calculatePnl } from "@/lib/trade-utils";
+import { calculatePnl, getContractSize, getContractSizeLabel } from "@/lib/trade-utils";
 import {
   ArrowLeft,
   Pin,
@@ -150,7 +150,9 @@ export default function TradeDetail() {
   const tpNum = parseFloat(tp) || 0;
   const qtyNum = parseFloat(qty) || 0;
 
-  const qtyFiat = (qtyNum * entryNum).toFixed(2);
+  const contractSize = getContractSize(symbol);
+  const contractSizeLabel = getContractSizeLabel(symbol);
+  const qtyFiat = (qtyNum * contractSize * entryNum).toFixed(2);
   const riskReward = slNum && tpNum && entryNum
     ? (Math.abs(tpNum - entryNum) / Math.abs(entryNum - slNum)).toFixed(2)
     : "—";
