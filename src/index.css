@@ -128,3 +128,13 @@
     to { opacity: 1; transform: translateY(0); }
   }
 }
+
+@keyframes rotateBorder {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes momentraGlow {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(99,102,241,0.3); }
+  50% { box-shadow: 0 0 18px 6px rgba(99,102,241,0.6); }
+}
