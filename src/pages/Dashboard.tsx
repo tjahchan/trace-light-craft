@@ -45,6 +45,7 @@ import {
 } from "@/components/ClosedPositionsFilter";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -67,6 +68,7 @@ function riskColor(pct: number) {
 }
 
 const STORAGE_KEY = "selectedAccountId";
+const ROWS_PER_PAGE = 10;
 
 type BalancePeriod = "week" | "month" | "year";
 
@@ -89,6 +91,8 @@ export default function Dashboard() {
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [periodPnl, setPeriodPnl] = useState<Record<string, number>>({ week: 0, month: 0, year: 0 });
   const [chartData, setChartData] = useState<{ date: string; balance: number }[]>([]);
+  const [closedPage, setClosedPage] = useState(1);
+  const [openPage, setOpenPage] = useState(1);
 
   const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
   const streakDays = getWeekDots();
@@ -104,6 +108,8 @@ export default function Dashboard() {
   const selectAccount = useCallback((id: string) => {
     setSelectedAccountId(id);
     localStorage.setItem(STORAGE_KEY, id);
+    setClosedPage(1);
+    setOpenPage(1);
   }, []);
 
   // ---- Fetch accounts from Supabase ----
@@ -395,6 +401,16 @@ export default function Dashboard() {
   const filteredPositions = useMemo(() => applyFilters(allClosedPositions, filters), [allClosedPositions, filters]);
   const filtersActive = hasActiveFilters(filters);
 
+  // Pagination for closed positions
+  const closedTotalPages = Math.max(1, Math.ceil(filteredPositions.length / ROWS_PER_PAGE));
+  const closedPageClamped = Math.min(closedPage, closedTotalPages);
+  const paginatedClosed = filteredPositions.slice((closedPageClamped - 1) * ROWS_PER_PAGE, closedPageClamped * ROWS_PER_PAGE);
+
+  const handleFiltersApply = (f: ClosedPositionFilters) => {
+    setFilters(f);
+    setClosedPage(1);
+  };
+
   const currentPeriodPnl = periodPnl[balancePeriod] || 0;
   const periodLabel = balancePeriod === "week" ? "this week" : balancePeriod === "month" ? "this month" : "this year";
   const isPnlPositive = currentPeriodPnl > 0;
@@ -612,7 +628,7 @@ export default function Dashboard() {
             </Button>
           </div>
 
-          <ClosedPositionsFilter open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} onApply={setFilters} symbols={uniqueSymbols} />
+          <ClosedPositionsFilter open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} onApply={handleFiltersApply} symbols={uniqueSymbols} />
 
           {!accountsLoaded ? (
             <div className="p-8 text-center">
@@ -639,7 +655,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPositions.map((pos) => {
+                  {paginatedClosed.map((pos) => {
                     const risk = getRiskPercent(pos.entry, pos.sl, pos.qty, pos.symbol, displayBalance);
                     return (
                       <tr key={pos.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer" onClick={() => navigate(`/trade/${pos.id}`)}>
@@ -684,6 +700,54 @@ export default function Dashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {filteredPositions.length > ROWS_PER_PAGE && (
+            <div className="flex items-center justify-between mt-4 px-1">
+              <span className="text-xs text-muted-foreground">
+                Showing {((closedPageClamped - 1) * ROWS_PER_PAGE) + 1}–{Math.min(closedPageClamped * ROWS_PER_PAGE, filteredPositions.length)} of {filteredPositions.length} trades
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setClosedPage((p) => Math.max(1, p - 1))}
+                  disabled={closedPageClamped <= 1}
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                {Array.from({ length: closedTotalPages }, (_, i) => i + 1).map((page) => {
+                  // Show first, last, current, and neighbors; ellipsis for gaps
+                  if (closedTotalPages <= 7 || page === 1 || page === closedTotalPages || Math.abs(page - closedPageClamped) <= 1) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setClosedPage(page)}
+                        className={cn(
+                          "h-7 min-w-[28px] rounded-md text-xs font-medium transition-colors",
+                          page === closedPageClamped
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-white/[0.06]"
+                        )}
+                      >
+                        {page}
+                      </button>
+                    );
+                  }
+                  if (page === 2 || page === closedTotalPages - 1) {
+                    return <span key={page} className="text-xs text-muted-foreground px-1">…</span>;
+                  }
+                  return null;
+                })}
+                <button
+                  onClick={() => setClosedPage((p) => Math.min(closedTotalPages, p + 1))}
+                  disabled={closedPageClamped >= closedTotalPages}
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           )}
         </motion.div>
