@@ -452,6 +452,7 @@ export type Database = {
           email: string | null
           has_seen_tour: boolean
           id: string
+          last_active_at: string | null
           sample_data_enabled: boolean
           updated_at: string
           user_id: string
@@ -463,6 +464,7 @@ export type Database = {
           email?: string | null
           has_seen_tour?: boolean
           id?: string
+          last_active_at?: string | null
           sample_data_enabled?: boolean
           updated_at?: string
           user_id: string
@@ -474,6 +476,7 @@ export type Database = {
           email?: string | null
           has_seen_tour?: boolean
           id?: string
+          last_active_at?: string | null
           sample_data_enabled?: boolean
           updated_at?: string
           user_id?: string
@@ -844,32 +847,62 @@ export type Database = {
       user_plans: {
         Row: {
           ai_requests_this_month: number
+          billing_cycle_end: string | null
           created_at: string
           csv_imports_this_month: number
           current_billing_cycle_start: string
           id: string
           plan: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           ai_requests_this_month?: number
+          billing_cycle_end?: string | null
           created_at?: string
           csv_imports_this_month?: number
           current_billing_cycle_start?: string
           id?: string
           plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           ai_requests_this_month?: number
+          billing_cycle_end?: string | null
           created_at?: string
           csv_imports_this_month?: number
           current_billing_cycle_start?: string
           id?: string
           plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -912,6 +945,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_stats: { Args: never; Returns: Json }
+      admin_get_users: {
+        Args: never
+        Returns: {
+          ai_requests_this_month: number
+          best_streak: number
+          created_at: string
+          csv_imports_this_month: number
+          current_streak: number
+          display_name: string
+          email: string
+          has_seen_tour: boolean
+          last_active_at: string
+          plan: string
+          sample_data_enabled: boolean
+          stripe_customer_id: string
+          subscription_status: string
+          user_id: string
+        }[]
+      }
+      admin_update_user_plan: {
+        Args: {
+          p_plan?: string
+          p_reset_ai?: boolean
+          p_reset_csv?: boolean
+          p_target_user_id: string
+        }
+        Returns: undefined
+      }
       get_streak_leaderboard: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
@@ -922,6 +984,13 @@ export type Database = {
           rank: number
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       increment_usage: {
         Args: { p_type: string; p_user_id: string }
         Returns: Json
@@ -930,7 +999,7 @@ export type Database = {
       record_note_activity: { Args: { p_user_id: string }; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1057,6 +1126,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
