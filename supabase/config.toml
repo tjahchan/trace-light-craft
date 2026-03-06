@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.snaptrade]
 verify_jwt = false
+
+[functions.momentra-ai]
+verify_jwt = false
