@@ -7,26 +7,20 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
   FileText,
-  Bold,
-  Italic,
-  List,
-  Heading,
   Download,
   Check,
   Save,
   Loader2,
-  ListOrdered,
-  Highlighter,
-  MessageSquareQuote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ChartScreenshots } from "@/components/journal/ChartScreenshots";
 import { StructuredReflection } from "@/components/journal/StructuredReflection";
 import { TradeInsightsPanel } from "@/components/journal/TradeInsightsPanel";
 import { NotebookSidebar } from "@/components/journal/NotebookSidebar";
+import { RichTextEditor } from "@/components/journal/RichTextEditor";
+import { NoteScreenshots } from "@/components/journal/NoteScreenshots";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Trade {
