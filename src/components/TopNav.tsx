@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { NavLink } from "@/components/NavLink";
-import { Settings, LogOut, BookOpen, Zap } from "lucide-react";
+import { Settings, LogOut, BookOpen, Zap, Wrench, Target, Image, MessageSquare } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,6 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useNavigate } from "react-router-dom";
 import { usePlan } from "@/contexts/PlanContext";
 
-
 const navItems = [
   { title: "Dashboard", url: "/" },
   { title: "Overview", url: "/overview" },
@@ -22,7 +22,13 @@ const navItems = [
   { title: "Leaderboard", url: "/community" },
 ];
 
-export function TopNav() {
+interface TopNavProps {
+  onFocusClick?: () => void;
+  onBackgroundsClick?: () => void;
+  onFeedbackClick?: () => void;
+}
+
+export function TopNav({ onFocusClick, onBackgroundsClick, onFeedbackClick }: TopNavProps) {
   const { user, signOut } = useAuth();
   const { startTour } = useOnboarding();
   const { isPro, triggerUpgrade } = usePlan();
@@ -74,6 +80,27 @@ export function TopNav() {
             <Zap className="h-3 w-3" /> Upgrade
           </button>
         )}
+
+        {/* Tools Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors outline-none">
+              <Wrench className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-card border-white/[0.08]">
+            <DropdownMenuItem className="text-foreground gap-2" onClick={() => onBackgroundsClick?.()}>
+              <Image className="h-3.5 w-3.5" /> Backgrounds
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-foreground gap-2" onClick={() => onFocusClick?.()}>
+              <Target className="h-3.5 w-3.5" /> Focus Timer
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-foreground gap-2" onClick={() => onFeedbackClick?.()}>
+              <MessageSquare className="h-3.5 w-3.5" /> Feedback
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <Tooltip>
           <TooltipTrigger asChild>
             <button

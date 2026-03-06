@@ -4,7 +4,6 @@ import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
 import { FocusWidget } from "@/components/FocusWidget";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { MomentraAI } from "@/components/MomentraAI";
-import { BottomToolbar } from "@/components/BottomToolbar";
 import { PlatformTour } from "@/components/PlatformTour";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
@@ -15,7 +14,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [prevImage, setPrevImage] = useState<string | null>(bg.image);
   const [transitioning, setTransitioning] = useState(false);
 
-  // Toolbar-controlled panel states
+  // Panel states triggered from TopNav tools dropdown
   const [focusOpen, setFocusOpen] = useState(false);
   const [bgOpen, setBgOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -67,18 +66,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Content */}
       <div className="relative z-[10] flex flex-col min-h-screen">
-        <TopNav />
+        <TopNav
+          onFocusClick={() => setFocusOpen(true)}
+          onBackgroundsClick={() => setBgOpen(true)}
+          onFeedbackClick={() => setFeedbackOpen(true)}
+        />
         <main className="flex-1 overflow-auto p-6 page-transition">
           {children}
         </main>
       </div>
-
-      {/* Bottom-left collapsible toolbar */}
-      <BottomToolbar
-        onFocusClick={() => setFocusOpen(true)}
-        onBackgroundsClick={() => setBgOpen(true)}
-        onFeedbackClick={() => setFeedbackOpen(true)}
-      />
 
       {/* Panels triggered by toolbar */}
       <FocusWidget externalOpen={focusOpen} onExternalClose={() => setFocusOpen(false)} />
