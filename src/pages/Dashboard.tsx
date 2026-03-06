@@ -130,6 +130,7 @@ function riskColor(pct: number) {
 type BalancePeriod = "week" | "month" | "year";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [importOpen, setImportOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
