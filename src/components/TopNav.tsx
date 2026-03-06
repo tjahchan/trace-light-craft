@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink } from "@/components/NavLink";
-import { Settings, LogOut, BookOpen, Zap, Wrench, Target, Image, MessageSquare } from "lucide-react";
+import { Settings, LogOut, BookOpen, Zap, Wrench, Target, Image, MessageSquare, Shield } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +31,7 @@ interface TopNavProps {
 export function TopNav({ onFocusClick, onBackgroundsClick, onFeedbackClick }: TopNavProps) {
   const { user, signOut } = useAuth();
   const { startTour } = useOnboarding();
-  const { isPro, triggerUpgrade } = usePlan();
+  const { isPro, triggerUpgrade, isAdmin } = usePlan();
   const navigate = useNavigate();
 
   const initials = user?.user_metadata?.full_name
@@ -112,6 +112,16 @@ export function TopNav({ onFocusClick, onBackgroundsClick, onFeedbackClick }: To
           </TooltipTrigger>
           <TooltipContent>Take the Tour</TooltipContent>
         </Tooltip>
+
+        {isAdmin && (
+          <NavLink
+            to="/admin"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors"
+            activeClassName="!text-foreground !bg-white/[0.08]"
+          >
+            <Shield className="h-4 w-4" />
+          </NavLink>
+        )}
 
         <NavLink
           to="/settings"

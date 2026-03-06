@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
+import { usePlan } from "@/contexts/PlanContext";
 import {
   Select,
   SelectContent,
@@ -11,12 +12,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Upload, Trash2 } from "lucide-react";
+import { Download, Upload, Trash2, Zap, Crown, CreditCard, ExternalLink } from "lucide-react";
 import { useBackground, backgrounds, BackgroundTheme } from "@/contexts/BackgroundContext";
+import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useBackground();
   const { streakReminders, weeklyEncouragement, updatePref, loading: prefsLoading } = useNotificationPreferences();
+  const {
+    plan, isPro, subscriptionStatus, subscriptionEnd,
+    csvImportsUsed, aiRequestsUsed, csvLimit, aiLimit,
+    startCheckout, openBillingPortal, stripeCustomerId,
+  } = usePlan();
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl space-y-6">
@@ -60,6 +67,56 @@ export default function SettingsPage() {
               </Select>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Subscription & Billing */}
+      <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Subscription & Billing</h2>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "h-10 w-10 rounded-xl flex items-center justify-center",
+            isPro ? "bg-primary/20" : "bg-white/[0.06]"
+          )}>
+            {isPro ? <Crown className="h-5 w-5 text-primary" /> : <Zap className="h-5 w-5 text-muted-foreground" />}
+          </div>
+          <div>
+            <p className="text-foreground font-medium">{isPro ? "Pro Plan" : "Free Plan"}</p>
+            <p className="text-xs text-muted-foreground">
+              {isPro && subscriptionEnd
+                ? `Renews ${new Date(subscriptionEnd).toLocaleDateString()}`
+                : isPro ? "Active subscription" : "Upgrade to unlock all features"}
+            </p>
+          </div>
+          {isPro && subscriptionStatus === "active" && (
+            <span className="ml-auto px-2 py-0.5 rounded text-[10px] font-semibold bg-profit/20 text-profit">ACTIVE</span>
+          )}
+        </div>
+
+        {!isPro && (
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="p-3 rounded-lg bg-white/[0.03]">
+              <p className="text-[10px] text-muted-foreground uppercase">CSV Imports</p>
+              <p className="font-mono text-foreground">{csvImportsUsed} / {csvLimit}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/[0.03]">
+              <p className="text-[10px] text-muted-foreground uppercase">AI Requests</p>
+              <p className="font-mono text-foreground">{aiRequestsUsed} / {aiLimit}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {!isPro ? (
+            <Button onClick={startCheckout} className="gap-2 bg-primary hover:bg-primary/90">
+              <Zap className="h-3.5 w-3.5" /> Upgrade to Pro — $14/mo
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={openBillingPortal} className="gap-2 bg-white/[0.04] border-white/[0.08] text-foreground">
+              <CreditCard className="h-3.5 w-3.5" /> Manage Billing
+              <ExternalLink className="h-3 w-3 ml-1" />
+            </Button>
+          )}
         </div>
       </div>
 
