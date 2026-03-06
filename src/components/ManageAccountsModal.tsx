@@ -81,11 +81,11 @@ export function ManageAccountsModal({
   };
 
   const handleDone = async () => {
-    // Save all account changes to Supabase
+    // Save all account changes to Supabase — write initial_balance, not balance
     for (const acc of accounts) {
       await supabase
         .from("accounts")
-        .update({ name: acc.name, balance: acc.balance })
+        .update({ name: acc.name, initial_balance: acc.balance } as any)
         .eq("id", acc.id);
     }
     // Refresh balance for the current account

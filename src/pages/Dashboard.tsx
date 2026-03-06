@@ -151,22 +151,67 @@ export default function Dashboard() {
     load();
   }, [user]);
 
-  // ---- Reusable: fetch and set balance ----
+  // ---- Reusable: fetch and set balance (full formula) ----
   const fetchAndSetBalance = useCallback(async (accountId: string) => {
     if (!accountId || !user) return;
     setBalanceLoading(true);
     try {
-      // 1. Get account initial balance (stored balance)
+      // Step 1: Get initial_balance from accounts table
       const { data: accData } = await supabase
         .from("accounts")
-        .select("balance")
+        .select("initial_balance, balance")
         .eq("id", accountId)
         .single();
-      const storedBalance = accData ? Number(accData.balance) : 0;
+      const initialBalance = accData ? Number((accData as any).initial_balance ?? accData.balance ?? 0) : 0;
 
-      // Update local state
+      // Step 2: Get SUM of deposits
+      const { data: depData } = await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("account_id", accountId)
+        .eq("user_id", user.id)
+        .eq("type", "deposit");
+      const deposits = depData?.reduce((sum, row) => sum + (Number(row.amount) ?? 0), 0) ?? 0;
+
+      // Step 3: Get SUM of withdrawals
+      const { data: wdData } = await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("account_id", accountId)
+        .eq("user_id", user.id)
+        .eq("type", "withdrawal");
+      const withdrawals = wdData?.reduce((sum, row) => sum + (Number(row.amount) ?? 0), 0) ?? 0;
+
+      // Step 4: Get SUM of pnl from closed trades
+      const { data: pnlData } = await supabase
+        .from("trades" as any)
+        .select("pnl")
+        .eq("account_id", accountId)
+        .eq("user_id", user.id)
+        .eq("status", "closed");
+      const pnl = (pnlData as any[])?.reduce((sum: number, row: any) => sum + (Number(row.pnl) ?? 0), 0) ?? 0;
+
+      // Step 5: Get SUM of commissions from trades
+      const { data: commData } = await supabase
+        .from("trades" as any)
+        .select("commissions")
+        .eq("account_id", accountId)
+        .eq("user_id", user.id);
+      const commissions = (commData as any[])?.reduce((sum: number, row: any) => sum + (Number(row.commissions) ?? 0), 0) ?? 0;
+
+      // Step 6: Calculate balance
+      const balance = initialBalance + deposits - withdrawals + pnl - commissions;
+      console.log("initial:", initialBalance, "deposits:", deposits, "withdrawals:", withdrawals, "pnl:", pnl, "commissions:", commissions, "final:", balance);
+
+      // Step 7: Write computed balance to accounts table
+      await supabase
+        .from("accounts")
+        .update({ balance } as any)
+        .eq("id", accountId);
+
+      // Step 8: Update React state
       setAccounts((prev) =>
-        prev.map((a) => (a.id === accountId ? { ...a, balance: storedBalance } : a))
+        prev.map((a) => (a.id === accountId ? { ...a, balance } : a))
       );
     } catch (err) {
       console.error("[Dashboard] Error fetching balance:", err);
