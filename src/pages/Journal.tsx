@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useStreak } from "@/hooks/useStreak";
 import { motion } from "framer-motion";
 import {
   FolderOpen,
@@ -127,6 +128,7 @@ export default function Journal() {
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
+  const { recordNoteActivity } = useStreak();
 
   const selectedNote = useMemo(() => notes.find((n) => n.id === selectedNoteId), [notes, selectedNoteId]);
 
@@ -153,8 +155,9 @@ export default function Journal() {
     };
     setNotes((prev) => [newNote, ...prev]);
     setSelectedNoteId(newNote.id);
+    recordNoteActivity();
     setTimeout(() => titleRef.current?.select(), 50);
-  }, []);
+  }, [recordNoteActivity]);
 
   // Create new folder
   const createFolder = useCallback(() => {
@@ -167,7 +170,8 @@ export default function Journal() {
   // Update note field
   const updateNote = useCallback((id: string, updates: Partial<Note>) => {
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
-  }, []);
+    recordNoteActivity();
+  }, [recordNoteActivity]);
 
   // Delete note
   const confirmDeleteNote = useCallback(() => {

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
 import {
   Select,
   SelectContent,
@@ -15,6 +16,7 @@ import { useBackground, backgrounds, BackgroundTheme } from "@/contexts/Backgrou
 
 export default function SettingsPage() {
   const { theme, setTheme } = useBackground();
+  const { streakReminders, weeklyEncouragement, updatePref, loading: prefsLoading } = useNotificationPreferences();
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl space-y-6">
@@ -96,9 +98,24 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-foreground">Streak Reminders</p>
-            <p className="text-xs text-muted-foreground">Get notified to log your trades daily</p>
+            <p className="text-xs text-muted-foreground">Daily email reminders when you miss logging a note</p>
           </div>
-          <Switch />
+          <Switch
+            checked={streakReminders}
+            disabled={prefsLoading}
+            onCheckedChange={(v) => updatePref("streak_reminders", v)}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-foreground">Weekly Encouragement</p>
+            <p className="text-xs text-muted-foreground">Sunday summary with your streak and trading stats</p>
+          </div>
+          <Switch
+            checked={weeklyEncouragement}
+            disabled={prefsLoading}
+            onCheckedChange={(v) => updatePref("weekly_encouragement", v)}
+          />
         </div>
       </div>
 

@@ -7,9 +7,10 @@ import {
   ArrowUpRight,
   Filter,
   Pin,
-  Flame,
   Settings2,
 } from "lucide-react";
+import { AnimatedFlame } from "@/components/AnimatedFlame";
+import { useStreak } from "@/hooks/useStreak";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -56,7 +57,6 @@ const closedPositions = [
   { id: "3", tags: ["Breakout"], alias: "", closedAt: "2026-03-02 03:45", symbol: "GBP/JPY", side: "Long", qty: 2.0, entry: 189.42, exit: 190.18, pnl: 152.0, session: "Tokyo", hasNote: true },
 ];
 
-const streakDays = [true, true, true, false, true, true, false];
 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
 const defaultAccounts: Account[] = [
@@ -82,6 +82,9 @@ export default function Dashboard() {
   const [selectedAccountId, setSelectedAccountId] = useState(defaultAccounts[0].id);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filters, setFilters] = useState<ClosedPositionFilters>(emptyFilters);
+
+  const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
+  const streakDays = getWeekDots();
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? accounts[0];
 
@@ -234,9 +237,11 @@ export default function Dashboard() {
           className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6"
         >
           <div className="flex items-center gap-2 mb-3">
-            <Flame className="h-5 w-5 text-orange-400" />
-            <span className="font-semibold text-foreground">5 day streak</span>
-            <span className="text-xs text-muted-foreground ml-auto">Best: 12</span>
+            <AnimatedFlame active={currentStreak >= 1} size={32} />
+            <span className="font-semibold text-foreground">
+              {streakLoading ? "…" : `${currentStreak} day streak`}
+            </span>
+            <span className="text-xs text-muted-foreground ml-auto">Best: {bestStreak}</span>
           </div>
           <div className="flex gap-2 justify-between">
             {dayLabels.map((d, i) => (

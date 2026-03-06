@@ -1,1 +1,4 @@
 project_id = "qlsnfoieybtsboonskpo"
+
+[functions.streak-reminder]
+verify_jwt = false

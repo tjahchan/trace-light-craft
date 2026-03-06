@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      notification_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          streak_reminders: boolean
+          updated_at: string
+          user_id: string
+          weekly_encouragement: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          streak_reminders?: boolean
+          updated_at?: string
+          user_id: string
+          weekly_encouragement?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          streak_reminders?: boolean
+          updated_at?: string
+          user_id?: string
+          weekly_encouragement?: boolean
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -44,12 +71,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_streaks: {
+        Row: {
+          best_streak: number
+          created_at: string
+          current_streak: number
+          id: string
+          last_active_date: string | null
+          last_note_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_active_date?: string | null
+          last_note_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_active_date?: string | null
+          last_note_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      record_note_activity: { Args: { p_user_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
