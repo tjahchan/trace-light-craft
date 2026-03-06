@@ -1,13 +1,15 @@
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
-import { Settings, User } from "lucide-react";
+import { Settings, User, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const navItems = [
   { title: "Dashboard", url: "/", badge: "1" },
@@ -17,6 +19,20 @@ const navItems = [
 ];
 
 export function TopNav() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const initials = user?.user_metadata?.full_name
+    ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+    : user?.email?.slice(0, 2).toUpperCase() ?? "TR";
+
+  const avatarUrl = user?.user_metadata?.avatar_url;
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
   return (
     <header className="h-14 flex items-center justify-between px-6 backdrop-blur-xl bg-black/40 border-b border-white/[0.08] shrink-0 z-50 sticky top-0">
       {/* Logo */}
@@ -61,18 +77,23 @@ export function TopNav() {
           <DropdownMenuTrigger asChild>
             <button className="outline-none">
               <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">
+                {avatarUrl && <AvatarImage src={avatarUrl} />}
                 <AvatarFallback className="bg-white/[0.08] text-foreground text-xs font-medium">
-                  TR
+                  {initials}
                 </AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-card border-white/[0.08]">
-            <DropdownMenuItem className="text-foreground">
-              <User className="h-3.5 w-3.5 mr-2" /> Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-foreground">
+            <div className="px-2 py-1.5 text-xs text-muted-foreground truncate max-w-[200px]">
+              {user?.email}
+            </div>
+            <DropdownMenuSeparator className="bg-white/[0.08]" />
+            <DropdownMenuItem className="text-foreground" onClick={() => navigate("/settings")}>
               <Settings className="h-3.5 w-3.5 mr-2" /> Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+              <LogOut className="h-3.5 w-3.5 mr-2" /> Log Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
