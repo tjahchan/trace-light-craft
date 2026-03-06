@@ -6,9 +6,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Zap, Sparkles, Link2, Brain, FileUp, Check } from "lucide-react";
+import { Zap, Sparkles, Link2, Brain, FileUp, Check, Loader2 } from "lucide-react";
 import { usePlan } from "@/contexts/PlanContext";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const PRO_FEATURES = [
   { icon: Link2, label: "Broker auto sync" },
@@ -18,8 +18,15 @@ const PRO_FEATURES = [
 ];
 
 export function UpgradeModal() {
-  const { showUpgradeModal, setShowUpgradeModal, upgradeReason } = usePlan();
-  const navigate = useNavigate();
+  const { showUpgradeModal, setShowUpgradeModal, upgradeReason, startCheckout } = usePlan();
+  const [loading, setLoading] = useState(false);
+
+  const handleUpgrade = async () => {
+    setLoading(true);
+    await startCheckout();
+    setLoading(false);
+    setShowUpgradeModal(false);
+  };
 
   return (
     <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
@@ -46,15 +53,18 @@ export function UpgradeModal() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-2 pt-2">
+        <div className="text-center text-xs text-muted-foreground mb-2">
+          $14/month · Cancel anytime
+        </div>
+
+        <div className="flex flex-col gap-2">
           <Button
-            onClick={() => {
-              setShowUpgradeModal(false);
-              navigate("/pricing");
-            }}
+            onClick={handleUpgrade}
+            disabled={loading}
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
           >
-            <Zap className="h-4 w-4" /> Upgrade to Pro
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+            Upgrade to Pro
           </Button>
           <Button
             variant="ghost"

@@ -21,6 +21,7 @@ import Watchlist from "./pages/Watchlist";
 import Community from "./pages/Community";
 import Learning from "./pages/Learning";
 import SettingsPage from "./pages/Settings";
+import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -62,6 +63,7 @@ function ProtectedRoutes() {
             <Route path="/community" element={<Community />} />
             <Route path="/learning" element={<Learning />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

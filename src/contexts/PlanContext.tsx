@@ -9,6 +9,9 @@ interface PlanState {
   csvLimit: number;
   aiLimit: number;
   loading: boolean;
+  subscriptionStatus: string;
+  subscriptionEnd: string | null;
+  stripeCustomerId: string | null;
 }
 
 interface PlanContextType extends PlanState {
@@ -24,6 +27,9 @@ interface PlanContextType extends PlanState {
   upgradeReason: string;
   setUpgradeReason: (r: string) => void;
   triggerUpgrade: (reason: string) => void;
+  startCheckout: () => Promise<void>;
+  openBillingPortal: () => Promise<void>;
+  isAdmin: boolean;
 }
 
 const PlanContext = createContext<PlanContextType | null>(null);
@@ -37,9 +43,25 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     csvLimit: 3,
     aiLimit: 3,
     loading: true,
+    subscriptionStatus: "none",
+    subscriptionEnd: null,
+    stripeCustomerId: null,
   });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const checkSubscription = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("check-subscription");
+      if (!error && data) {
+        // Plan state will be updated via refreshPlan which reads from DB
+      }
+    } catch (e) {
+      console.error("Error checking subscription:", e);
+    }
+  }, [user]);
 
   const refreshPlan = useCallback(async () => {
     if (!user) return;
@@ -51,7 +73,6 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
     if (data) {
       const d = data as any;
-      // Check if month reset needed client-side for display
       const cycleStart = new Date(d.current_billing_cycle_start);
       const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
       const needsReset = monthStart > cycleStart;
@@ -63,17 +84,39 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         csvLimit: 3,
         aiLimit: 3,
         loading: false,
+        subscriptionStatus: d.subscription_status || "none",
+        subscriptionEnd: d.billing_cycle_end || null,
+        stripeCustomerId: d.stripe_customer_id || null,
       });
     } else {
-      // Create plan row for existing user
       await supabase.from("user_plans" as any).insert({ user_id: user.id } as any);
       setState(s => ({ ...s, loading: false }));
     }
+
+    // Check admin role
+    const { data: roleData } = await supabase
+      .from("user_roles" as any)
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    setIsAdmin(!!roleData);
   }, [user]);
 
   useEffect(() => {
-    refreshPlan();
-  }, [refreshPlan]);
+    if (user) {
+      checkSubscription().then(() => refreshPlan());
+    }
+  }, [user, checkSubscription, refreshPlan]);
+
+  // Periodic subscription check every 60s
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      checkSubscription().then(() => refreshPlan());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [user, checkSubscription, refreshPlan]);
 
   const isPro = state.plan === "pro";
   const canUseCSV = isPro || state.csvImportsUsed < state.csvLimit;
@@ -87,10 +130,8 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       p_user_id: user.id,
       p_type: type,
     } as any);
-
     if (error) return { allowed: false };
     const result = data as any;
-    // Refresh local state
     await refreshPlan();
     return { allowed: result.allowed, used: result.used, limit: result.limit };
   }, [user, refreshPlan]);
@@ -98,6 +139,30 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const triggerUpgrade = useCallback((reason: string) => {
     setUpgradeReason(reason);
     setShowUpgradeModal(true);
+  }, []);
+
+  const startCheckout = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (e) {
+      console.error("Checkout error:", e);
+    }
+  }, []);
+
+  const openBillingPortal = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (e) {
+      console.error("Portal error:", e);
+    }
   }, []);
 
   return (
@@ -115,6 +180,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       upgradeReason,
       setUpgradeReason,
       triggerUpgrade,
+      startCheckout,
+      openBillingPortal,
+      isAdmin,
     }}>
       {children}
     </PlanContext.Provider>
