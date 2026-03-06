@@ -472,6 +472,10 @@ export default function Journal() {
     [isMobile]
   );
 
+  const handleTourCreateEntry = useCallback(() => {
+    handleCreateEntry("note");
+  }, [handleCreateEntry]);
+
   if (loading) {
     return (
       <div className="h-[calc(100vh-5rem)] flex items-center justify-center">
@@ -498,10 +502,6 @@ export default function Journal() {
   );
 
   const showInsightsPanel = editorMode === "trade" && selectedTrade;
-
-  const handleTourCreateEntry = useCallback(() => {
-    handleCreateEntry("note");
-  }, [handleCreateEntry]);
 
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col">
