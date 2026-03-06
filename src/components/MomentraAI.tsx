@@ -208,6 +208,7 @@ ${JSON.stringify(context, null, 2)}`;
 
 export function MomentraAI() {
   const { user } = useAuth();
+  const { checkAndIncrementUsage, triggerUpgrade, aiRequestsUsed, aiLimit, isPro } = usePlan();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -238,6 +239,14 @@ export function MomentraAI() {
   const send = async (text?: string) => {
     const content = text || input.trim();
     if (!content || isLoading || !user) return;
+
+    // Check AI usage limits
+    const usageResult = await checkAndIncrementUsage("ai");
+    if (!usageResult.allowed) {
+      triggerUpgrade("You've reached your monthly AI request limit. Upgrade to Pro for unlimited AI requests.");
+      return;
+    }
+
     setInput("");
 
     const userMsg: Msg = { role: "user", content };

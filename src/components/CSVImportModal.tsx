@@ -258,6 +258,11 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
                 <span>Choose File</span>
               </Button>
             </label>
+            {!isPro && (
+              <p className="text-[10px] text-muted-foreground/60 mt-3">
+                {csvImportsUsed} / {csvLimit} imports used this month
+              </p>
+            )}
           </div>
         )}
 
