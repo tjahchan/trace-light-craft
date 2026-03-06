@@ -32,6 +32,7 @@ import {
 
 export default function BrokerConnections() {
   const { user } = useAuth();
+  const { canUseBrokerSync, triggerUpgrade } = usePlan();
   const [connections, setConnections] = useState<BrokerConnection[]>([]);
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [loading, setLoading] = useState(true);
