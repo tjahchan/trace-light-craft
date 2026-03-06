@@ -511,7 +511,7 @@ async function disconnectConnection(userId: string, connectionId: string, supaba
       // TODO: Call SnapTrade delete connection endpoint
       await snapTradeRequest(
         "DELETE",
-        `/connections/${conn.snaptrade_connection_id}`,
+        `/authorizations/${conn.snaptrade_connection_id}`,
         undefined,
         {
           userId: integration.snaptrade_user_id,
