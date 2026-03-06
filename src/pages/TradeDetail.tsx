@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { calculatePnl } from "@/lib/trade-utils";
+import { calculatePnl, getContractSize, getContractSizeLabel } from "@/lib/trade-utils";
 import {
   ArrowLeft,
   Pin,
@@ -150,7 +150,9 @@ export default function TradeDetail() {
   const tpNum = parseFloat(tp) || 0;
   const qtyNum = parseFloat(qty) || 0;
 
-  const qtyFiat = (qtyNum * entryNum).toFixed(2);
+  const contractSize = getContractSize(symbol);
+  const contractSizeLabel = getContractSizeLabel(symbol);
+  const qtyFiat = (qtyNum * contractSize * entryNum).toFixed(2);
   const riskReward = slNum && tpNum && entryNum
     ? (Math.abs(tpNum - entryNum) / Math.abs(entryNum - slNum)).toFixed(2)
     : "—";
@@ -354,6 +356,9 @@ export default function TradeDetail() {
             <div className="grid grid-cols-2 gap-3">
               <FieldCard label="Quantity">
                 <Input value={qty} onChange={(e) => setQty(e.target.value)} type="number" className="bg-white/[0.04] border-white/[0.08]" />
+                {contractSizeLabel && (
+                  <p className="text-[10px] text-muted-foreground mt-1">Contract size: {contractSizeLabel}</p>
+                )}
               </FieldCard>
               <FieldCard label="Qty in Fiat">
                 <Input value={`$${qtyFiat}`} readOnly className="bg-white/[0.02] border-white/[0.06] text-muted-foreground" />
