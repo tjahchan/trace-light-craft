@@ -45,6 +45,7 @@ import {
 } from "@/components/ClosedPositionsFilter";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
