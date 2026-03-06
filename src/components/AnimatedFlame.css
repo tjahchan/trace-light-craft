@@ -1,0 +1,140 @@
+.flame-container {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  filter: blur(0.3px);
+}
+
+.flame-glow {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 40%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    hsla(20, 100%, 50%, 0.4) 0%,
+    hsla(20, 100%, 50%, 0.1) 50%,
+    transparent 70%
+  );
+  filter: blur(4px);
+  animation: glow-pulse 1.5s ease-in-out infinite alternate;
+}
+
+.flame-layer {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  transform-origin: bottom center;
+}
+
+.flame-core {
+  width: 35%;
+  height: 55%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to top,
+    hsl(30, 100%, 50%) 0%,
+    hsl(45, 100%, 60%) 40%,
+    hsl(55, 100%, 75%) 100%
+  );
+  animation: flicker-core 0.8s ease-in-out infinite alternate;
+  z-index: 4;
+}
+
+.flame-mid {
+  width: 50%;
+  height: 70%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to top,
+    hsl(20, 100%, 50%) 0%,
+    hsl(35, 100%, 55%) 50%,
+    hsl(50, 100%, 65%) 100%
+  );
+  opacity: 0.85;
+  animation: flicker-mid 1s ease-in-out infinite alternate;
+  z-index: 3;
+}
+
+.flame-outer {
+  width: 65%;
+  height: 82%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to top,
+    hsl(10, 90%, 45%) 0%,
+    hsl(25, 100%, 50%) 40%,
+    hsl(40, 100%, 55%) 100%
+  );
+  opacity: 0.6;
+  animation: flicker-outer 1.2s ease-in-out infinite alternate;
+  z-index: 2;
+}
+
+.flame-tip {
+  width: 25%;
+  height: 45%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to top,
+    hsl(50, 100%, 70%) 0%,
+    hsl(55, 100%, 85%) 70%,
+    hsl(60, 100%, 95%) 100%
+  );
+  animation: flicker-tip 0.7s ease-in-out infinite alternate;
+  z-index: 5;
+  top: 2%;
+  bottom: auto;
+}
+
+@keyframes flicker-core {
+  0% { transform: translateX(-50%) scaleY(1) scaleX(1) rotate(-1deg); }
+  25% { transform: translateX(-50%) scaleY(1.08) scaleX(0.95) rotate(1deg); }
+  50% { transform: translateX(-50%) scaleY(0.95) scaleX(1.05) rotate(-0.5deg); }
+  75% { transform: translateX(-50%) scaleY(1.05) scaleX(0.98) rotate(0.5deg); }
+  100% { transform: translateX(-50%) scaleY(1.02) scaleX(1.02) rotate(-1deg); }
+}
+
+@keyframes flicker-mid {
+  0% { transform: translateX(-50%) scaleY(1) scaleX(1) rotate(0.5deg); }
+  33% { transform: translateX(-50%) scaleY(1.06) scaleX(0.94) rotate(-1deg); }
+  66% { transform: translateX(-50%) scaleY(0.94) scaleX(1.04) rotate(0.8deg); }
+  100% { transform: translateX(-50%) scaleY(1.03) scaleX(0.97) rotate(-0.5deg); }
+}
+
+@keyframes flicker-outer {
+  0% { transform: translateX(-50%) scaleY(1) scaleX(1) rotate(-0.5deg); }
+  50% { transform: translateX(-50%) scaleY(1.04) scaleX(0.96) rotate(1deg); }
+  100% { transform: translateX(-50%) scaleY(0.97) scaleX(1.03) rotate(-0.8deg); }
+}
+
+@keyframes flicker-tip {
+  0% { transform: translateX(-50%) scaleY(1) scaleX(1) rotate(-2deg); }
+  30% { transform: translateX(-50%) scaleY(1.15) scaleX(0.85) rotate(2deg); }
+  60% { transform: translateX(-50%) scaleY(0.9) scaleX(1.1) rotate(-1deg); }
+  100% { transform: translateX(-50%) scaleY(1.1) scaleX(0.9) rotate(1.5deg); }
+}
+
+@keyframes glow-pulse {
+  0% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0.8; transform: translateX(-50%) scale(1.15); }
+}
+
+/* Unlit wick for streak = 0 */
+.flame-wick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wick-line {
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(to top, hsl(0 0% 30%), hsl(0 0% 45%));
+  border-radius: 1px;
+}
