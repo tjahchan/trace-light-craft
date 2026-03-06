@@ -42,7 +42,7 @@ export function BottomToolbar({ onFocusClick, onBackgroundsClick, onFeedbackClic
   }, [expanded]);
 
   return (
-    <div ref={containerRef} className="fixed bottom-[88px] left-4 z-[200] flex flex-col-reverse items-start gap-2">
+    <div ref={containerRef} className="fixed bottom-[88px] left-4 z-[200] flex flex-row items-center gap-2">
       {/* Chevron pill */}
       <TooltipProvider delayDuration={300}>
         <Tooltip>
@@ -57,10 +57,10 @@ export function BottomToolbar({ onFocusClick, onBackgroundsClick, onFeedbackClic
               />
             </button>
           </TooltipTrigger>
-          {!expanded && <TooltipContent side="right">Tools</TooltipContent>}
+          {!expanded && <TooltipContent side="top">Tools</TooltipContent>}
         </Tooltip>
 
-        {/* Tool icons */}
+        {/* Tool icons — expand horizontally to the right */}
         {tools.map((tool, i) => {
           const Icon = tool.icon;
           return (
@@ -74,15 +74,15 @@ export function BottomToolbar({ onFocusClick, onBackgroundsClick, onFeedbackClic
                   className="h-9 w-9 rounded-full backdrop-blur-xl bg-black/50 border border-white/[0.12] flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
                   style={{
                     opacity: expanded ? 1 : 0,
-                    transform: expanded ? "translateY(0px)" : "translateY(20px)",
-                    transition: `all 0.25s ease ${expanded ? i * 60 : (tools.length - 1 - i) * 40}ms`,
+                    transform: expanded ? "translateX(0px)" : "translateX(-10px)",
+                    transition: `all 0.22s ease ${expanded ? i * 60 : (tools.length - 1 - i) * 40}ms`,
                     pointerEvents: expanded ? "auto" : "none",
                   }}
                 >
                   <Icon className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
-              {expanded && <TooltipContent side="right">{tool.label}</TooltipContent>}
+              {expanded && <TooltipContent side="top">{tool.label}</TooltipContent>}
             </Tooltip>
           );
         })}
