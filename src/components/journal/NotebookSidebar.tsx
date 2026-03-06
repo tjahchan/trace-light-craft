@@ -265,7 +265,7 @@ export function NotebookSidebar({
     <div className="h-full flex flex-col">
       {/* Mode Toggle */}
       <div className="p-3 border-b border-white/[0.06]">
-        <div className="flex gap-1 p-0.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
+        <div data-tour="mode-toggle" className="flex gap-1 p-0.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
           {(["notes", "trades"] as const).map((m) => (
             <button
               key={m}
@@ -300,7 +300,7 @@ export function NotebookSidebar({
             <div className="flex gap-1.5">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 flex-1 bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]">
+                  <Button data-tour="new-button" variant="ghost" size="sm" className="h-7 text-xs gap-1 flex-1 bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]">
                     <Plus className="h-3 w-3" />
                     New
                   </Button>
