@@ -1,24 +1,24 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useStreak } from "@/hooks/useStreak";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useStreak } from "@/hooks/useStreak";
+import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 import {
-  FolderOpen,
-  Plus,
+  Search,
   FileText,
   Bold,
   Italic,
   List,
   Heading,
-  Image,
   Download,
   Check,
-  Link2,
-  X,
-  ChevronRight,
-  MoreHorizontal,
-  Pencil,
-  GripVertical,
-  Search,
+  Save,
+  Loader2,
+  ListOrdered,
+  Highlighter,
+  MessageSquareQuote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,572 +30,561 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { ChartScreenshots } from "@/components/journal/ChartScreenshots";
+import { StructuredReflection } from "@/components/journal/StructuredReflection";
+import { TradeInsightsPanel } from "@/components/journal/TradeInsightsPanel";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-interface LinkedTrade {
+interface Trade {
   id: string;
   symbol: string;
-  date: string;
   side: string;
-  entry: number;
-  exit: number;
-  pnl: number;
-}
-
-interface Note {
-  id: string;
-  title: string;
-  body: string;
-  folder: string;
-  date: string;
+  entry_price: number;
+  exit_price: number | null;
+  pnl: number | null;
+  quantity: number;
+  sl: number | null;
+  tp: number | null;
+  status: string;
   tags: string[];
-  linkedTrade?: LinkedTrade;
+  note: string | null;
+  open_time: string | null;
+  close_time: string | null;
+  account_id: string;
 }
 
-interface Folder {
+interface JournalMeta {
+  id?: string;
+  emotion_before: string | null;
+  emotion_after: string | null;
+  confidence: number;
+  execution: number;
+  discipline: number;
+  strategy: string;
+  setup: string;
+  session: string;
+  mistakes: string[];
+  what_went_well: string;
+  what_went_wrong: string;
+  lessons_learned: string;
+  improvements: string;
+}
+
+interface Screenshot {
   id: string;
-  name: string;
+  storage_path: string;
+  label: string;
+  url: string;
 }
 
-const closedTrades: LinkedTrade[] = [
-  { id: "1", symbol: "EUR/USD", date: "2026-03-04", side: "Long", entry: 1.0842, exit: 1.0891, pnl: 73.5 },
-  { id: "2", symbol: "XAU/USD", date: "2026-03-03", side: "Short", entry: 2045.3, exit: 2058.1, pnl: -64.0 },
-  { id: "3", symbol: "GBP/JPY", date: "2026-03-02", side: "Long", entry: 189.42, exit: 190.18, pnl: 152.0 },
-];
-
-const today = new Date().toISOString().split("T")[0];
-
-const initialFolders: Folder[] = [
-  { id: "f1", name: "Day Trading" },
-  { id: "f2", name: "General" },
-  { id: "f3", name: "Strategy Notes" },
-];
-
-const initialNotes: Note[] = [
-  {
-    id: "1", title: "London Breakout Review",
-    body: "Tested the London breakout strategy on GBP/USD. Entry was clean at the 08:00 UTC candle break. Need to work on position sizing — went too heavy at 2% risk.",
-    folder: "Day Trading", date: "2026-03-04", tags: ["Strategy", "GBP/USD"],
-    linkedTrade: closedTrades[0],
-  },
-  {
-    id: "2", title: "Weekly Trading Plan",
-    body: "Focus on EUR/USD and GBP/JPY this week. Key levels marked on the chart. Avoid trading during FOMC announcement on Wednesday.",
-    folder: "General", date: "2026-03-03", tags: ["Planning"],
-  },
-  {
-    id: "3", title: "ICT Order Block Notes",
-    body: "Order blocks form when institutional traders place large orders. Look for the last bearish candle before a bullish impulse move.",
-    folder: "Strategy Notes", date: "2026-03-01", tags: ["ICT", "Education"],
-    linkedTrade: closedTrades[2],
-  },
-];
+const defaultMeta: JournalMeta = {
+  emotion_before: null,
+  emotion_after: null,
+  confidence: 5,
+  execution: 5,
+  discipline: 5,
+  strategy: "",
+  setup: "",
+  session: "",
+  mistakes: [],
+  what_went_well: "",
+  what_went_wrong: "",
+  lessons_learned: "",
+  improvements: "",
+};
 
 export default function Journal() {
-  const [notes, setNotes] = useState<Note[]>(initialNotes);
-  const [folders, setFolders] = useState<Folder[]>(initialFolders);
-  const [selectedNoteId, setSelectedNoteId] = useState<string>(notes[0].id);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(initialFolders.map((f) => f.name)));
-  const [tradeLinkOpen, setTradeLinkOpen] = useState(false);
-  const [tradeSearch, setTradeSearch] = useState("");
-  const [dragNoteId, setDragNoteId] = useState<string | null>(null);
-  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
-  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
-  const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
-  const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null);
-  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const titleRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
   const { recordNoteActivity } = useStreak();
+  const isMobile = useIsMobile();
 
-  const selectedNote = useMemo(() => notes.find((n) => n.id === selectedNoteId), [notes, selectedNoteId]);
+  // Trade list state
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterSymbol, setFilterSymbol] = useState("all");
+  const [filterStrategy, setFilterStrategy] = useState("all");
 
-  // Group notes by folder
-  const unassignedNotes = useMemo(() => notes.filter((n) => !n.folder), [notes]);
-  const notesByFolder = useMemo(() => {
-    const map: Record<string, Note[]> = {};
-    folders.forEach((f) => { map[f.name] = []; });
-    notes.forEach((n) => {
-      if (n.folder && map[n.folder]) map[n.folder].push(n);
+  // Selected trade state
+  const [journalNote, setJournalNote] = useState("");
+  const [meta, setMeta] = useState<JournalMeta>(defaultMeta);
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [accountBalance, setAccountBalance] = useState(10000);
+  const [mobilePanel, setMobilePanel] = useState<"list" | "editor" | "insights">("list");
+
+  const lastSavedNote = useRef("");
+  const lastSavedMeta = useRef<string>("");
+
+  // Fetch trades
+  useEffect(() => {
+    if (!user) return;
+    async function fetchTrades() {
+      setLoading(true);
+      const { data } = await supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("status", "closed")
+        .order("close_time", { ascending: false });
+
+      if (data) {
+        setTrades(data);
+        if (data.length > 0 && !selectedTradeId) {
+          setSelectedTradeId(data[0].id);
+        }
+      }
+      setLoading(false);
+    }
+
+    async function fetchBalance() {
+      const { data } = await supabase
+        .from("accounts")
+        .select("balance")
+        .eq("user_id", user!.id)
+        .limit(1)
+        .maybeSingle();
+      if (data) setAccountBalance(data.balance);
+    }
+
+    fetchTrades();
+    fetchBalance();
+  }, [user]);
+
+  // Fetch metadata & screenshots for selected trade
+  useEffect(() => {
+    if (!selectedTradeId || !user) return;
+
+    async function loadTradeData() {
+      // Load note from trade
+      const trade = trades.find((t) => t.id === selectedTradeId);
+      if (trade) {
+        setJournalNote(trade.note || "");
+        lastSavedNote.current = trade.note || "";
+      }
+
+      // Load metadata
+      const { data: metaData } = await supabase
+        .from("trade_journal_metadata" as any)
+        .select("*")
+        .eq("trade_id", selectedTradeId)
+        .maybeSingle();
+
+      if (metaData) {
+        const m = metaData as any;
+        const loaded: JournalMeta = {
+          id: m.id,
+          emotion_before: m.emotion_before,
+          emotion_after: m.emotion_after,
+          confidence: m.confidence ?? 5,
+          execution: m.execution ?? 5,
+          discipline: m.discipline ?? 5,
+          strategy: m.strategy ?? "",
+          setup: m.setup ?? "",
+          session: m.session ?? "",
+          mistakes: m.mistakes ?? [],
+          what_went_well: m.what_went_well ?? "",
+          what_went_wrong: m.what_went_wrong ?? "",
+          lessons_learned: m.lessons_learned ?? "",
+          improvements: m.improvements ?? "",
+        };
+        setMeta(loaded);
+        lastSavedMeta.current = JSON.stringify(loaded);
+      } else {
+        setMeta({ ...defaultMeta });
+        lastSavedMeta.current = JSON.stringify(defaultMeta);
+      }
+
+      // Load screenshots
+      const { data: ssData } = await supabase
+        .from("trade_screenshots" as any)
+        .select("*")
+        .eq("trade_id", selectedTradeId)
+        .order("sort_order", { ascending: true });
+
+      if (ssData) {
+        const withUrls = (ssData as any[]).map((s) => ({
+          id: s.id,
+          storage_path: s.storage_path,
+          label: s.label || "",
+          url: supabase.storage.from("chart-screenshots").getPublicUrl(s.storage_path).data.publicUrl,
+        }));
+        setScreenshots(withUrls);
+      } else {
+        setScreenshots([]);
+      }
+
+      setIsDirty(false);
+    }
+
+    loadTradeData();
+  }, [selectedTradeId, user]);
+
+  // Track dirty state
+  useEffect(() => {
+    const noteChanged = journalNote !== lastSavedNote.current;
+    const metaChanged = JSON.stringify(meta) !== lastSavedMeta.current;
+    setIsDirty(noteChanged || metaChanged);
+  }, [journalNote, meta]);
+
+  const selectedTrade = useMemo(() => trades.find((t) => t.id === selectedTradeId), [trades, selectedTradeId]);
+
+  // Unique symbols for filter
+  const uniqueSymbols = useMemo(() => [...new Set(trades.map((t) => t.symbol))], [trades]);
+
+  // Filtered trades
+  const filteredTrades = useMemo(() => {
+    return trades.filter((t) => {
+      const matchesSearch =
+        !searchQuery ||
+        t.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.note || "").toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSymbol = filterSymbol === "all" || t.symbol === filterSymbol;
+      return matchesSearch && matchesSymbol;
     });
-    return map;
-  }, [notes, folders]);
+  }, [trades, searchQuery, filterSymbol]);
 
-  // Create new note
-  const createNote = useCallback(() => {
-    const newNote: Note = {
-      id: crypto.randomUUID(),
-      title: "Untitled Entry",
-      body: "",
-      folder: "",
-      date: today,
-      tags: [],
+  // Save journal
+  const handleSave = useCallback(async () => {
+    if (!selectedTradeId || !user || !isDirty) return;
+    setSaving(true);
+
+    // Save note to trades table
+    await supabase
+      .from("trades")
+      .update({ note: journalNote })
+      .eq("id", selectedTradeId);
+
+    // Upsert metadata
+    const metaPayload = {
+      trade_id: selectedTradeId,
+      user_id: user.id,
+      emotion_before: meta.emotion_before,
+      emotion_after: meta.emotion_after,
+      confidence: meta.confidence,
+      execution: meta.execution,
+      discipline: meta.discipline,
+      strategy: meta.strategy,
+      setup: meta.setup,
+      session: meta.session,
+      mistakes: meta.mistakes,
+      what_went_well: meta.what_went_well,
+      what_went_wrong: meta.what_went_wrong,
+      lessons_learned: meta.lessons_learned,
+      improvements: meta.improvements,
     };
-    setNotes((prev) => [newNote, ...prev]);
-    setSelectedNoteId(newNote.id);
+
+    if (meta.id) {
+      await supabase
+        .from("trade_journal_metadata" as any)
+        .update(metaPayload)
+        .eq("id", meta.id);
+    } else {
+      const { data } = await supabase
+        .from("trade_journal_metadata" as any)
+        .insert(metaPayload)
+        .select("id")
+        .single();
+      if (data) setMeta((prev) => ({ ...prev, id: (data as any).id }));
+    }
+
+    // Update local trade note
+    setTrades((prev) =>
+      prev.map((t) => (t.id === selectedTradeId ? { ...t, note: journalNote } : t))
+    );
+
+    lastSavedNote.current = journalNote;
+    lastSavedMeta.current = JSON.stringify(meta);
+    setIsDirty(false);
+    setSaving(false);
+
     recordNoteActivity();
-    setTimeout(() => titleRef.current?.select(), 50);
-  }, [recordNoteActivity]);
+    toast({ title: "Journal saved ✓", description: "Your reflection has been saved." });
+  }, [selectedTradeId, user, isDirty, journalNote, meta, recordNoteActivity]);
 
-  // Create new folder
-  const createFolder = useCallback(() => {
-    const name = `Folder ${folders.length + 1}`;
-    const newFolder: Folder = { id: crypto.randomUUID(), name };
-    setFolders((prev) => [...prev, newFolder]);
-    setExpandedFolders((prev) => new Set([...prev, name]));
-  }, [folders.length]);
+  const handleMetaChange = useCallback((updates: Partial<JournalMeta>) => {
+    setMeta((prev) => ({ ...prev, ...updates }));
+  }, []);
 
-  // Update note field
-  const updateNote = useCallback((id: string, updates: Partial<Note>) => {
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
-    recordNoteActivity();
-  }, [recordNoteActivity]);
+  const handleReflectionChange = useCallback((field: string, value: string) => {
+    setMeta((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
-  // Delete note
-  const confirmDeleteNote = useCallback(() => {
-    if (!deleteNoteId) return;
-    setNotes((prev) => prev.filter((n) => n.id !== deleteNoteId));
-    if (selectedNoteId === deleteNoteId) {
-      setSelectedNoteId(notes.find((n) => n.id !== deleteNoteId)?.id ?? "");
-    }
-    setDeleteNoteId(null);
-  }, [deleteNoteId, selectedNoteId, notes]);
-
-  // Delete folder
-  const confirmDeleteFolder = useCallback(() => {
-    if (!deleteFolderId) return;
-    const folder = folders.find((f) => f.id === deleteFolderId);
-    if (folder) {
-      setNotes((prev) => prev.map((n) => (n.folder === folder.name ? { ...n, folder: "" } : n)));
-      setFolders((prev) => prev.filter((f) => f.id !== deleteFolderId));
-    }
-    setDeleteFolderId(null);
-  }, [deleteFolderId, folders]);
-
-  // Rename folder
-  const confirmRenameFolder = useCallback(() => {
-    if (!renamingFolderId || !renameValue.trim()) return;
-    const oldFolder = folders.find((f) => f.id === renamingFolderId);
-    if (oldFolder) {
-      const oldName = oldFolder.name;
-      setFolders((prev) => prev.map((f) => (f.id === renamingFolderId ? { ...f, name: renameValue.trim() } : f)));
-      setNotes((prev) => prev.map((n) => (n.folder === oldName ? { ...n, folder: renameValue.trim() } : n)));
-      setExpandedFolders((prev) => {
-        const next = new Set(prev);
-        next.delete(oldName);
-        next.add(renameValue.trim());
-        return next;
-      });
-    }
-    setRenamingFolderId(null);
-    setRenameValue("");
-  }, [renamingFolderId, renameValue, folders]);
-
-  // Toggle folder
-  const toggleFolder = (name: string) => {
-    setExpandedFolders((prev) => {
-      const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
-      return next;
-    });
-  };
-
-  // Drag & Drop
-  const handleDragStart = (noteId: string) => setDragNoteId(noteId);
-  const handleDragEnd = () => { setDragNoteId(null); setDragOverFolder(null); };
-  const handleDropOnFolder = (folderName: string) => {
-    if (dragNoteId) {
-      updateNote(dragNoteId, { folder: folderName });
-      setDragNoteId(null);
-      setDragOverFolder(null);
-    }
-  };
-
-  // Link trade
-  const linkTrade = (trade: LinkedTrade | undefined) => {
-    if (selectedNote) {
-      updateNote(selectedNote.id, { linkedTrade: trade });
-    }
-    setTradeLinkOpen(false);
-    setTradeSearch("");
-  };
-
-  const filteredTrades = closedTrades.filter(
-    (t) =>
-      t.symbol.toLowerCase().includes(tradeSearch.toLowerCase()) ||
-      t.date.includes(tradeSearch)
-  );
-
-  // Note sidebar item renderer
-  const renderNoteItem = (note: Note) => (
-    <div
-      key={note.id}
-      draggable
-      onDragStart={() => handleDragStart(note.id)}
-      onDragEnd={handleDragEnd}
-      className={cn(
-        "group flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors cursor-pointer",
-        selectedNoteId === note.id ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
-      )}
-      onClick={() => setSelectedNoteId(note.id)}
-    >
-      <GripVertical className="h-3 w-3 text-muted-foreground/40 shrink-0 opacity-0 group-hover:opacity-100 cursor-grab" />
-      <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-      <div className="flex-1 min-w-0">
-        {renamingNoteId === note.id ? (
-          <Input
-            autoFocus
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onBlur={() => {
-              if (renameValue.trim()) updateNote(note.id, { title: renameValue.trim() });
-              setRenamingNoteId(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (renameValue.trim()) updateNote(note.id, { title: renameValue.trim() });
-                setRenamingNoteId(null);
-              }
-            }}
-            className="h-5 text-xs bg-transparent border-0 p-0 focus-visible:ring-0 text-foreground"
-          />
-        ) : (
-          <span className="text-xs text-foreground truncate block">{note.title}</span>
-        )}
-        <span className="text-[10px] text-muted-foreground">{note.date}</span>
+  // Loading
+  if (loading) {
+    return (
+      <div className="h-[calc(100vh-5rem)] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
-      {note.linkedTrade && <Link2 className="h-2.5 w-2.5 text-primary shrink-0" />}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-          <button className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-all">
-            <MoreHorizontal className="h-3 w-3" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="bg-card border-white/[0.08]">
-          <DropdownMenuItem className="text-foreground text-xs" onClick={(e) => {
-            e.stopPropagation();
-            setRenamingNoteId(note.id);
-            setRenameValue(note.title);
-          }}>
-            <Pencil className="h-3 w-3 mr-2" /> Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive text-xs" onClick={(e) => {
-            e.stopPropagation();
-            setDeleteNoteId(note.id);
-          }}>
-            <X className="h-3 w-3 mr-2" /> Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    );
+  }
+
+  // Empty state
+  if (trades.length === 0) {
+    return (
+      <div className="h-[calc(100vh-5rem)] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
+          <p className="text-muted-foreground">No closed trades to journal yet.</p>
+          <p className="text-xs text-muted-foreground/60">Close a trade on the Dashboard to start journaling.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Mobile tab bar
+  const MobileTabBar = () => (
+    <div className="flex gap-1 p-1 bg-white/[0.04] rounded-xl border border-white/[0.06] mb-3 md:hidden">
+      {(["list", "editor", "insights"] as const).map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setMobilePanel(tab)}
+          className={cn(
+            "flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize",
+            mobilePanel === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+          )}
+        >
+          {tab === "list" ? "Trades" : tab === "editor" ? "Journal" : "Insights"}
+        </button>
+      ))}
     </div>
   );
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-5rem)]">
-      {/* Left Panel — Folders & Notes */}
-      <motion.div
-        initial={{ opacity: 0, x: -12 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="w-64 shrink-0 backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-3 flex flex-col"
-      >
-        <div className="flex gap-2 mb-3">
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1 text-xs bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground"
-            onClick={createNote}
-          >
-            <Plus className="h-3 w-3 mr-1" /> Entry
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1 text-xs bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground"
-            onClick={createFolder}
-          >
-            <FolderOpen className="h-3 w-3 mr-1" /> Folder
-          </Button>
-        </div>
+    <div className="h-[calc(100vh-5rem)] flex flex-col">
+      <MobileTabBar />
 
-        <div className="flex-1 overflow-auto space-y-0.5">
-          {/* Unassigned Notes */}
-          {unassignedNotes.length > 0 && (
-            <div className="mb-2">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest px-2 mb-1">Unassigned</p>
-              {unassignedNotes.map(renderNoteItem)}
-            </div>
-          )}
-
-          {/* Folders */}
-          {folders.map((folder) => {
-            const folderNotes = notesByFolder[folder.name] || [];
-            const isExpanded = expandedFolders.has(folder.name);
-            const isDragOver = dragOverFolder === folder.name;
-
-            return (
-              <div key={folder.id}>
-                <div
-                  className={cn(
-                    "group flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer transition-colors",
-                    isDragOver
-                      ? "bg-primary/20 border border-primary/40"
-                      : "hover:bg-white/[0.04]"
-                  )}
-                  onClick={() => toggleFolder(folder.name)}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverFolder(folder.name); }}
-                  onDragLeave={() => setDragOverFolder(null)}
-                  onDrop={(e) => { e.preventDefault(); handleDropOnFolder(folder.name); }}
-                >
-                  <ChevronRight
-                    className={cn(
-                      "h-3 w-3 text-muted-foreground transition-transform shrink-0",
-                      isExpanded && "rotate-90"
-                    )}
-                  />
-                  <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
-                  {renamingFolderId === folder.id ? (
-                    <Input
-                      autoFocus
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onBlur={confirmRenameFolder}
-                      onKeyDown={(e) => { if (e.key === "Enter") confirmRenameFolder(); }}
-                      className="h-5 text-xs bg-transparent border-0 p-0 focus-visible:ring-0 text-foreground flex-1"
-                    />
-                  ) : (
-                    <span className="text-xs text-foreground truncate flex-1">{folder.name}</span>
-                  )}
-                  <span className="text-[10px] text-muted-foreground shrink-0">{folderNotes.length}</span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <button className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-all">
-                        <MoreHorizontal className="h-3 w-3" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-card border-white/[0.08]">
-                      <DropdownMenuItem className="text-foreground text-xs" onClick={(e) => {
-                        e.stopPropagation();
-                        setRenamingFolderId(folder.id);
-                        setRenameValue(folder.name);
-                      }}>
-                        <Pencil className="h-3 w-3 mr-2" /> Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive text-xs" onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteFolderId(folder.id);
-                      }}>
-                        <X className="h-3 w-3 mr-2" /> Delete Folder
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                {isExpanded && folderNotes.length > 0 && (
-                  <div className="ml-4 mt-0.5 space-y-0.5">
-                    {folderNotes.map(renderNoteItem)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </motion.div>
-
-      {/* Right Panel — Editor */}
-      {selectedNote ? (
+      <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
+        {/* LEFT PANEL — Trade Entry List */}
         <motion.div
-          key={selectedNote.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 flex flex-col min-w-0"
-        >
-          {/* Trade Reference Bar */}
-          {selectedNote.linkedTrade ? (
-            <button
-              onClick={() => setTradeLinkOpen(true)}
-              className="mb-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center gap-3 text-xs w-full text-left hover:bg-white/[0.06] transition-colors group"
-            >
-              <Link2 className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="text-muted-foreground">References:</span>
-              <span className="font-mono font-medium text-foreground">{selectedNote.linkedTrade.symbol}</span>
-              <span className={selectedNote.linkedTrade.side === "Long" ? "badge-long" : "badge-short"}>
-                {selectedNote.linkedTrade.side}
-              </span>
-              <span className="text-muted-foreground">— {selectedNote.linkedTrade.date}</span>
-              <span className={cn("font-mono font-medium", selectedNote.linkedTrade.pnl >= 0 ? "text-profit" : "text-loss")}>
-                {selectedNote.linkedTrade.pnl >= 0 ? "+" : ""}${Math.abs(selectedNote.linkedTrade.pnl).toFixed(2)}
-              </span>
-              <Pencil className="h-3 w-3 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          ) : (
-            <button
-              onClick={() => setTradeLinkOpen(true)}
-              className="mb-4 p-3 rounded-xl border border-dashed border-white/[0.1] flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground hover:border-white/[0.2] transition-colors w-full"
-            >
-              <Link2 className="h-3.5 w-3.5" />
-              🔗 Link a trade
-            </button>
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          className={cn(
+            "w-72 shrink-0 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl flex flex-col overflow-hidden",
+            isMobile && mobilePanel !== "list" && "hidden"
           )}
+        >
+          <div className="p-3 space-y-2 border-b border-white/[0.06]">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search trades..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 text-xs bg-white/[0.04] border-white/[0.06]"
+              />
+            </div>
 
-          {/* Title */}
-          <Input
-            ref={titleRef}
-            value={selectedNote.title}
-            onChange={(e) => updateNote(selectedNote.id, { title: e.target.value })}
-            className="text-xl font-semibold bg-transparent border-0 px-0 focus-visible:ring-0 text-foreground mb-1"
-          />
-
-          {/* Meta row: date + folder selector */}
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-xs text-muted-foreground">{selectedNote.date}</span>
-            <Select
-              value={selectedNote.folder || "__none__"}
-              onValueChange={(v) => updateNote(selectedNote.id, { folder: v === "__none__" ? "" : v })}
-            >
-              <SelectTrigger className="h-6 w-auto min-w-[120px] text-xs bg-white/[0.04] border-white/[0.06] text-muted-foreground gap-1 px-2">
-                <FolderOpen className="h-3 w-3 shrink-0" />
-                <SelectValue placeholder="No folder" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">No folder</SelectItem>
-                {folders.map((f) => (
-                  <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Toolbar */}
-          <div className="flex items-center gap-1 mb-3 pb-3 border-b border-white/[0.06]">
-            {[Bold, Italic, List, Heading, Image].map((Icon, i) => (
-              <Button key={i} variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                <Icon className="h-3.5 w-3.5" />
-              </Button>
-            ))}
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <Check className="h-3 w-3 text-profit" /> Saved
-              </span>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                <Download className="h-3.5 w-3.5" />
-              </Button>
+            {/* Filters */}
+            <div className="flex gap-1.5">
+              <Select value={filterSymbol} onValueChange={setFilterSymbol}>
+                <SelectTrigger className="h-7 text-[10px] bg-white/[0.04] border-white/[0.06] flex-1">
+                  <SelectValue placeholder="Symbol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Symbols</SelectItem>
+                  {uniqueSymbols.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Body */}
-          <Textarea
-            value={selectedNote.body}
-            onChange={(e) => updateNote(selectedNote.id, { body: e.target.value })}
-            className="flex-1 bg-transparent border-0 px-0 resize-none focus-visible:ring-0 text-foreground/90 leading-relaxed text-sm"
-          />
+          <ScrollArea className="flex-1">
+            <div className="p-2 space-y-0.5">
+              {filteredTrades.map((trade) => {
+                const isSelected = trade.id === selectedTradeId;
+                const pnl = trade.pnl ?? 0;
+                const date = trade.close_time
+                  ? format(new Date(trade.close_time), "MMM d, yyyy")
+                  : trade.open_time
+                    ? format(new Date(trade.open_time), "MMM d, yyyy")
+                    : "—";
 
-          {/* Tags */}
-          <div className="flex gap-1.5 mt-3 pt-3 border-t border-white/[0.06]">
-            {selectedNote.tags.map((tag) => (
-              <span key={tag} className="px-2 py-0.5 rounded-full text-[10px] bg-primary/15 text-primary">{tag}</span>
-            ))}
-          </div>
+                return (
+                  <button
+                    key={trade.id}
+                    onClick={() => {
+                      setSelectedTradeId(trade.id);
+                      if (isMobile) setMobilePanel("editor");
+                    }}
+                    className={cn(
+                      "w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all",
+                      isSelected
+                        ? "bg-white/[0.08] border border-white/[0.12]"
+                        : "hover:bg-white/[0.04] border border-transparent"
+                    )}
+                  >
+                    <div className={cn(
+                      "mt-0.5 h-2 w-2 rounded-full shrink-0",
+                      pnl >= 0 ? "bg-profit" : "bg-loss"
+                    )} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-foreground truncate">{trade.symbol}</span>
+                        <span className={cn("text-xs font-mono font-medium shrink-0", pnl >= 0 ? "text-profit" : "text-loss")}>
+                          {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={cn("text-[9px] font-medium", trade.side === "Long" ? "text-profit/70" : "text-loss/70")}>{trade.side}</span>
+                        <span className="text-[9px] text-muted-foreground">•</span>
+                        <span className="text-[9px] text-muted-foreground">{date}</span>
+                      </div>
+                      {trade.note && (
+                        <p className="text-[9px] text-muted-foreground/60 truncate mt-0.5">{trade.note}</p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
         </motion.div>
-      ) : (
-        <div className="flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 flex items-center justify-center">
-          <p className="text-muted-foreground text-sm">Select an entry or create a new one</p>
-        </div>
-      )}
 
-      {/* Trade Link Dialog */}
-      <Dialog open={tradeLinkOpen} onOpenChange={setTradeLinkOpen}>
-        <DialogContent className="bg-card border-white/[0.1] max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Link to Trade</DialogTitle>
-          </DialogHeader>
-          <div className="relative mb-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by symbol or date..."
-              value={tradeSearch}
-              onChange={(e) => setTradeSearch(e.target.value)}
-              className="pl-9 bg-white/[0.05] border-white/[0.08] text-foreground"
+        {/* CENTER PANEL — Journal Editor */}
+        {selectedTrade ? (
+          <motion.div
+            key={selectedTradeId}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+              "flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl flex flex-col min-w-0 overflow-hidden",
+              isMobile && mobilePanel !== "editor" && "hidden"
+            )}
+          >
+            <ScrollArea className="flex-1">
+              <div className="p-5 space-y-4">
+                {/* Trade Reference Header */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium bg-white/[0.06] border border-white/[0.08] text-foreground">
+                    {selectedTrade.symbol}
+                  </span>
+                  <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium", selectedTrade.side === "Long" ? "badge-long" : "badge-short")}>
+                    {selectedTrade.side}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {selectedTrade.close_time ? format(new Date(selectedTrade.close_time), "MMMM d, yyyy") : "—"}
+                  </span>
+                  <span className={cn("text-xs font-mono font-medium", (selectedTrade.pnl ?? 0) >= 0 ? "text-profit" : "text-loss")}>
+                    {(selectedTrade.pnl ?? 0) >= 0 ? "+" : ""}${Math.abs(selectedTrade.pnl ?? 0).toFixed(2)}
+                  </span>
+                  {meta.session && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] bg-primary/10 text-primary border border-primary/20">
+                      {meta.session}
+                    </span>
+                  )}
+                </div>
+
+                {/* Chart Screenshots */}
+                <ChartScreenshots
+                  screenshots={screenshots}
+                  tradeId={selectedTradeId!}
+                  userId={user!.id}
+                  onUploaded={() => {
+                    // Reload screenshots
+                    supabase
+                      .from("trade_screenshots" as any)
+                      .select("*")
+                      .eq("trade_id", selectedTradeId)
+                      .order("sort_order", { ascending: true })
+                      .then(({ data }) => {
+                        if (data) {
+                          setScreenshots(
+                            (data as any[]).map((s) => ({
+                              id: s.id,
+                              storage_path: s.storage_path,
+                              label: s.label || "",
+                              url: supabase.storage.from("chart-screenshots").getPublicUrl(s.storage_path).data.publicUrl,
+                            }))
+                          );
+                        }
+                      });
+                  }}
+                  onDeleted={(id) => setScreenshots((prev) => prev.filter((s) => s.id !== id))}
+                />
+
+                {/* Editor toolbar */}
+                <div className="flex items-center gap-1 pb-3 border-b border-white/[0.06]">
+                  {[Bold, Italic, List, ListOrdered, Heading, Highlighter, MessageSquareQuote].map((Icon, i) => (
+                    <Button key={i} variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                      <Icon className="h-3.5 w-3.5" />
+                    </Button>
+                  ))}
+                  <div className="ml-auto flex items-center gap-2">
+                    {!isDirty && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Check className="h-3 w-3 text-profit" /> Saved
+                      </span>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={!isDirty || saving}
+                      className="h-7 text-xs gap-1.5"
+                    >
+                      {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                      Save
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Journal textarea */}
+                <Textarea
+                  value={journalNote}
+                  onChange={(e) => setJournalNote(e.target.value)}
+                  placeholder="Write your trade analysis, observations, and reflections..."
+                  className="min-h-[180px] bg-transparent border-0 px-0 resize-none focus-visible:ring-0 text-foreground/90 leading-relaxed text-sm"
+                />
+
+                {/* Structured Reflection */}
+                <StructuredReflection
+                  whatWentWell={meta.what_went_well}
+                  whatWentWrong={meta.what_went_wrong}
+                  lessonsLearned={meta.lessons_learned}
+                  improvements={meta.improvements}
+                  onChange={handleReflectionChange}
+                />
+              </div>
+            </ScrollArea>
+          </motion.div>
+        ) : (
+          <div className={cn(
+            "flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl flex items-center justify-center",
+            isMobile && mobilePanel !== "editor" && "hidden"
+          )}>
+            <p className="text-muted-foreground text-sm">Select a trade to start journaling</p>
+          </div>
+        )}
+
+        {/* RIGHT PANEL — Trade Insights */}
+        {selectedTrade && (
+          <motion.div
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            className={cn(
+              "w-72 shrink-0 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl overflow-hidden",
+              isMobile && mobilePanel !== "insights" && "hidden"
+            )}
+          >
+            <TradeInsightsPanel
+              trade={selectedTrade}
+              meta={meta}
+              accountBalance={accountBalance}
+              onMetaChange={handleMetaChange}
             />
-          </div>
-          <div className="space-y-1 max-h-64 overflow-auto">
-            <button
-              onClick={() => linkTrade(undefined)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-white/[0.05] transition-colors text-muted-foreground"
-            >
-              <X className="h-3.5 w-3.5" /> None — remove link
-            </button>
-            {filteredTrades.map((trade) => (
-              <button
-                key={trade.id}
-                onClick={() => linkTrade(trade)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-white/[0.05] transition-colors",
-                  selectedNote?.linkedTrade?.id === trade.id && "bg-white/[0.06]"
-                )}
-              >
-                <span className="font-mono font-medium text-foreground">{trade.symbol}</span>
-                <span className={trade.side === "Long" ? "badge-long" : "badge-short"}>{trade.side}</span>
-                <span className="text-muted-foreground">{trade.date}</span>
-                <span className={cn("font-mono ml-auto", trade.pnl >= 0 ? "text-profit" : "text-loss")}>
-                  {trade.pnl >= 0 ? "+" : ""}${Math.abs(trade.pnl).toFixed(2)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Note Confirmation */}
-      <AlertDialog open={!!deleteNoteId} onOpenChange={() => setDeleteNoteId(null)}>
-        <AlertDialogContent className="bg-card border-white/[0.1]">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete this entry?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-white/[0.05] border-white/[0.08] text-foreground hover:bg-white/[0.08]">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDeleteNote}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete Folder Confirmation */}
-      <AlertDialog open={!!deleteFolderId} onOpenChange={() => setDeleteFolderId(null)}>
-        <AlertDialogContent className="bg-card border-white/[0.1]">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete folder?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will delete the folder and move its notes to "Unassigned."
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-white/[0.05] border-white/[0.08] text-foreground hover:bg-white/[0.08]">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDeleteFolder}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }
