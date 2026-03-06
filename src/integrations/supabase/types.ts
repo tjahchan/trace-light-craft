@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_posts: {
         Row: {
           content: string
@@ -135,6 +162,100 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      recurring_transactions: {
+        Row: {
+          account_id: string
+          active: boolean
+          amount: number
+          created_at: string
+          frequency: string
+          id: string
+          next_due_date: string
+          note: string | null
+          start_date: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          active?: boolean
+          amount: number
+          created_at?: string
+          frequency?: string
+          id?: string
+          next_due_date?: string
+          note?: string | null
+          start_date?: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          active?: boolean
+          amount?: number
+          created_at?: string
+          frequency?: string
+          id?: string
+          next_due_date?: string
+          note?: string | null
+          start_date?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string
+          date: string
+          id: string
+          is_recurring: boolean
+          note: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          created_at?: string
+          date?: string
+          id?: string
+          is_recurring?: boolean
+          note?: string | null
+          type?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: string
+          is_recurring?: boolean
+          note?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_streaks: {
         Row: {

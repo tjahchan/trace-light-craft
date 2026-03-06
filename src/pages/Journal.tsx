@@ -147,7 +147,7 @@ export default function Journal() {
   const createNote = useCallback(() => {
     const newNote: Note = {
       id: crypto.randomUUID(),
-      title: "Untitled Note",
+      title: "Untitled Entry",
       body: "",
       folder: "",
       date: today,
@@ -327,7 +327,7 @@ export default function Journal() {
             className="flex-1 text-xs bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground"
             onClick={createNote}
           >
-            <Plus className="h-3 w-3 mr-1" /> Note
+            <Plus className="h-3 w-3 mr-1" /> Entry
           </Button>
           <Button
             size="sm"
@@ -520,7 +520,7 @@ export default function Journal() {
         </motion.div>
       ) : (
         <div className="flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 flex items-center justify-center">
-          <p className="text-muted-foreground text-sm">Select a note or create a new one</p>
+          <p className="text-muted-foreground text-sm">Select an entry or create a new one</p>
         </div>
       )}
 
@@ -571,7 +571,7 @@ export default function Journal() {
       <AlertDialog open={!!deleteNoteId} onOpenChange={() => setDeleteNoteId(null)}>
         <AlertDialogContent className="bg-card border-white/[0.1]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete this note?</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">Delete this entry?</AlertDialogTitle>
             <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
