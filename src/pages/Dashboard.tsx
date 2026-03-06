@@ -293,7 +293,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="mt-3 h-24">
+          <div className="mt-3 h-28">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={periodData}>
                 <XAxis
