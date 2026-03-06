@@ -3,7 +3,7 @@
  */
 const CONTRACT_SIZES: Record<string, number> = {
   // Metals
-  COPPER: 25000,
+  COPPER: 100,
   XAUUSD: 100,
   XAGUSD: 5000,
   XPTUSD: 100,
@@ -111,7 +111,7 @@ export function getContractSizeLabel(symbol: string): string | null {
   if (s.includes("XAG")) return `${size} oz/lot (Silver)`;
   if (s.includes("XPT")) return `${size} oz/lot (Platinum)`;
   if (s.includes("XPD")) return `${size} oz/lot (Palladium)`;
-  if (s === "COPPER" || s.includes("COPPER")) return `${size.toLocaleString()} lbs/lot (Copper)`;
+  if (s === "COPPER" || s.includes("COPPER")) return `${size} units/lot (Copper CFD)`;
   if (s.includes("OIL") || s.includes("WTI") || s.includes("BRENT"))
     return `${size.toLocaleString()} barrels/lot`;
   if (s.includes("NGAS") || s.includes("NATGAS"))
