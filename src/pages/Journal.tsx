@@ -7,26 +7,20 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
   FileText,
-  Bold,
-  Italic,
-  List,
-  Heading,
   Download,
   Check,
   Save,
   Loader2,
-  ListOrdered,
-  Highlighter,
-  MessageSquareQuote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ChartScreenshots } from "@/components/journal/ChartScreenshots";
 import { StructuredReflection } from "@/components/journal/StructuredReflection";
 import { TradeInsightsPanel } from "@/components/journal/TradeInsightsPanel";
 import { NotebookSidebar } from "@/components/journal/NotebookSidebar";
+import { RichTextEditor } from "@/components/journal/RichTextEditor";
+import { NoteScreenshots } from "@/components/journal/NoteScreenshots";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Trade {
@@ -133,6 +127,7 @@ export default function Journal() {
   // Entry state
   const [entryTitle, setEntryTitle] = useState("");
   const [entryContent, setEntryContent] = useState("");
+  const [noteScreenshots, setNoteScreenshots] = useState<Screenshot[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -274,6 +269,26 @@ export default function Journal() {
     loadTradeData();
   }, [selectedTradeId, user, editorMode]);
 
+  const loadNoteScreenshots = useCallback(async (entryId: string) => {
+    const { data } = await supabase
+      .from("note_screenshots" as any)
+      .select("*")
+      .eq("entry_id", entryId)
+      .order("sort_order", { ascending: true });
+    if (data) {
+      setNoteScreenshots(
+        (data as any[]).map((s) => ({
+          id: s.id,
+          storage_path: s.storage_path,
+          label: s.label || "",
+          url: supabase.storage.from("chart-screenshots").getPublicUrl(s.storage_path).data.publicUrl,
+        }))
+      );
+    } else {
+      setNoteScreenshots([]);
+    }
+  }, []);
+
   // Load entry data when selecting an entry
   useEffect(() => {
     if (!selectedEntryId || editorMode !== "entry") return;
@@ -285,7 +300,8 @@ export default function Journal() {
       lastSavedEntryContent.current = entry.content;
       setIsDirty(false);
     }
-  }, [selectedEntryId, editorMode]);
+    loadNoteScreenshots(selectedEntryId);
+  }, [selectedEntryId, editorMode, loadNoteScreenshots]);
 
   // Track dirty state
   useEffect(() => {
@@ -557,20 +573,8 @@ export default function Journal() {
                   )}
                 </div>
 
-                {/* Editor toolbar */}
+                {/* Save bar */}
                 <div className="flex items-center gap-1 pb-3 border-b border-white/[0.06]">
-                  {[Bold, Italic, List, ListOrdered, Heading, Highlighter, MessageSquareQuote].map(
-                    (Icon, i) => (
-                      <Button
-                        key={i}
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                      </Button>
-                    )
-                  )}
                   <div className="ml-auto flex items-center gap-2">
                     {!isDirty && (
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -600,12 +604,11 @@ export default function Journal() {
                   </div>
                 </div>
 
-                {/* Journal textarea */}
-                <Textarea
-                  value={journalNote}
-                  onChange={(e) => setJournalNote(e.target.value)}
+                {/* Rich text editor */}
+                <RichTextEditor
+                  content={journalNote}
+                  onChange={setJournalNote}
                   placeholder="Write your trade analysis, observations, and reflections..."
-                  className="min-h-[180px] bg-transparent border-0 px-0 resize-none focus-visible:ring-0 text-foreground/90 leading-relaxed text-sm"
                 />
 
                 {/* Structured Reflection */}
@@ -687,20 +690,8 @@ export default function Journal() {
                   );
                 })()}
 
-                {/* Editor toolbar */}
+                {/* Save bar */}
                 <div className="flex items-center gap-1 pb-3 border-b border-white/[0.06]">
-                  {[Bold, Italic, List, ListOrdered, Heading, Highlighter, MessageSquareQuote].map(
-                    (Icon, i) => (
-                      <Button
-                        key={i}
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                      </Button>
-                    )
-                  )}
                   <div className="ml-auto flex items-center gap-2">
                     {!isDirty && (
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -723,12 +714,22 @@ export default function Journal() {
                   </div>
                 </div>
 
-                {/* Content editor */}
-                <Textarea
-                  value={entryContent}
-                  onChange={(e) => setEntryContent(e.target.value)}
+                {/* Rich text editor */}
+                <RichTextEditor
+                  content={entryContent}
+                  onChange={setEntryContent}
                   placeholder="Start writing..."
-                  className="min-h-[400px] bg-transparent border-0 px-0 resize-none focus-visible:ring-0 text-foreground/90 leading-relaxed text-sm"
+                />
+
+                {/* Note Screenshots */}
+                <NoteScreenshots
+                  screenshots={noteScreenshots}
+                  entryId={selectedEntryId!}
+                  userId={user!.id}
+                  onUploaded={() => {
+                    loadNoteScreenshots(selectedEntryId!);
+                  }}
+                  onDeleted={(id) => setNoteScreenshots((prev) => prev.filter((s) => s.id !== id))}
                 />
               </div>
             </ScrollArea>
