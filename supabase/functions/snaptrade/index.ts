@@ -54,6 +54,7 @@ async function generateSignature(
     query: requestQuery,
   };
   const sigContent = JSONstringifyOrder(sigObject);
+  console.log("[SnapTrade] sigContent:", sigContent);
 
   // SDK uses encodeURI on consumerKey
   const encodedKey = encodeURI(consumerKey);
