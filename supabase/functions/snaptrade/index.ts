@@ -38,7 +38,8 @@ async function generateSignature(
     path: requestPath,
     query: requestQuery,
   };
-  const sigContent = JSON.stringify(sigObject);
+  // SnapTrade requires sorted keys and no spaces (compact JSON)
+  const sigContent = JSON.stringify(sigObject, Object.keys(sigObject).sort());
 
   const key = await crypto.subtle.importKey(
     "raw",
@@ -201,7 +202,7 @@ async function listConnections(userId: string, supabaseAdmin: ReturnType<typeof 
   }
 
   // Fetch from SnapTrade
-  const connections = await snapTradeRequest("GET", "/connections", undefined, {
+  const connections = await snapTradeRequest("GET", "/authorizations", undefined, {
     userId: integration.snaptrade_user_id,
     userSecret: integration.snaptrade_user_secret_encrypted || "",
   });
