@@ -12,10 +12,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const navItems = [
-  { title: "Dashboard", url: "/", badge: "1" },
-  { title: "Overview", url: "/overview", badge: "2" },
-  { title: "Notes", url: "/journal", badge: "3" },
-  { title: "Leaderboard", url: "/community", badge: "4" },
+  { title: "Dashboard", url: "/" },
+  { title: "Overview", url: "/overview" },
+  { title: "Journal", url: "/journal" },
+  { title: "Leaderboard", url: "/community" },
 ];
 
 export function TopNav() {
@@ -50,13 +50,10 @@ export function TopNav() {
             key={item.title}
             to={item.url}
             end={item.url === "/"}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-white/[0.05]"
+            className="relative px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-white/[0.05]"
             activeClassName="!text-foreground !bg-white/[0.08] after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:bg-primary after:rounded-full"
           >
-            <span>{item.title}</span>
-            <span className="h-4 w-4 rounded-full bg-white/[0.08] text-[10px] flex items-center justify-center text-muted-foreground font-mono">
-              {item.badge}
-            </span>
+            {item.title}
           </NavLink>
         ))}
       </nav>
