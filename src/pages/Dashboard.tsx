@@ -379,6 +379,7 @@ export default function Dashboard() {
     if (!accountsLoaded || !isValidAccount) return;
     fetchAndSetBalance(selectedAccount!.id);
     fetchTrades();
+    fetchOpenTrades();
     fetchPeriodPnl();
     buildChartData();
   }, [accountsLoaded, isValidAccount, selectedAccount?.id]);
@@ -387,9 +388,10 @@ export default function Dashboard() {
     if (!isValidAccount) return;
     fetchAndSetBalance(selectedAccount!.id);
     fetchTrades();
+    fetchOpenTrades();
     fetchPeriodPnl();
     buildChartData();
-  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchPeriodPnl, buildChartData]);
+  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchOpenTrades, fetchPeriodPnl, buildChartData]);
 
   // Re-fetch all data when navigating back to dashboard (e.g. after editing a trade)
   useEffect(() => {
