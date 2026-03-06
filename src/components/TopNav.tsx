@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Settings, LogOut } from "lucide-react";
+import { Settings, LogOut, BookOpen } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +8,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useNavigate } from "react-router-dom";
 
 
@@ -61,6 +63,17 @@ export function TopNav() {
 
       {/* Right Side */}
       <div className="flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => { const { startTour } = useOnboarding(); startTour(); }}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors"
+            >
+              <BookOpen className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Take the Tour</TooltipContent>
+        </Tooltip>
 
         <NavLink
           to="/settings"
