@@ -35,7 +35,7 @@ import {
 import { TradeImportModal } from "@/components/TradeImportModal";
 import { CSVImportModal } from "@/components/CSVImportModal";
 import { ManageAccountsModal, type Account } from "@/components/ManageAccountsModal";
-import { DepositWithdrawModal, type Transaction, type RecurringRule } from "@/components/DepositWithdrawModal";
+import { DepositWithdrawModal } from "@/components/DepositWithdrawModal";
 import {
   ClosedPositionsFilter,
   hasActiveFilters,
