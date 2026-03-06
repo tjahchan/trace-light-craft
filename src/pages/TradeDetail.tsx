@@ -240,6 +240,19 @@ export default function TradeDetail() {
     // Update local trade state so subsequent edits diff correctly
     setTrade({ ...trade, ...updatedFields, tags: newTags });
 
+    // Confetti for journal note save on closed trades
+    const noteChanged = journalNote.trim() !== lastSavedNoteRef.current.trim() && journalNote.trim().length > 0;
+    if (noteChanged && updatedFields.status === "closed") {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.75 },
+        colors: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ffffff'],
+      });
+      toast({ title: "Journal entry saved 🎉", description: "Keep reflecting on your trades!" });
+    }
+    lastSavedNoteRef.current = journalNote;
+
     setSaved(true);
     setSaving(false);
     setTimeout(() => setSaved(false), 2000);
