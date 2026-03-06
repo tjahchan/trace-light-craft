@@ -127,7 +127,7 @@ export default function Overview() {
                         <span className={`font-mono text-[11px] font-medium ${day.pnl >= 0 ? "text-profit" : "text-loss"}`}>
                           {day.pnl >= 0 ? "+" : ""}${Math.abs(day.pnl).toFixed(0)}
                         </span>
-                        <span className="text-[9px] text-muted-foreground">{day.trades}t</span>
+                        <span className="text-xs text-muted-foreground/70">{day.trades} {day.trades === 1 ? "Trade" : "Trades"}</span>
                       </>
                     )}
                   </>
