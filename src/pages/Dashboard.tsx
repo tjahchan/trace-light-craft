@@ -401,6 +401,16 @@ export default function Dashboard() {
   const filteredPositions = useMemo(() => applyFilters(allClosedPositions, filters), [allClosedPositions, filters]);
   const filtersActive = hasActiveFilters(filters);
 
+  // Pagination for closed positions
+  const closedTotalPages = Math.max(1, Math.ceil(filteredPositions.length / ROWS_PER_PAGE));
+  const closedPageClamped = Math.min(closedPage, closedTotalPages);
+  const paginatedClosed = filteredPositions.slice((closedPageClamped - 1) * ROWS_PER_PAGE, closedPageClamped * ROWS_PER_PAGE);
+
+  const handleFiltersApply = (f: ClosedPositionFilters) => {
+    setFilters(f);
+    setClosedPage(1);
+  };
+
   const currentPeriodPnl = periodPnl[balancePeriod] || 0;
   const periodLabel = balancePeriod === "week" ? "this week" : balancePeriod === "month" ? "this month" : "this year";
   const isPnlPositive = currentPeriodPnl > 0;
