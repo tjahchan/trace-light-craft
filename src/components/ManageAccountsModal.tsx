@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -20,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface Account {
   id: string;
@@ -32,6 +35,8 @@ interface ManageAccountsModalProps {
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
   onAccountsChange: (accounts: Account[]) => void;
+  userId: string;
+  onBalanceRefresh: (accountId: string) => void;
 }
 
 export function ManageAccountsModal({
@@ -39,6 +44,8 @@ export function ManageAccountsModal({
   onOpenChange,
   accounts,
   onAccountsChange,
+  userId,
+  onBalanceRefresh,
 }: ManageAccountsModalProps) {
   const [activeTab, setActiveTab] = useState(0);
   const [deleteConfirmIdx, setDeleteConfirmIdx] = useState<number | null>(null);
@@ -49,32 +56,44 @@ export function ManageAccountsModal({
     onAccountsChange(updated);
   };
 
-  const addAccount = () => {
-    const newAccount: Account = {
-      id: crypto.randomUUID(),
-      name: "",
-      balance: 0,
-    };
-    onAccountsChange([...accounts, newAccount]);
-    setActiveTab(accounts.length);
+  const addAccount = async () => {
+    const { data: newAcc } = await supabase
+      .from("accounts")
+      .insert({ user_id: userId, name: "", balance: 0 })
+      .select()
+      .single();
+    if (newAcc) {
+      const acc: Account = { id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance) };
+      onAccountsChange([...accounts, acc]);
+      setActiveTab(accounts.length);
+    }
   };
 
-  const deleteAccount = (idx: number) => {
+  const deleteAccount = async (idx: number) => {
     if (accounts.length <= 1) return;
+    const acc = accounts[idx];
+    await supabase.from("accounts").delete().eq("id", acc.id);
     const updated = accounts.filter((_, i) => i !== idx);
     onAccountsChange(updated);
     setActiveTab(Math.min(activeTab, updated.length - 1));
     setDeleteConfirmIdx(null);
+    toast.success("Account deleted");
   };
 
-  const clearAll = () => {
-    const defaultAccount: Account = {
-      id: crypto.randomUUID(),
-      name: "Default Account",
-      balance: 0,
-    };
-    onAccountsChange([defaultAccount]);
-    setActiveTab(0);
+  const handleDone = async () => {
+    // Save all account changes to Supabase
+    for (const acc of accounts) {
+      await supabase
+        .from("accounts")
+        .update({ name: acc.name, balance: acc.balance })
+        .eq("id", acc.id);
+    }
+    // Refresh balance for the current account
+    if (accounts.length > 0) {
+      onBalanceRefresh(accounts[activeTab]?.id || accounts[0].id);
+    }
+    toast.success("Accounts saved");
+    onOpenChange(false);
   };
 
   const current = accounts[activeTab];
@@ -85,6 +104,9 @@ export function ManageAccountsModal({
         <DialogContent className="bg-card border-white/[0.1] max-w-md">
           <DialogHeader>
             <DialogTitle className="text-foreground">Manage Accounts</DialogTitle>
+            <DialogDescription className="text-muted-foreground text-xs">
+              Add, rename, or set initial balances for your accounts
+            </DialogDescription>
           </DialogHeader>
 
           {/* Account Tabs */}
@@ -147,15 +169,9 @@ export function ManageAccountsModal({
           )}
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
-            <Button onClick={() => onOpenChange(false)} className="w-full">
+            <Button onClick={handleDone} className="w-full">
               Done
             </Button>
-            <button
-              onClick={clearAll}
-              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-            >
-              Clear all accounts
-            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

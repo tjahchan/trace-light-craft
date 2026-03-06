@@ -35,7 +35,7 @@ import {
 import { TradeImportModal } from "@/components/TradeImportModal";
 import { CSVImportModal } from "@/components/CSVImportModal";
 import { ManageAccountsModal, type Account } from "@/components/ManageAccountsModal";
-import { DepositWithdrawModal, type Transaction, type RecurringRule } from "@/components/DepositWithdrawModal";
+import { DepositWithdrawModal } from "@/components/DepositWithdrawModal";
 import {
   ClosedPositionsFilter,
   hasActiveFilters,
@@ -85,8 +85,6 @@ export default function Dashboard() {
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
   const [filters, setFilters] = useState<ClosedPositionFilters>(emptyFilters);
   const [dbTrades, setDbTrades] = useState<any[]>([]);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
@@ -324,34 +322,6 @@ export default function Dashboard() {
     buildChartData();
   }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchPeriodPnl, buildChartData]);
 
-  const handleTransaction = (
-    tx: Omit<Transaction, "id">,
-    recurring?: { frequency: string; startDate: Date }
-  ) => {
-    const newTx: Transaction = { ...tx, id: crypto.randomUUID() };
-    setTransactions((prev) => [newTx, ...prev]);
-    // Refresh balance from DB after transaction
-    if (isValidAccount) {
-      setTimeout(() => refreshAll(), 500);
-    }
-    if (recurring) {
-      const rule: RecurringRule = {
-        id: crypto.randomUUID(),
-        type: tx.type as "deposit" | "withdrawal",
-        amount: tx.amount,
-        frequency: recurring.frequency,
-        start_date: recurring.startDate.toISOString().split("T")[0],
-        next_due_date: recurring.startDate.toISOString().split("T")[0],
-        note: tx.note,
-        active: true,
-      };
-      setRecurringRules((prev) => [...prev, rule]);
-    }
-  };
-
-  const handleDeleteRecurring = (id: string) => {
-    setRecurringRules((prev) => prev.filter((r) => r.id !== id));
-  };
 
   // Merge DB trades for closed positions (no more mock data)
   const allClosedPositions = useMemo(() => {
@@ -672,14 +642,13 @@ export default function Dashboard() {
 
       <TradeImportModal open={importOpen} onOpenChange={setImportOpen} />
       <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
-      <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} />
+      <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} userId={user?.id || ""} onBalanceRefresh={fetchAndSetBalance} />
       <DepositWithdrawModal
         open={depositOpen}
         onOpenChange={setDepositOpen}
-        transactions={transactions}
-        onConfirm={handleTransaction}
-        recurringRules={recurringRules}
-        onDeleteRecurring={handleDeleteRecurring}
+        accountId={selectedAccountId}
+        userId={user?.id || ""}
+        onTransactionComplete={refreshAll}
       />
     </div>
   );
