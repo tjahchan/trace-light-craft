@@ -46,12 +46,12 @@ export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) 
   const [ampm, setAmpm] = useState<"AM" | "PM">("AM");
 
   const pnl = useMemo(() => {
-    return calculatePnL(
-      symbol,
-      side,
-      parseFloat(qty),
+    return calculatePnl(
       parseFloat(entry),
-      parseFloat(exit)
+      parseFloat(exit),
+      parseFloat(qty),
+      side,
+      symbol
     );
   }, [symbol, side, qty, entry, exit]);
 
@@ -130,7 +130,7 @@ export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) 
                 {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
               </p>
               <p className="text-[10px] text-muted-foreground mt-1">
-                {detectAssetType(symbol).toUpperCase()} • {side === "long" ? "Long" : "Short"}
+                {getAssetClass(symbol).toUpperCase()} • {side === "long" ? "Long" : "Short"}
               </p>
             </div>
           )}
