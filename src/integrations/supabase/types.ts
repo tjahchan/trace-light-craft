@@ -379,6 +379,44 @@ export type Database = {
         }
         Relationships: []
       }
+      note_screenshots: {
+        Row: {
+          created_at: string | null
+          entry_id: string
+          id: string
+          label: string | null
+          sort_order: number | null
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          entry_id: string
+          id?: string
+          label?: string | null
+          sort_order?: number | null
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          entry_id?: string
+          id?: string
+          label?: string | null
+          sort_order?: number | null
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_screenshots_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           created_at: string
