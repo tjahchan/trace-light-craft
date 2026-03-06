@@ -244,7 +244,7 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-2">
             <Button className="flex-1 gap-2 text-xs" onClick={() => setImportOpen(true)}>
-              <Plus className="h-3.5 w-3.5" /> Manual Import
+              <Plus className="h-3.5 w-3.5" /> New Trade
             </Button>
             <Button variant="outline" className="flex-1 gap-2 text-xs bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground" onClick={() => setCsvOpen(true)}>
               <Upload className="h-3.5 w-3.5" /> CSV / AI
@@ -293,9 +293,25 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="mt-3 h-24">
+          <div className="mt-3 h-28">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={periodData}>
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  hide={false}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                  tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
+                  width={40}
+                  domain={["dataMin - 200", "dataMax + 200"]}
+                />
                 <Line type="monotone" dataKey="balance" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
                 <Tooltip
                   contentStyle={{
@@ -303,9 +319,11 @@ export default function Dashboard() {
                     border: "1px solid rgba(255,255,255,0.1)",
                     borderRadius: "8px",
                     color: "#fff",
-                    fontFamily: "DM Mono",
+                    fontFamily: "monospace",
                     fontSize: "12px",
                   }}
+                  formatter={(value: number) => [`$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, "Balance"]}
+                  labelFormatter={(label: string) => label}
                 />
               </LineChart>
             </ResponsiveContainer>
