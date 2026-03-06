@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, type Easing } from "framer-motion";
-import { BookOpen, BarChart3, FolderOpen, CheckCircle2 } from "lucide-react";
+import { BookOpen, BarChart3, FolderOpen, CheckCircle2, Activity } from "lucide-react";
 
 const ease: Easing = [0.22, 1, 0.36, 1];
 
@@ -41,6 +41,49 @@ function InteractiveDemo() {
           )}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ─── Mock journal with trade details ─── */
+function MockJournalView() {
+  return (
+    <div className="glass-card p-5 space-y-4 max-w-sm">
+      <div className="flex items-center gap-2 mb-1">
+        <BookOpen className="h-4 w-4 text-primary/60" />
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Journal + Trade Details</p>
+      </div>
+      {/* Trade info bar */}
+      <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-mono font-medium text-foreground">EUR/USD</span>
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-profit/10 text-profit">Long</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p className="text-[8px] text-muted-foreground uppercase">Entry</p>
+            <p className="text-[10px] font-mono text-foreground">1.0845</p>
+          </div>
+          <div>
+            <p className="text-[8px] text-muted-foreground uppercase">Exit</p>
+            <p className="text-[10px] font-mono text-foreground">1.0892</p>
+          </div>
+          <div>
+            <p className="text-[8px] text-muted-foreground uppercase">P&L</p>
+            <p className="text-[10px] font-mono text-profit">+$335</p>
+          </div>
+        </div>
+      </div>
+      {/* Journal content */}
+      <div className="space-y-2">
+        <div className="h-2.5 w-3/4 rounded bg-foreground/10" />
+        <div className="h-2 w-full rounded bg-foreground/5" />
+        <div className="h-2 w-5/6 rounded bg-foreground/5" />
+      </div>
+      {/* Chart placeholder */}
+      <div className="h-20 rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-center">
+        <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Chart Screenshot</span>
+      </div>
     </div>
   );
 }
@@ -118,10 +161,10 @@ const features = [
     id: "journaling",
     icon: BookOpen,
     label: "Trade Journaling",
-    title: "Structured reflections that build mastery",
-    desc: "Write detailed trade reviews with structured prompts. Track emotions, rate discipline, attach screenshots, and tag strategies. Your journal becomes your personal trading playbook.",
-    highlights: ["Structured reflections", "Chart screenshots", "Strategy tagging", "Emotion tracking"],
-    visual: "demo",
+    title: "Journal with full trade context",
+    desc: "Write detailed trade reviews alongside your trade data. See entry, exit, P&L, and chart screenshots while you reflect — so nothing gets lost. Your journal becomes a searchable trading knowledge base.",
+    highlights: ["Trade details panel", "Chart screenshots", "Strategy tagging", "Structured reflection"],
+    visual: "journal",
   },
   {
     id: "analytics",
@@ -133,11 +176,20 @@ const features = [
     visual: "analytics",
   },
   {
+    id: "livepnl",
+    icon: Activity,
+    label: "Live PnL Tracking",
+    title: "Monitor live PnL in real time",
+    desc: "See your live profit and loss directly in the open orders and positions section. Stay aware of risk and performance as your trades unfold — no tab-switching required.",
+    highlights: ["Real-time P&L", "Open position tracking", "Risk awareness", "Instant updates"],
+    visual: "demo",
+  },
+  {
     id: "playbook",
     icon: FolderOpen,
     label: "Trading Playbook",
     title: "Your personal trading library",
-    desc: "Organize strategies, psychology notes, and learning materials in folders. Build a searchable knowledge base that compounds your trading edge over time.",
+    desc: "Organize strategies, psychology notes, trade breakdowns, and learning materials in folders. Build a searchable knowledge base that compounds your trading edge over time.",
     highlights: ["Strategy folders", "Learning notes", "Psychology journals", "Searchable archive"],
     visual: "playbook",
   },
@@ -146,7 +198,6 @@ const features = [
 export function LandingProduct() {
   return (
     <section id="features" className="relative py-32 px-6 md:px-12">
-      {/* Background accent */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 blur-[200px] rounded-full pointer-events-none" />
 
       <div className="max-w-6xl mx-auto relative">
@@ -193,6 +244,7 @@ export function LandingProduct() {
 
               {/* Visual */}
               <div className="flex-1 flex justify-center">
+                {f.visual === "journal" && <MockJournalView />}
                 {f.visual === "demo" && <InteractiveDemo />}
                 {f.visual === "analytics" && <MockAnalytics />}
                 {f.visual === "playbook" && <MockPlaybook />}

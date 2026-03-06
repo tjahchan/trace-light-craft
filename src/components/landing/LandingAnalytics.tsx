@@ -1,10 +1,9 @@
 import { motion, type Easing } from "framer-motion";
-import { Trophy } from "lucide-react";
+import { Trophy, Flame } from "lucide-react";
 
 const ease: Easing = [0.22, 1, 0.36, 1];
 
 function MockCalendar() {
-  // Simplified calendar heatmap
   const days = Array.from({ length: 28 }, (_, i) => {
     const rand = Math.random();
     return rand > 0.6 ? "profit" : rand > 0.35 ? "loss" : "empty";
@@ -12,7 +11,10 @@ function MockCalendar() {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">February Activity</p>
+      <div className="flex items-center gap-2">
+        <Flame className="h-4 w-4 text-primary/60" />
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Activity & Streaks</p>
+      </div>
       <div className="grid grid-cols-7 gap-1">
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
           <span key={i} className="text-[8px] text-muted-foreground/50 text-center">{d}</span>
@@ -25,6 +27,13 @@ function MockCalendar() {
             }`}
           />
         ))}
+      </div>
+      <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+        <div className="flex items-center gap-1.5">
+          <Flame className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-mono font-semibold text-foreground">7 day streak</span>
+        </div>
+        <span className="text-[10px] text-muted-foreground">Best: 42 days</span>
       </div>
     </div>
   );
@@ -73,12 +82,12 @@ export function LandingAnalytics() {
           transition={{ duration: 0.7, ease }}
           className="text-center mb-16"
         >
-          <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Insights</span>
+          <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Performance</span>
           <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
-            See Your Progress Clearly
+            Compete. Track. Stay Disciplined.
           </h2>
           <p className="mt-4 text-muted-foreground max-w-lg mx-auto text-base">
-            Track performance, review patterns, and compete with fellow traders.
+            Track your trading streak, review activity patterns, and compete with fellow traders on the leaderboard. Accountability drives improvement.
           </p>
         </motion.div>
 
@@ -91,7 +100,7 @@ export function LandingAnalytics() {
           >
             <MockCalendar />
             <p className="text-center mt-3 text-xs text-muted-foreground">
-              Visual calendar review of your trading activity
+              Visual calendar review with streak tracking
             </p>
           </motion.div>
 
@@ -103,7 +112,7 @@ export function LandingAnalytics() {
           >
             <MockLeaderboard />
             <p className="text-center mt-3 text-xs text-muted-foreground">
-              Trade with accountability and motivation
+              See how you stack up against other traders
             </p>
           </motion.div>
         </div>

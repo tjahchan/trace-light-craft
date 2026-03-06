@@ -8,6 +8,7 @@ import { BackgroundProvider } from "@/contexts/BackgroundContext";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Landing from "./pages/Landing";
+import Pricing from "./pages/Pricing";
 import Dashboard from "./pages/Dashboard";
 import BrokerConnections from "./pages/BrokerConnections";
 import Overview from "./pages/Overview";
@@ -37,6 +38,7 @@ function ProtectedRoutes() {
 
   if (!user) {
     if (location.pathname === "/") return <Landing />;
+    if (location.pathname === "/pricing") return <Pricing />;
     return <Navigate to="/auth" replace />;
   }
 

@@ -1,5 +1,5 @@
 import { motion, type Easing } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, MessageSquare } from "lucide-react";
 
 const ease: Easing = [0.22, 1, 0.36, 1];
 
@@ -64,6 +64,38 @@ function MockAIPanel() {
   );
 }
 
+function AskAnythingExamples() {
+  const examples = [
+    "What mistakes do I repeat most?",
+    "Summarize my last 10 trades.",
+    "Explain risk management.",
+    "Why are my London trades more profitable?",
+    "Break down my EUR/USD performance.",
+  ];
+
+  return (
+    <div className="space-y-2 mt-6">
+      <div className="flex items-center gap-2 mb-3">
+        <MessageSquare className="h-4 w-4 text-primary/60" />
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Ask anything</p>
+      </div>
+      {examples.map((q, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, x: -15 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.5 + i * 0.08, ease }}
+          className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-primary/20 transition-colors cursor-default"
+        >
+          <span className="text-primary/50 text-xs">→</span>
+          <span className="text-[11px] text-muted-foreground italic">"{q}"</span>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 export function LandingAI() {
   return (
     <section id="ai-coach" className="relative py-32 px-6 md:px-12">
@@ -77,12 +109,12 @@ export function LandingAI() {
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.7, ease }}
           >
-            <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Differentiator</span>
+            <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Key Differentiator</span>
             <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
-              Your AI<br />Trading Coach
+              Your AI Trading<br />Coach & Analyst
             </h2>
             <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed max-w-md">
-              Momentra analyzes your journal entries and trade data to surface patterns, highlight strengths, and identify improvement opportunities — automatically.
+              More than a summary tool. Momentra AI is your personal trading analyst and knowledge assistant — it analyzes your trades, answers any trading question, and helps you improve faster.
             </p>
           </motion.div>
 
@@ -95,9 +127,10 @@ export function LandingAI() {
           >
             {[
               "Summarize trades and extract key lessons",
-              "Identify recurring mistakes and patterns",
+              "Detect recurring mistakes and patterns",
+              "Answer any trading or strategy question",
+              "Explain concepts like risk management and psychology",
               "Generate personalized improvement plans",
-              "Turn your notes into actionable insights",
             ].map((item) => (
               <div key={item} className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
@@ -105,6 +138,8 @@ export function LandingAI() {
               </div>
             ))}
           </motion.div>
+
+          <AskAnythingExamples />
         </div>
 
         <motion.div

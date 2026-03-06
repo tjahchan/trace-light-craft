@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown, Zap, Bot, BarChart3, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Easing } from "framer-motion";
 
@@ -9,7 +9,6 @@ const ease: Easing = [0.22, 1, 0.36, 1];
 function MockDashboard() {
   return (
     <div className="relative w-full max-w-5xl mx-auto mt-16 px-4">
-      {/* Glow behind */}
       <div className="absolute inset-0 -top-20 bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative flex items-start justify-center gap-4 md:gap-6">
@@ -58,16 +57,16 @@ function MockDashboard() {
           <div className="glass-card p-5 space-y-4 ring-1 ring-primary/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Account Balance</p>
-                <p className="text-2xl font-mono font-bold text-foreground mt-0.5">$51,186.00</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Performance</p>
+                <p className="text-2xl font-mono font-bold text-foreground mt-0.5">Trading Dashboard</p>
               </div>
-              <span className="text-xs font-mono text-profit bg-profit/10 px-2 py-1 rounded-md">+2.37%</span>
+              <span className="text-xs font-mono text-profit bg-profit/10 px-2 py-1 rounded-md">Live</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Win Rate", value: "80%", color: "text-profit" },
-                { label: "Trades", value: "10", color: "text-foreground" },
-                { label: "Streak", value: "7 days", color: "text-primary" },
+                { label: "Win Rate", value: "—", color: "text-foreground" },
+                { label: "Trades", value: "0", color: "text-foreground" },
+                { label: "Streak", value: "0 days", color: "text-primary" },
               ].map((s) => (
                 <div key={s.label} className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05] text-center">
                   <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
@@ -135,7 +134,6 @@ function MockDashboard() {
 export function LandingHero() {
   return (
     <section className="relative min-h-screen flex flex-col">
-      {/* Background grid */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background pointer-events-none" />
 
@@ -148,14 +146,21 @@ export function LandingHero() {
           </span>
         </div>
         <div className="hidden md:flex items-center gap-8">
-          {["Features", "AI Coach", "Analytics"].map((item) => (
-            <a
-              key={item}
-              href={`#${item.toLowerCase().replace(/\s/g, "-")}`}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {item}
-            </a>
+          {[
+            { label: "Features", href: "#features" },
+            { label: "AI Coach", href: "#ai-coach" },
+            { label: "Analytics", href: "#analytics" },
+            { label: "Pricing", href: "/pricing" },
+          ].map((item) => (
+            item.href.startsWith("/") ? (
+              <Link key={item.label} to={item.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {item.label}
+              </Link>
+            ) : (
+              <a key={item.label} href={item.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {item.label}
+              </a>
+            )
           ))}
         </div>
         <div className="flex items-center gap-3">
@@ -202,31 +207,50 @@ export function LandingHero() {
           transition={{ duration: 0.8, delay: 0.25, ease }}
           className="mt-6 text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed"
         >
-          Track trades, analyze decisions, and refine your strategy with the most advanced trading performance system ever built.
+          Track trades, analyze decisions, and refine your strategy with the most advanced trading performance system built for serious traders.
         </motion.p>
+
+        {/* Feature pills */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.35, ease }}
+          className="mt-5 flex flex-wrap items-center justify-center gap-3"
+        >
+          {[
+            { icon: Zap, label: "Free to Start" },
+            { icon: Link2, label: "Broker Auto Sync" },
+            { icon: Bot, label: "AI Trading Coach" },
+            { icon: BarChart3, label: "Performance Analytics" },
+          ].map((pill) => (
+            <div key={pill.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] text-[11px] text-muted-foreground">
+              <pill.icon className="h-3 w-3 text-primary/70" />
+              {pill.label}
+            </div>
+          ))}
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4, ease }}
+          transition={{ duration: 0.8, delay: 0.45, ease }}
           className="mt-8 flex items-center gap-4"
         >
           <Link to="/auth">
             <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-8 h-12 text-base">
-              Start Journaling <ArrowRight className="h-4 w-4" />
+              Start Journaling — Free <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <a href="#features">
+          <Link to="/auth">
             <Button variant="outline" size="lg" className="h-12 text-base border-white/[0.1] hover:bg-white/[0.05]">
               See How It Works
             </Button>
-          </a>
+          </Link>
         </motion.div>
 
         <MockDashboard />
       </div>
 
-      {/* Scroll indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
