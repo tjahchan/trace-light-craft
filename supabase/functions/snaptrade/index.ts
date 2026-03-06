@@ -54,7 +54,11 @@ async function generateSignature(
     new TextEncoder().encode(sigContent)
   );
 
-  return base64Encode(new Uint8Array(signature));
+  // Convert to base64
+  const bytes = new Uint8Array(signature);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
 }
 
 // SnapTrade API request helper with HMAC signature
