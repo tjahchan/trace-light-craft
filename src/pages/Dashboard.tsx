@@ -642,14 +642,13 @@ export default function Dashboard() {
 
       <TradeImportModal open={importOpen} onOpenChange={setImportOpen} />
       <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
-      <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} />
+      <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} userId={user?.id || ""} onBalanceRefresh={fetchAndSetBalance} />
       <DepositWithdrawModal
         open={depositOpen}
         onOpenChange={setDepositOpen}
-        transactions={transactions}
-        onConfirm={handleTransaction}
-        recurringRules={recurringRules}
-        onDeleteRecurring={handleDeleteRecurring}
+        accountId={selectedAccountId}
+        userId={user?.id || ""}
+        onTransactionComplete={refreshAll}
       />
     </div>
   );
