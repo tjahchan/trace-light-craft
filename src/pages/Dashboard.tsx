@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { calculateRiskPercent } from "@/lib/trade-utils";
+import { calculatePnl, calculateRiskPercent } from "@/lib/trade-utils";
+import { useLivePrices } from "@/hooks/useLivePrices";
 import { motion } from "framer-motion";
 import {
   Plus,
