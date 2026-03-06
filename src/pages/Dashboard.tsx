@@ -102,10 +102,6 @@ const closedPositions = [
 
 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
-const defaultAccounts: Account[] = [
-  { id: "1", name: "Main Account", balance: 13500 },
-  { id: "2", name: "Demo Account", balance: 10000 },
-];
 
 const emptyFilters: ClosedPositionFilters = {
   dateFrom: undefined,
@@ -141,17 +137,48 @@ export default function Dashboard() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [balancePeriod, setBalancePeriod] = useState<BalancePeriod>("month");
 
-  const [accounts, setAccounts] = useState<Account[]>(defaultAccounts);
-  const [selectedAccountId, setSelectedAccountId] = useState(defaultAccounts[0].id);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
   const [filters, setFilters] = useState<ClosedPositionFilters>(emptyFilters);
   const [dbTrades, setDbTrades] = useState<any[]>([]);
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
 
   const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
   const streakDays = getWeekDots();
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? accounts[0];
+
+  // Fetch accounts from Supabase
+  const fetchAccounts = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("accounts")
+      .select("*")
+      .eq("user_id", user.id);
+    if (!error && data && data.length > 0) {
+      const mapped = data.map((a) => ({ id: a.id, name: a.name, balance: Number(a.balance) }));
+      setAccounts(mapped);
+      if (!selectedAccountId || !mapped.find((a) => a.id === selectedAccountId)) {
+        setSelectedAccountId(mapped[0].id);
+      }
+    } else if (!error && (!data || data.length === 0)) {
+      // Auto-create a default account
+      const { data: newAcc } = await supabase
+        .from("accounts")
+        .insert({ user_id: user.id, name: "Main Account", balance: 0 })
+        .select()
+        .single();
+      if (newAcc) {
+        setAccounts([{ id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance) }]);
+        setSelectedAccountId(newAcc.id);
+      }
+    }
+    setAccountsLoaded(true);
+  }, [user, selectedAccountId]);
+
+  useEffect(() => { fetchAccounts(); }, [user]);
 
   const fetchTrades = useCallback(async () => {
     if (!user) return;

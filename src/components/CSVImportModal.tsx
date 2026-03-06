@@ -131,8 +131,22 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
 
   const handleImport = async () => {
     if (!user || !csvData) return;
+
+    // UUID validation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(user.id)) {
+      toast.error("Import error: could not resolve user ID. Please re-login and try again.");
+      return;
+    }
+    if (!uuidRegex.test(accountId)) {
+      toast.error("Import error: could not resolve account ID. Please re-select your account and try again.");
+      console.error("[CSV Import] Invalid account_id:", accountId);
+      return;
+    }
+
     setImporting(true);
     console.log("[CSV Import] Starting import of", csvData.rows.length, "trades");
+    console.log("[CSV Import] user_id:", user.id, "account_id:", accountId);
 
     try {
       const trades = csvData.rows.map((row) => {
