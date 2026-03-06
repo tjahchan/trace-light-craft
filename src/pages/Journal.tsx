@@ -269,6 +269,26 @@ export default function Journal() {
     loadTradeData();
   }, [selectedTradeId, user, editorMode]);
 
+  const loadNoteScreenshots = useCallback(async (entryId: string) => {
+    const { data } = await supabase
+      .from("note_screenshots" as any)
+      .select("*")
+      .eq("entry_id", entryId)
+      .order("sort_order", { ascending: true });
+    if (data) {
+      setNoteScreenshots(
+        (data as any[]).map((s) => ({
+          id: s.id,
+          storage_path: s.storage_path,
+          label: s.label || "",
+          url: supabase.storage.from("chart-screenshots").getPublicUrl(s.storage_path).data.publicUrl,
+        }))
+      );
+    } else {
+      setNoteScreenshots([]);
+    }
+  }, []);
+
   // Load entry data when selecting an entry
   useEffect(() => {
     if (!selectedEntryId || editorMode !== "entry") return;
@@ -280,7 +300,8 @@ export default function Journal() {
       lastSavedEntryContent.current = entry.content;
       setIsDirty(false);
     }
-  }, [selectedEntryId, editorMode]);
+    loadNoteScreenshots(selectedEntryId);
+  }, [selectedEntryId, editorMode, loadNoteScreenshots]);
 
   // Track dirty state
   useEffect(() => {
