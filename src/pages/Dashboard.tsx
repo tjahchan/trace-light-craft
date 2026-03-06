@@ -108,6 +108,8 @@ export default function Dashboard() {
   const selectAccount = useCallback((id: string) => {
     setSelectedAccountId(id);
     localStorage.setItem(STORAGE_KEY, id);
+    setClosedPage(1);
+    setOpenPage(1);
   }, []);
 
   // ---- Fetch accounts from Supabase ----
