@@ -401,7 +401,7 @@ export default function Dashboard() {
                 {filteredPositions.map((pos) => {
                   const risk = getRiskPercent(pos.entry, pos.sl, pos.qty, pos.symbol, selectedAccount.balance);
                   return (
-                    <tr key={pos.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+                    <tr key={pos.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer" onClick={() => navigate(`/trade/${pos.id}`)}>
                       <td className="p-3"><Pin className="h-3 w-3 text-muted-foreground cursor-pointer hover:text-foreground" /></td>
                       <td className="p-3">
                         <div className="flex gap-1">
