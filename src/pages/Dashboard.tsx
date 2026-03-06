@@ -528,7 +528,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.03 }}
-          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 space-y-3"
+          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4 space-y-2"
         >
           <div className="flex items-center gap-2">
             {accountsLoaded && accounts.length > 0 ? (
