@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { calculateRiskPercent } from "@/lib/trade-utils";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -54,13 +55,9 @@ const emptyFilters: ClosedPositionFilters = {
   direction: "all",
 };
 
-/* ---------- Risk % helper ---------- */
+/* ---------- Risk % helper (uses shared util) ---------- */
 function getRiskPercent(entry: number, sl: number | null, qty: number, symbol: string, balance: number) {
-  if (!sl || balance <= 0) return null;
-  const distance = Math.abs(entry - sl);
-  const isForex = symbol.includes("/") && !symbol.includes("XAU") && !symbol.includes("BTC") && !symbol.includes("ETH");
-  const riskValue = isForex ? distance * qty * 100000 : distance * qty;
-  return (riskValue / balance) * 100;
+  return calculateRiskPercent(entry, sl, qty, symbol, balance);
 }
 
 function riskColor(pct: number) {
