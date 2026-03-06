@@ -27,25 +27,6 @@ export function AiInsightPanel({ content, mode, tradeContext }: AiInsightPanelPr
   const [lessonsResult, setLessonsResult] = useState("");
   const [loading, setLoading] = useState<"analyze" | "lessons" | null>(null);
 
-  if (!canUseJournalInsights) {
-    return (
-      <div className="rounded-xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-xl overflow-hidden">
-        <button
-          onClick={() => triggerUpgrade("Upgrade to Pro to unlock AI trade insights in your journal.")}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <div className="h-5 w-5 rounded-md bg-primary/15 flex items-center justify-center">
-              <Lock className="h-3 w-3 text-muted-foreground" />
-            </div>
-            <span className="text-xs font-semibold text-muted-foreground tracking-wide">AI Insight</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">PRO</span>
-          </div>
-        </button>
-      </div>
-    );
-  }
-
   const buildSystemPrompt = (type: "analyze" | "lessons") => {
     const base = mode === "trade"
       ? `You are Momentra AI, a professional trading coach. Analyze the trader's journal entry for a ${tradeContext?.symbol || "unknown"} ${tradeContext?.side || ""} trade (PnL: ${tradeContext?.pnl != null ? `$${tradeContext.pnl.toFixed(2)}` : "N/A"}, Entry: ${tradeContext?.entry_price}, Exit: ${tradeContext?.exit_price ?? "N/A"}, Session: ${tradeContext?.session || "N/A"}).`
