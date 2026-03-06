@@ -459,6 +459,30 @@ export type Database = {
           },
         ]
       }
+      trade_edits: {
+        Row: {
+          changed_fields: Json
+          edited_at: string
+          id: string
+          trade_id: string
+          user_id: string
+        }
+        Insert: {
+          changed_fields?: Json
+          edited_at?: string
+          id?: string
+          trade_id: string
+          user_id: string
+        }
+        Update: {
+          changed_fields?: Json
+          edited_at?: string
+          id?: string
+          trade_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           account_id: string
