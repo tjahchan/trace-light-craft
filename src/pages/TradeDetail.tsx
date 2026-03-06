@@ -71,6 +71,7 @@ export default function TradeDetail() {
   // Edit history
   const [editHistory, setEditHistory] = useState<any[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const lastSavedNoteRef = useRef("");
 
   async function fetchTrade() {
     if (!tradeId) {
