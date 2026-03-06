@@ -8,6 +8,7 @@ import { BackgroundProvider } from "@/contexts/BackgroundContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Overview from "./pages/Overview";
+import TradeDetail from "./pages/TradeDetail";
 import Journal from "./pages/Journal";
 import Watchlist from "./pages/Watchlist";
 import Community from "./pages/Community";
@@ -37,6 +38,7 @@ function ProtectedRoutes() {
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/trade/:tradeId" element={<TradeDetail />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/journal" element={<Journal />} />
           <Route path="/watchlist" element={<Watchlist />} />
