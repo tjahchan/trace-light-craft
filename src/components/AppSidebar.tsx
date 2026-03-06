@@ -45,7 +45,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <span className="text-foreground font-semibold text-lg tracking-tight">
-              TradeLog
+              Momentra
             </span>
           )}
         </div>

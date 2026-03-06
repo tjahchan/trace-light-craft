@@ -39,21 +39,21 @@ function buildEmail(
   name: string,
   streak: number
 ): { subject: string; html: string } {
-  const cta = `<a href="${APP_URL}" style="display:inline-block;padding:12px 28px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;margin-top:16px;">Open TradeLog</a>`;
+  const cta = `<a href="${APP_URL}" style="display:inline-block;padding:12px 28px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;margin-top:16px;">Open Momentra</a>`;
 
   const wrapper = (body: string) => `
 <!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#0a0f0a;font-family:Inter,sans-serif;">
 <div style="max-width:480px;margin:0 auto;padding:40px 24px;">
 <div style="text-align:center;margin-bottom:24px;">
-<span style="font-size:24px;font-weight:700;color:#fff;">Trade<span style="color:#3b82f6;">Log</span></span>
+<span style="font-size:24px;font-weight:700;color:#fff;letter-spacing:0.1em;">Momentra</span>
 </div>
 <div style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;color:#e5e5e5;font-size:14px;line-height:1.6;">
 ${body}
 <div style="text-align:center;margin-top:24px;">${cta}</div>
 </div>
 <p style="text-align:center;color:#555;font-size:11px;margin-top:24px;">
-You're receiving this because you have streak reminders enabled in TradeLog settings.
+You're receiving this because you have streak reminders enabled in Momentra settings.
 </p>
 </div></body></html>`;
 
@@ -76,7 +76,7 @@ You're receiving this because you have streak reminders enabled in TradeLog sett
       };
     case "missed5":
       return {
-        subject: `We miss you on TradeLog 📉`,
+        subject: `We miss you on Momentra 📉`,
         html: wrapper(`
 <h2 style="color:#fff;margin:0 0 12px;">It's been 5 days, ${name}</h2>
 <p>Your trades are waiting to be reviewed. Every day without journaling is a missed learning opportunity.</p>
@@ -106,7 +106,7 @@ async function sendEmail(to: string, subject: string, html: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "TradeLog <noreply@tradelog.app>",
+      from: "Momentra <noreply@momentra.app>",
       to: [to],
       subject,
       html,

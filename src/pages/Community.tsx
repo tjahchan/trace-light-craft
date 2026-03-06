@@ -414,7 +414,7 @@ export default function Community() {
                   </Button>
                   <Button variant="outline" size="sm" asChild>
                     <a
-                      href="https://t.me/tradelog"
+                      href="https://t.me/momentra"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="gap-1.5"
