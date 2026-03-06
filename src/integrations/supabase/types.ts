@@ -44,6 +44,189 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_accounts: {
+        Row: {
+          account_name: string | null
+          account_number_masked: string | null
+          account_type: string | null
+          broker_name: string | null
+          connection_id: string
+          created_at: string
+          currency: string | null
+          id: string
+          is_selected_for_import: boolean
+          snaptrade_account_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number_masked?: string | null
+          account_type?: string | null
+          broker_name?: string | null
+          connection_id: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          is_selected_for_import?: boolean
+          snaptrade_account_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number_masked?: string | null
+          account_type?: string | null
+          broker_name?: string | null
+          connection_id?: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          is_selected_for_import?: boolean
+          snaptrade_account_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_accounts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "broker_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_activities_raw: {
+        Row: {
+          account_id: string
+          activity_date: string | null
+          created_at: string
+          id: string
+          import_batch_id: string | null
+          raw_payload: Json | null
+          source_activity_id: string | null
+          source_provider: string
+          symbol: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          activity_date?: string | null
+          created_at?: string
+          id?: string
+          import_batch_id?: string | null
+          raw_payload?: Json | null
+          source_activity_id?: string | null
+          source_provider?: string
+          symbol?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          activity_date?: string | null
+          created_at?: string
+          id?: string
+          import_batch_id?: string | null
+          raw_payload?: Json | null
+          source_activity_id?: string | null
+          source_provider?: string
+          symbol?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_activities_raw_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "broker_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_connections: {
+        Row: {
+          broker_name: string | null
+          connection_status: string
+          created_at: string
+          disabled: boolean
+          id: string
+          integration_id: string
+          last_synced_at: string | null
+          snaptrade_connection_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          broker_name?: string | null
+          connection_status?: string
+          created_at?: string
+          disabled?: boolean
+          id?: string
+          integration_id: string
+          last_synced_at?: string | null
+          snaptrade_connection_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          broker_name?: string | null
+          connection_status?: string
+          created_at?: string
+          disabled?: boolean
+          id?: string
+          integration_id?: string
+          last_synced_at?: string | null
+          snaptrade_connection_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_connections_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "broker_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_integrations: {
+        Row: {
+          created_at: string
+          id: string
+          provider: string
+          snaptrade_user_id: string | null
+          snaptrade_user_secret_encrypted: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          provider?: string
+          snaptrade_user_id?: string | null
+          snaptrade_user_secret_encrypted?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          provider?: string
+          snaptrade_user_id?: string | null
+          snaptrade_user_secret_encrypted?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_posts: {
         Row: {
           content: string
@@ -212,6 +395,66 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_jobs: {
+        Row: {
+          account_id: string | null
+          activities_imported: number | null
+          completed_at: string | null
+          connection_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          job_type: string
+          meta: Json | null
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          activities_imported?: number | null
+          completed_at?: string | null
+          connection_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          meta?: Json | null
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          activities_imported?: number | null
+          completed_at?: string | null
+          connection_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          meta?: Json | null
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_jobs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "broker_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_jobs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "broker_connections"
             referencedColumns: ["id"]
           },
         ]
