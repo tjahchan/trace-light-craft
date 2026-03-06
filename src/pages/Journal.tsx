@@ -608,22 +608,27 @@ export default function Journal() {
                 </div>
 
                 {/* Rich text editor */}
-                <RichTextEditor
-                  content={journalNote}
-                  onChange={setJournalNote}
-                  placeholder="Write your trade analysis, observations, and reflections..."
-                />
+                <div data-tour="editor-area">
+                  <RichTextEditor
+                    content={journalNote}
+                    onChange={setJournalNote}
+                    placeholder="Write your trade analysis, observations, and reflections..."
+                  />
+                </div>
 
                 {/* Structured Reflection */}
-                <StructuredReflection
-                  whatWentWell={meta.what_went_well}
-                  whatWentWrong={meta.what_went_wrong}
-                  lessonsLearned={meta.lessons_learned}
-                  improvements={meta.improvements}
-                  onChange={handleReflectionChange}
-                />
+                <div data-tour="structured-reflection">
+                  <StructuredReflection
+                    whatWentWell={meta.what_went_well}
+                    whatWentWrong={meta.what_went_wrong}
+                    lessonsLearned={meta.lessons_learned}
+                    improvements={meta.improvements}
+                    onChange={handleReflectionChange}
+                  />
+                </div>
 
                 {/* Chart Screenshots — at the bottom */}
+                <div data-tour="chart-screenshots">
                 <ChartScreenshots
                   screenshots={screenshots}
                   tradeId={selectedTradeId!}
@@ -651,6 +656,7 @@ export default function Journal() {
                   }}
                   onDeleted={(id) => setScreenshots((prev) => prev.filter((s) => s.id !== id))}
                 />
+                </div>
               </div>
             </ScrollArea>
           </motion.div>
@@ -765,21 +771,24 @@ export default function Journal() {
             )}
           >
             {/* AI Insight Panel */}
-            <AiInsightPanel
-              content={editorMode === "trade" ? journalNote : entryContent}
-              mode={editorMode === "trade" ? "trade" : "note"}
-              tradeContext={selectedTrade ? {
-                symbol: selectedTrade.symbol,
-                side: selectedTrade.side,
-                pnl: selectedTrade.pnl,
-                entry_price: selectedTrade.entry_price,
-                exit_price: selectedTrade.exit_price,
-                session: meta.session,
-              } : undefined}
-            />
+            <div data-tour="ai-insight">
+              <AiInsightPanel
+                content={editorMode === "trade" ? journalNote : entryContent}
+                mode={editorMode === "trade" ? "trade" : "note"}
+                tradeContext={selectedTrade ? {
+                  symbol: selectedTrade.symbol,
+                  side: selectedTrade.side,
+                  pnl: selectedTrade.pnl,
+                  entry_price: selectedTrade.entry_price,
+                  exit_price: selectedTrade.exit_price,
+                  session: meta.session,
+                } : undefined}
+              />
+            </div>
 
             {/* Trade Insights (only for trade mode) */}
             {showInsightsPanel && (
+              <div data-tour="trade-insights" className="flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl overflow-auto">
               <div className="flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl overflow-auto">
                 <TradeInsightsPanel
                   trade={selectedTrade!}
