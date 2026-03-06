@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { calculatePnl } from "@/lib/trade-utils";
 import {
   ArrowLeft,
   Pin,
@@ -13,6 +15,8 @@ import {
   Check,
   Loader2,
   RefreshCw,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,10 +44,12 @@ const timeframes = ["1m", "30m", "1h"];
 export default function TradeDetail() {
   const { tradeId } = useParams<{ tradeId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [trade, setTrade] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const [symbol, setSymbol] = useState("");
   const [side, setSide] = useState("Long");
@@ -59,6 +65,10 @@ export default function TradeDetail() {
   const [journalNote, setJournalNote] = useState("");
   const [saved, setSaved] = useState(false);
   const [selectedTf, setSelectedTf] = useState("1m");
+
+  // Edit history
+  const [editHistory, setEditHistory] = useState<any[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   async function fetchTrade() {
     if (!tradeId) {
@@ -108,9 +118,31 @@ export default function TradeDetail() {
     setLoading(false);
   }
 
+  async function fetchEditHistory() {
+    if (!tradeId) return;
+    const { data } = await supabase
+      .from("trade_edits" as any)
+      .select("*")
+      .eq("trade_id", tradeId)
+      .order("edited_at", { ascending: false })
+      .limit(50);
+    if (data) setEditHistory(data as any[]);
+  }
+
   useEffect(() => {
     fetchTrade();
+    fetchEditHistory();
   }, [tradeId]);
+
+  // Live PnL recalculation
+  const livePnl = useMemo(() => {
+    const e = parseFloat(entry) || 0;
+    const x = parseFloat(exit) || 0;
+    const q = parseFloat(qty) || 0;
+    const fee = parseFloat(brokerFee) || 0;
+    if (!e || !x || !q) return trade?.pnl || 0;
+    return calculatePnl(e, x, q, side, symbol, fee);
+  }, [entry, exit, qty, side, symbol, brokerFee, trade]);
 
   const entryNum = parseFloat(entry) || 0;
   const exitNum = parseFloat(exit) || 0;
@@ -124,30 +156,86 @@ export default function TradeDetail() {
     : "—";
 
   const handleSave = async () => {
-    if (!tradeId) return;
+    if (!tradeId || !user) return;
+    setSaving(true);
+
+    const newEntry = parseFloat(entry) || 0;
+    const newExit = parseFloat(exit) || null;
+    const newQty = parseFloat(qty) || 0;
+    const newSl = parseFloat(sl) || null;
+    const newTp = parseFloat(tp) || null;
+    const newFee = parseFloat(brokerFee) || 0;
+    const newPnl = newExit ? calculatePnl(newEntry, newExit, newQty, side, symbol, newFee) : 0;
+    const newTags = tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+
+    const updatedFields: Record<string, any> = {
+      symbol,
+      side,
+      quantity: newQty,
+      entry_price: newEntry,
+      exit_price: newExit,
+      sl: newSl,
+      tp: newTp,
+      commissions: newFee,
+      pnl: newPnl,
+      status: status.toLowerCase(),
+      tags: newTags,
+      open_time: openedAt?.toISOString() || null,
+      note: journalNote,
+    };
+
+    // Build changed_fields for audit log
+    const changedFields: Record<string, { old: any; new: any }> = {};
+    if (trade) {
+      const fieldMap: Record<string, string> = {
+        symbol: "symbol", side: "side", quantity: "quantity",
+        entry_price: "entry_price", exit_price: "exit_price",
+        sl: "sl", tp: "tp", commissions: "commissions",
+        pnl: "pnl", status: "status", note: "note",
+      };
+      for (const [dbField, _] of Object.entries(fieldMap)) {
+        const oldVal = trade[dbField];
+        const newVal = updatedFields[dbField];
+        if (String(oldVal ?? "") !== String(newVal ?? "")) {
+          changedFields[dbField] = { old: oldVal, new: newVal };
+        }
+      }
+      // Check tags
+      const oldTags = (trade.tags || []).join(", ");
+      const newTagsStr = newTags.join(", ");
+      if (oldTags !== newTagsStr) {
+        changedFields["tags"] = { old: trade.tags, new: newTags };
+      }
+    }
+
     const { error } = await supabase
       .from("trades")
-      .update({
-        symbol,
-        side,
-        quantity: parseFloat(qty) || 0,
-        entry_price: parseFloat(entry) || 0,
-        exit_price: parseFloat(exit) || null,
-        sl: parseFloat(sl) || null,
-        tp: parseFloat(tp) || null,
-        commissions: parseFloat(brokerFee) || 0,
-        status: status.toLowerCase(),
-        tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [],
-        open_time: openedAt?.toISOString() || null,
-        note: journalNote,
-      })
+      .update(updatedFields)
       .eq("id", tradeId);
 
     if (error) {
       console.error("Save error:", error);
+      setSaving(false);
       return;
     }
+
+    console.log("Trade updated:", tradeId, updatedFields);
+
+    // Log edit history if anything changed
+    if (Object.keys(changedFields).length > 0) {
+      await supabase.from("trade_edits" as any).insert({
+        trade_id: tradeId,
+        user_id: user.id,
+        changed_fields: changedFields,
+      });
+      fetchEditHistory();
+    }
+
+    // Update local trade state so subsequent edits diff correctly
+    setTrade({ ...trade, ...updatedFields, tags: newTags });
+
     setSaved(true);
+    setSaving(false);
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -196,7 +284,6 @@ export default function TradeDetail() {
     );
   }
 
-  const pnl = trade.pnl || 0;
   const tvSymbol = symbol.replace("/", "").toUpperCase();
 
   return (
@@ -223,8 +310,8 @@ export default function TradeDetail() {
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">{symbol}</h1>
             <p className="text-sm text-muted-foreground">Closed Order</p>
-            <p className={cn("text-lg font-mono font-semibold mt-1", pnl >= 0 ? "text-profit" : "text-loss")}>
-              Realized PnL: {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
+            <p className={cn("text-lg font-mono font-semibold mt-1", livePnl >= 0 ? "text-profit" : "text-loss")}>
+              Realized PnL: {livePnl >= 0 ? "+" : ""}${Math.abs(livePnl).toFixed(2)}
             </p>
           </div>
 
@@ -311,10 +398,50 @@ export default function TradeDetail() {
               <Input value={riskReward} readOnly className="bg-white/[0.02] border-white/[0.06] text-muted-foreground" />
             </FieldCard>
 
-            <Button onClick={handleSave} className="w-full gap-2">
-              {saved ? <><Check className="h-4 w-4" /> Saved</> : "Save Changes"}
+            <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
+              {saving ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+              ) : saved ? (
+                <><Check className="h-4 w-4" /> Saved ✓</>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
+
+          {/* Edit History */}
+          {editHistory.length > 0 && (
+            <div className="border border-white/[0.08] rounded-xl overflow-hidden">
+              <button
+                onClick={() => setHistoryOpen(!historyOpen)}
+                className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-white/[0.03] transition-colors"
+              >
+                Edit History ({editHistory.length})
+                {historyOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              </button>
+              {historyOpen && (
+                <div className="px-4 pb-3 space-y-2 max-h-48 overflow-y-auto">
+                  {editHistory.map((edit: any) => {
+                    const fields = edit.changed_fields || {};
+                    const entries = Object.entries(fields);
+                    const time = new Date(edit.edited_at).toLocaleString();
+                    return (
+                      <div key={edit.id} className="text-[11px] text-muted-foreground border-b border-white/[0.05] pb-2 last:border-0">
+                        <p className="text-[10px] text-muted-foreground/60 mb-0.5">{time}</p>
+                        {entries.map(([field, val]: [string, any]) => (
+                          <p key={field}>
+                            <span className="text-foreground/80">{field}</span> changed from{" "}
+                            <span className="font-mono text-loss">{String(val.old ?? "—")}</span> →{" "}
+                            <span className="font-mono text-profit">{String(val.new ?? "—")}</span>
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Panel — TradingView Chart */}
