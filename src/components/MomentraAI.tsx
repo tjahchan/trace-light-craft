@@ -525,6 +525,11 @@ export function MomentraAI() {
                   <Send className="h-4 w-4" />
                 </button>
               </form>
+              {!isPro && (
+                <p className="text-[9px] text-muted-foreground/50 text-center mt-1.5">
+                  {aiRequestsUsed} / {aiLimit} AI requests used this month
+                </p>
+              )}
             </div>
           </motion.div>
         )}
