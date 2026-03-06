@@ -481,6 +481,6 @@ export function MomentraAI() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }
