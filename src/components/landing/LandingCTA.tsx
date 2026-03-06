@@ -50,6 +50,7 @@ export function LandingCTA() {
         </div>
         <div className="flex items-center gap-6">
           <Link to="/pricing" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">Pricing</Link>
+          <Link to="/blog" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">Blog</Link>
           <Link to="/auth" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">Sign In</Link>
         </div>
         <p className="text-xs text-muted-foreground/50">

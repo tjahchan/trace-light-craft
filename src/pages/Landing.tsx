@@ -4,7 +4,6 @@ import { LandingAI } from "@/components/landing/LandingAI";
 import { LandingProduct } from "@/components/landing/LandingProduct";
 import { LandingLoop } from "@/components/landing/LandingLoop";
 import { LandingAnalytics } from "@/components/landing/LandingAnalytics";
-import { LandingBrokers } from "@/components/landing/LandingBrokers";
 import { LandingCTA } from "@/components/landing/LandingCTA";
 
 export default function Landing() {
@@ -16,7 +15,6 @@ export default function Landing() {
       <LandingProduct />
       <LandingLoop />
       <LandingAnalytics />
-      <LandingBrokers />
       <LandingCTA />
     </div>
   );

@@ -9,6 +9,7 @@ import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
+import Blog from "./pages/Blog";
 import Dashboard from "./pages/Dashboard";
 import BrokerConnections from "./pages/BrokerConnections";
 import Overview from "./pages/Overview";
@@ -39,6 +40,7 @@ function ProtectedRoutes() {
   if (!user) {
     if (location.pathname === "/") return <Landing />;
     if (location.pathname === "/pricing") return <Pricing />;
+    if (location.pathname === "/blog") return <Blog />;
     return <Navigate to="/auth" replace />;
   }
 
