@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 import { BrokerConnectionCard } from "@/components/broker/BrokerConnectionCard";
 import { AccountSelectionModal } from "@/components/broker/AccountSelectionModal";
 import { SyncStatusBanner } from "@/components/broker/SyncStatusBanner";

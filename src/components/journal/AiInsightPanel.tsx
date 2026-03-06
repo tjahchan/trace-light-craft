@@ -104,6 +104,25 @@ export function AiInsightPanel({ content, mode, tradeContext }: AiInsightPanelPr
 
   const hasOutput = analysisResult || lessonsResult;
 
+  if (!canUseJournalInsights) {
+    return (
+      <div className="rounded-xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-xl overflow-hidden">
+        <button
+          onClick={() => triggerUpgrade("Upgrade to Pro to unlock AI trade insights in your journal.")}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded-md bg-primary/15 flex items-center justify-center">
+              <Lock className="h-3 w-3 text-muted-foreground" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground tracking-wide">AI Insight</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">PRO</span>
+          </div>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-xl overflow-hidden"
       style={{ boxShadow: "0 0 20px -4px hsl(217 91% 60% / 0.08)" }}
