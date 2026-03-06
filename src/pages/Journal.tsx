@@ -22,7 +22,7 @@ import { NotebookSidebar } from "@/components/journal/NotebookSidebar";
 import { RichTextEditor } from "@/components/journal/RichTextEditor";
 import { NoteScreenshots } from "@/components/journal/NoteScreenshots";
 import { AiInsightPanel } from "@/components/journal/AiInsightPanel";
-import { JournalOnboardingTour } from "@/components/journal/JournalOnboardingTour";
+// JournalOnboardingTour removed - now using PlatformTour
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Trade {
@@ -505,7 +505,7 @@ export default function Journal() {
 
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col">
-      <JournalOnboardingTour onCreateEntry={handleTourCreateEntry} />
+      {/* Tour now handled at Layout level */}
       <MobileTabBar />
 
       <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
