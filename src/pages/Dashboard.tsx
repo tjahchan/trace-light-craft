@@ -468,7 +468,7 @@ export default function Dashboard() {
               <Upload className="h-3.5 w-3.5" /> CSV / AI
             </Button>
           </div>
-          <Button variant="outline" className="w-full gap-2 text-xs bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground">
+          <Button variant="outline" className="w-full gap-2 text-xs bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] text-foreground" onClick={() => navigate("/broker-connections")}>
             <RefreshCw className="h-3.5 w-3.5" /> Sync with Broker
           </Button>
         </motion.div>
