@@ -322,34 +322,6 @@ export default function Dashboard() {
     buildChartData();
   }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchPeriodPnl, buildChartData]);
 
-  const handleTransaction = (
-    tx: Omit<Transaction, "id">,
-    recurring?: { frequency: string; startDate: Date }
-  ) => {
-    const newTx: Transaction = { ...tx, id: crypto.randomUUID() };
-    setTransactions((prev) => [newTx, ...prev]);
-    // Refresh balance from DB after transaction
-    if (isValidAccount) {
-      setTimeout(() => refreshAll(), 500);
-    }
-    if (recurring) {
-      const rule: RecurringRule = {
-        id: crypto.randomUUID(),
-        type: tx.type as "deposit" | "withdrawal",
-        amount: tx.amount,
-        frequency: recurring.frequency,
-        start_date: recurring.startDate.toISOString().split("T")[0],
-        next_due_date: recurring.startDate.toISOString().split("T")[0],
-        note: tx.note,
-        active: true,
-      };
-      setRecurringRules((prev) => [...prev, rule]);
-    }
-  };
-
-  const handleDeleteRecurring = (id: string) => {
-    setRecurringRules((prev) => prev.filter((r) => r.id !== id));
-  };
 
   // Merge DB trades for closed positions (no more mock data)
   const allClosedPositions = useMemo(() => {
