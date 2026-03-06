@@ -419,6 +419,31 @@ export default function Dashboard() {
     }));
   }, [dbTrades]);
 
+  // Open positions data
+  const openPositions = useMemo(() => {
+    return openTrades.map((t: any) => ({
+      id: t.id,
+      symbol: t.symbol,
+      side: t.side,
+      qty: t.quantity,
+      entry: t.entry_price,
+      sl: t.sl,
+      tp: t.tp,
+      openedAt: t.open_time ? new Date(t.open_time).toLocaleString() : "",
+      tags: t.tags || [],
+    }));
+  }, [openTrades]);
+
+  // Live prices for open positions
+  const openSymbols = useMemo(() => openPositions.map(p => p.symbol), [openPositions]);
+  const livePrices = useLivePrices(openSymbols);
+  const hasOpenTrades = openPositions.length > 0;
+
+  // Pagination for open positions
+  const openTotalPages = Math.max(1, Math.ceil(openPositions.length / ROWS_PER_PAGE));
+  const openPageClamped = Math.min(openPage, openTotalPages);
+  const paginatedOpen = openPositions.slice((openPageClamped - 1) * ROWS_PER_PAGE, openPageClamped * ROWS_PER_PAGE);
+
   const uniqueSymbols = useMemo(() => [...new Set(allClosedPositions.map((p) => p.symbol))], [allClosedPositions]);
   const filteredPositions = useMemo(() => applyFilters(allClosedPositions, filters), [allClosedPositions, filters]);
   const filtersActive = hasActiveFilters(filters);
