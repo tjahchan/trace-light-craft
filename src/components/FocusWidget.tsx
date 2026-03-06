@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, X, Play, Pause, RotateCcw, Target } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { X, Play, Pause, RotateCcw, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const timerPresets = [
@@ -14,7 +13,12 @@ const RING_RADIUS = 80;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const MAX_MINUTES = 120;
 
-export function FocusWidget() {
+interface FocusWidgetProps {
+  externalOpen?: boolean;
+  onExternalClose?: () => void;
+}
+
+export function FocusWidget({ externalOpen, onExternalClose }: FocusWidgetProps) {
   const [expanded, setExpanded] = useState(false);
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -26,6 +30,16 @@ export function FocusWidget() {
   const ringRef = useRef<SVGCircleElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+
+  // Open from external trigger
+  useEffect(() => {
+    if (externalOpen) setExpanded(true);
+  }, [externalOpen]);
+
+  // Sync close
+  useEffect(() => {
+    if (!expanded && externalOpen) onExternalClose?.();
+  }, [expanded, externalOpen, onExternalClose]);
 
   // Timer countdown
   useEffect(() => {
@@ -68,12 +82,9 @@ export function FocusWidget() {
   const handlePlay = () => {
     if (timeLeft <= 0) return;
     setRunning(true);
-    // Pulse animation
     setShowPulse(true);
     setTimeout(() => setShowPulse(false), 800);
-    // Collapse widget
     setExpanded(false);
-    // Request notification permission
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
@@ -134,12 +145,9 @@ export function FocusWidget() {
     setTimeFromAngle(angle);
   };
 
-  // Handle angle for drag handle position
   const handleAngle = totalSeconds > 0 ? (timeLeft / totalSeconds) * 2 * Math.PI : 0;
   const handleX = 90 + RING_RADIUS * Math.sin(handleAngle);
   const handleY = 90 - RING_RADIUS * Math.cos(handleAngle);
-
-  const isActive = running || timeLeft > 0;
 
   return (
     <>
@@ -164,7 +172,7 @@ export function FocusWidget() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             onClick={() => setExpanded(true)}
-            className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border border-white/[0.1] text-sm transition-all ${
+            className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border border-white/[0.1] text-sm transition-all ${
               sessionComplete
                 ? "bg-green-500/20 text-green-400 animate-pulse"
                 : "bg-black/50 text-foreground"
@@ -183,8 +191,8 @@ export function FocusWidget() {
         )}
       </AnimatePresence>
 
-      {/* Widget */}
-      <div className="fixed bottom-4 left-16 z-50" ref={containerRef}>
+      {/* Widget panel */}
+      <div className="fixed bottom-16 left-4 z-[300]" ref={containerRef}>
         <AnimatePresence>
           {expanded && (
             <motion.div
@@ -212,67 +220,29 @@ export function FocusWidget() {
                 onMouseDown={handleRingMouseDown}
                 onTouchStart={handleRingMouseDown}
               >
-                {/* Background ring */}
-                <circle
-                  cx="90"
-                  cy="90"
-                  r={RING_RADIUS}
-                  fill="none"
-                  stroke="rgba(255,255,255,0.08)"
-                  strokeWidth="6"
-                />
-                {/* Progress ring */}
+                <circle cx="90" cy="90" r={RING_RADIUS} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
                 <circle
                   ref={ringRef}
-                  cx="90"
-                  cy="90"
-                  r={RING_RADIUS}
-                  fill="none"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeDasharray={RING_CIRCUMFERENCE}
-                  strokeDashoffset={dashOffset}
+                  cx="90" cy="90" r={RING_RADIUS} fill="none"
+                  stroke="hsl(var(--primary))" strokeWidth="6" strokeLinecap="round"
+                  strokeDasharray={RING_CIRCUMFERENCE} strokeDashoffset={dashOffset}
                   transform="rotate(-90 90 90)"
                   className="transition-[stroke-dashoffset] duration-200"
                 />
-                {/* Drag handle */}
                 {totalSeconds > 0 && (
-                  <circle
-                    cx={handleX}
-                    cy={handleY}
-                    r="8"
-                    fill="hsl(var(--primary))"
-                    stroke="rgba(0,0,0,0.5)"
-                    strokeWidth="2"
-                    className="cursor-grab"
-                  />
+                  <circle cx={handleX} cy={handleY} r="8" fill="hsl(var(--primary))" stroke="rgba(0,0,0,0.5)" strokeWidth="2" className="cursor-grab" />
                 )}
-                {/* Center text */}
-                <text
-                  x="90"
-                  y="85"
-                  textAnchor="middle"
-                  className="fill-foreground"
-                  style={{ fontSize: "24px", fontFamily: "ui-monospace, monospace" }}
-                >
+                <text x="90" y="85" textAnchor="middle" className="fill-foreground" style={{ fontSize: "24px", fontFamily: "ui-monospace, monospace" }}>
                   {formatTime(timeLeft)}
                 </text>
-                {/* Play/Pause inside ring */}
                 <foreignObject x="65" y="95" width="50" height="30">
                   <div className="flex items-center justify-center gap-2">
                     {running ? (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setRunning(false); }}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
+                      <button onClick={(e) => { e.stopPropagation(); setRunning(false); }} className="text-muted-foreground hover:text-foreground">
                         <Pause className="h-5 w-5" />
                       </button>
                     ) : (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handlePlay(); }}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
+                      <button onClick={(e) => { e.stopPropagation(); handlePlay(); }} className="text-muted-foreground hover:text-foreground">
                         <Play className="h-5 w-5" />
                       </button>
                     )}
@@ -297,32 +267,12 @@ export function FocusWidget() {
                 ))}
               </div>
 
-              {/* Reset */}
-              <button
-                onClick={handleReset}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <button onClick={handleReset} className="text-muted-foreground hover:text-foreground transition-colors">
                 <RotateCcw className="h-3.5 w-3.5" />
               </button>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Collapsed pill */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-full backdrop-blur-xl border border-white/[0.1] text-sm transition-all ${
-            isActive
-              ? "bg-primary/20 text-foreground"
-              : "bg-black/40 text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Leaf className="h-3.5 w-3.5" />
-          <span className="text-xs font-medium">Focus</span>
-          {timeLeft > 0 && !running && (
-            <span className="text-[10px] font-mono text-primary ml-0.5">{formatTime(timeLeft)}</span>
-          )}
-        </button>
       </div>
     </>
   );

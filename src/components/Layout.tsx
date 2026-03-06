@@ -4,6 +4,7 @@ import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
 import { FocusWidget } from "@/components/FocusWidget";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { MomentraAI } from "@/components/MomentraAI";
+import { BottomToolbar } from "@/components/BottomToolbar";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const [prevImage, setPrevImage] = useState<string | null>(bg.image);
   const [transitioning, setTransitioning] = useState(false);
+
+  // Toolbar-controlled panel states
+  const [focusOpen, setFocusOpen] = useState(false);
+  const [bgOpen, setBgOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => {
     if (bg.image !== prevImage) {
@@ -59,24 +65,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {!bg.image && !transitioning && <div className="fixed inset-0 z-0 bg-background" />}
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col min-h-screen">
+      <div className="relative z-[10] flex flex-col min-h-screen">
         <TopNav />
         <main className="flex-1 overflow-auto p-6 page-transition">
           {children}
         </main>
       </div>
 
-      {/* Focus Widget — bottom-left */}
-      <FocusWidget />
+      {/* Bottom-left collapsible toolbar */}
+      <BottomToolbar
+        onFocusClick={() => setFocusOpen(true)}
+        onBackgroundsClick={() => setBgOpen(true)}
+        onFeedbackClick={() => setFeedbackOpen(true)}
+      />
 
-      {/* Feedback Widget — above Focus, bottom-left */}
-      <FeedbackWidget />
+      {/* Panels triggered by toolbar */}
+      <FocusWidget externalOpen={focusOpen} onExternalClose={() => setFocusOpen(false)} />
+      <BackgroundSwitcher externalOpen={bgOpen} onExternalClose={() => setBgOpen(false)} />
+      <FeedbackWidget externalOpen={feedbackOpen} onExternalClose={() => setFeedbackOpen(false)} />
 
       {/* Momentra AI — bottom-right */}
       <MomentraAI />
-
-      {/* Background Switcher */}
-      <BackgroundSwitcher />
     </div>
   );
 }
