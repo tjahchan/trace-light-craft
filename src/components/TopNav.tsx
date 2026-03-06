@@ -23,6 +23,7 @@ const navItems = [
 
 export function TopNav() {
   const { user, signOut } = useAuth();
+  const { startTour } = useOnboarding();
   const navigate = useNavigate();
 
   const initials = user?.user_metadata?.full_name
@@ -66,7 +67,7 @@ export function TopNav() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={() => { const { startTour } = useOnboarding(); startTour(); }}
+              onClick={startTour}
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors"
             >
               <BookOpen className="h-4 w-4" />
