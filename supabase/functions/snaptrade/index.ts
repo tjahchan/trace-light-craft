@@ -99,8 +99,9 @@ async function snapTradeRequest(
   const queryString = params.toString();
   const fullUrl = `${SNAPTRADE_BASE_URL}${path}?${queryString}`;
 
-  // Generate HMAC signature
-  const signature = await generateSignature(consumerKey, body, `/api/v1${path}`, queryString);
+  // Generate HMAC signature - pass null for empty body (matches SDK behavior)
+  const sigBody = body && Object.keys(body).length > 0 ? body : null;
+  const signature = await generateSignature(consumerKey, sigBody, `/api/v1${path}`, queryString);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
