@@ -88,6 +88,7 @@ export default function Dashboard() {
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [filters, setFilters] = useState<ClosedPositionFilters>(emptyFilters);
   const [dbTrades, setDbTrades] = useState<any[]>([]);
+  const [openTrades, setOpenTrades] = useState<any[]>([]);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [periodPnl, setPeriodPnl] = useState<Record<string, number>>({ week: 0, month: 0, year: 0 });
