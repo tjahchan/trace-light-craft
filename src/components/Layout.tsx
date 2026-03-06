@@ -5,6 +5,7 @@ import { FocusWidget } from "@/components/FocusWidget";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { MomentraAI } from "@/components/MomentraAI";
 import { BottomToolbar } from "@/components/BottomToolbar";
+import { PlatformTour } from "@/components/PlatformTour";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -86,6 +87,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Momentra AI — fixed bottom-left */}
       <MomentraAI />
+
+      {/* Platform Tour */}
+      <PlatformTour />
     </div>
   );
 }

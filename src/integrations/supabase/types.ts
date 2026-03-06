@@ -450,7 +450,9 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string | null
+          has_seen_tour: boolean
           id: string
+          sample_data_enabled: boolean
           updated_at: string
           user_id: string
         }
@@ -459,7 +461,9 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          has_seen_tour?: boolean
           id?: string
+          sample_data_enabled?: boolean
           updated_at?: string
           user_id: string
         }
@@ -468,7 +472,9 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          has_seen_tour?: boolean
           id?: string
+          sample_data_enabled?: boolean
           updated_at?: string
           user_id?: string
         }

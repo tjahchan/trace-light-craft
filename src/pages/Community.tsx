@@ -293,7 +293,7 @@ export default function Community() {
         </div>
 
         {/* Leaderboard Table */}
-        <div className="backdrop-blur-xl bg-card/60 border border-border rounded-2xl overflow-hidden">
+        <div className="backdrop-blur-xl bg-card/60 border border-border rounded-2xl overflow-hidden" data-tour="leaderboard">
           {lbLoading ? (
             <div className="p-8 text-center text-muted-foreground text-sm">
               Loading…
