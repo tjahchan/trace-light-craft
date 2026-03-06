@@ -46,6 +46,7 @@ import {
 } from "@/components/ClosedPositionsFilter";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
@@ -487,7 +488,9 @@ export default function Dashboard() {
   const finalChartData = chartData.length > 0 ? chartData : [{ date: "Today", balance: displayBalance }];
 
   return (
-    <div className="flex gap-6 flex-col xl:flex-row">
+    <div className="space-y-0">
+      <WelcomeBanner />
+      <div className="flex gap-6 flex-col xl:flex-row">
       {/* Left Panel */}
       <div className="w-full xl:w-80 shrink-0 space-y-4">
         {/* Streak Tracker Card */}
@@ -495,6 +498,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6"
+          data-tour="streak-card"
         >
           <div className="flex items-center gap-2 mb-3">
             <AnimatedFlame active={currentStreak >= 1} size={32} />
