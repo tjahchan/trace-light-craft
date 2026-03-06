@@ -102,10 +102,6 @@ const closedPositions = [
 
 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
-const defaultAccounts: Account[] = [
-  { id: "1", name: "Main Account", balance: 13500 },
-  { id: "2", name: "Demo Account", balance: 10000 },
-];
 
 const emptyFilters: ClosedPositionFilters = {
   dateFrom: undefined,
