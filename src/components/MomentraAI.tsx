@@ -4,6 +4,7 @@ import { X, Send, RotateCcw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 import ReactMarkdown from "react-markdown";
 import {
   Tooltip,
@@ -207,6 +208,7 @@ ${JSON.stringify(context, null, 2)}`;
 
 export function MomentraAI() {
   const { user } = useAuth();
+  const { checkAndIncrementUsage, triggerUpgrade, aiRequestsUsed, aiLimit, isPro } = usePlan();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -237,6 +239,14 @@ export function MomentraAI() {
   const send = async (text?: string) => {
     const content = text || input.trim();
     if (!content || isLoading || !user) return;
+
+    // Check AI usage limits
+    const usageResult = await checkAndIncrementUsage("ai");
+    if (!usageResult.allowed) {
+      triggerUpgrade("You've reached your monthly AI request limit. Upgrade to Pro for unlimited AI requests.");
+      return;
+    }
+
     setInput("");
 
     const userMsg: Msg = { role: "user", content };
@@ -515,6 +525,11 @@ export function MomentraAI() {
                   <Send className="h-4 w-4" />
                 </button>
               </form>
+              {!isPro && (
+                <p className="text-[9px] text-muted-foreground/50 text-center mt-1.5">
+                  {aiRequestsUsed} / {aiLimit} AI requests used this month
+                </p>
+              )}
             </div>
           </motion.div>
         )}

@@ -17,6 +17,7 @@ import {
 import { Upload, AlertCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 import { toast } from "sonner";
 
 interface CSVImportModalProps {
@@ -73,6 +74,7 @@ function getVal(row: string[], mapping: Record<number, string>, field: string): 
 
 export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete }: CSVImportModalProps) {
   const { user } = useAuth();
+  const { checkAndIncrementUsage, triggerUpgrade, csvImportsUsed, csvLimit, isPro } = usePlan();
   const [step, setStep] = useState<"upload" | "map" | "preview">("upload");
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
@@ -131,6 +133,13 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
 
   const handleImport = async () => {
     if (!user || !csvData) return;
+
+    // Check plan limits
+    const usageResult = await checkAndIncrementUsage("csv");
+    if (!usageResult.allowed) {
+      triggerUpgrade("You've reached your monthly CSV import limit. Upgrade to Pro for unlimited imports.");
+      return;
+    }
 
     // UUID validation
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -249,6 +258,11 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
                 <span>Choose File</span>
               </Button>
             </label>
+            {!isPro && (
+              <p className="text-[10px] text-muted-foreground/60 mt-3">
+                {csvImportsUsed} / {csvLimit} imports used this month
+              </p>
+            )}
           </div>
         )}
 

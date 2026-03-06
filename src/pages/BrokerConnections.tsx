@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 import { BrokerConnectionCard } from "@/components/broker/BrokerConnectionCard";
 import { AccountSelectionModal } from "@/components/broker/AccountSelectionModal";
 import { SyncStatusBanner } from "@/components/broker/SyncStatusBanner";
@@ -31,6 +32,7 @@ import {
 
 export default function BrokerConnections() {
   const { user } = useAuth();
+  const { canUseBrokerSync, triggerUpgrade } = usePlan();
   const [connections, setConnections] = useState<BrokerConnection[]>([]);
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +78,10 @@ export default function BrokerConnections() {
   }, [fetchData]);
 
   const handleConnectBroker = async () => {
+    if (!canUseBrokerSync) {
+      triggerUpgrade("Broker auto sync is available on the Pro plan. Upgrade to automatically import your trades.");
+      return;
+    }
     setConnecting(true);
     try {
       // Step 1: Register SnapTrade user if needed

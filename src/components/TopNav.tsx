@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Settings, LogOut, BookOpen } from "lucide-react";
+import { Settings, LogOut, BookOpen, Zap } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useNavigate } from "react-router-dom";
+import { usePlan } from "@/contexts/PlanContext";
 
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
 export function TopNav() {
   const { user, signOut } = useAuth();
   const { startTour } = useOnboarding();
+  const { isPro, triggerUpgrade } = usePlan();
   const navigate = useNavigate();
 
   const initials = user?.user_metadata?.full_name
@@ -64,6 +66,14 @@ export function TopNav() {
 
       {/* Right Side */}
       <div className="flex items-center gap-2">
+        {!isPro && (
+          <button
+            onClick={() => triggerUpgrade("Unlock broker auto sync, unlimited AI insights, and unlimited trade imports.")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-primary/15 text-primary hover:bg-primary/25 transition-all hover:shadow-[0_0_12px_-2px_hsl(var(--primary)/0.4)]"
+          >
+            <Zap className="h-3 w-3" /> Upgrade
+          </button>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <button

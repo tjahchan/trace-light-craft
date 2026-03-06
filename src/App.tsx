@@ -7,6 +7,8 @@ import { Layout } from "@/components/Layout";
 import { BackgroundProvider } from "@/contexts/BackgroundContext";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { PlanProvider } from "@/contexts/PlanContext";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
 import Blog from "./pages/Blog";
@@ -46,7 +48,9 @@ function ProtectedRoutes() {
 
   return (
     <BackgroundProvider>
+      <PlanProvider>
       <OnboardingProvider>
+        <UpgradeModal />
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -62,6 +66,7 @@ function ProtectedRoutes() {
           </Routes>
         </Layout>
       </OnboardingProvider>
+      </PlanProvider>
     </BackgroundProvider>
   );
 }

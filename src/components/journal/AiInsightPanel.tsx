@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
+import { usePlan } from "@/contexts/PlanContext";
+import { Lock } from "lucide-react";
 
 interface AiInsightPanelProps {
   content: string;
@@ -19,6 +21,7 @@ interface AiInsightPanelProps {
 }
 
 export function AiInsightPanel({ content, mode, tradeContext }: AiInsightPanelProps) {
+  const { canUseJournalInsights, triggerUpgrade } = usePlan();
   const [expanded, setExpanded] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [lessonsResult, setLessonsResult] = useState("");
@@ -100,6 +103,25 @@ export function AiInsightPanel({ content, mode, tradeContext }: AiInsightPanelPr
   }, [content, mode, tradeContext]);
 
   const hasOutput = analysisResult || lessonsResult;
+
+  if (!canUseJournalInsights) {
+    return (
+      <div className="rounded-xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-xl overflow-hidden">
+        <button
+          onClick={() => triggerUpgrade("Upgrade to Pro to unlock AI trade insights in your journal.")}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded-md bg-primary/15 flex items-center justify-center">
+              <Lock className="h-3 w-3 text-muted-foreground" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground tracking-wide">AI Insight</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">PRO</span>
+          </div>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-white/[0.01] backdrop-blur-xl overflow-hidden"
