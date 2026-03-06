@@ -33,13 +33,17 @@ async function generateSignature(
   requestPath: string,
   requestQuery: string
 ): Promise<string> {
-  const sigObject = {
+  // SnapTrade requires sorted keys and compact JSON (no spaces)
+  const sigObject: Record<string, unknown> = {
     content: requestData || {},
     path: requestPath,
     query: requestQuery,
   };
-  // SnapTrade requires sorted keys and no spaces (compact JSON)
-  const sigContent = JSON.stringify(sigObject, Object.keys(sigObject).sort());
+  // Sort keys and produce compact JSON like Python's separators=(',', ':')
+  const sortedKeys = Object.keys(sigObject).sort();
+  const sorted: Record<string, unknown> = {};
+  for (const k of sortedKeys) sorted[k] = sigObject[k];
+  const sigContent = JSON.stringify(sorted);
 
   const key = await crypto.subtle.importKey(
     "raw",
