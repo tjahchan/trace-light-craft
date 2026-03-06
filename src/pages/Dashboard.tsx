@@ -148,7 +148,7 @@ export default function Dashboard() {
   const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
   const streakDays = getWeekDots();
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? accounts[0];
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? accounts[0] ?? { id: "", name: "Loading...", balance: 0 };
 
   // Fetch accounts from Supabase
   const fetchAccounts = useCallback(async () => {
