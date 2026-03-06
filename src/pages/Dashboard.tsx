@@ -95,6 +95,9 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState<{ date: string; balance: number }[]>([]);
   const [closedPage, setClosedPage] = useState(1);
   const [openPage, setOpenPage] = useState(1);
+  const [pnlDisplayMode, setPnlDisplayMode] = useState<"$" | "%">(() => {
+    return (localStorage.getItem("pnlDisplayMode") as "$" | "%") || "$";
+  });
 
   const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
   const streakDays = getWeekDots();
@@ -465,6 +468,21 @@ export default function Dashboard() {
 
   const displayBalance = selectedAccount?.balance ?? 0;
 
+  // Calculate % change: balance at start of period = current balance - period pnl
+  const balanceAtStartOfPeriod = displayBalance - currentPeriodPnl;
+  const periodPctChange = balanceAtStartOfPeriod !== 0
+    ? (currentPeriodPnl / Math.abs(balanceAtStartOfPeriod)) * 100
+    : 0;
+
+  const togglePnlMode = (mode: "$" | "%") => {
+    setPnlDisplayMode(mode);
+    localStorage.setItem("pnlDisplayMode", mode);
+  };
+
+  const pnlDisplayText = pnlDisplayMode === "$"
+    ? `${isPnlPositive ? "+" : isPnlNeutral ? "+" : "-"}$${Math.abs(currentPeriodPnl).toFixed(2)}`
+    : `${isPnlPositive ? "+" : isPnlNeutral ? "+" : "-"}${Math.abs(periodPctChange).toFixed(2)}%`;
+
   // Use real chart data, or fall back to flat line
   const finalChartData = chartData.length > 0 ? chartData : [{ date: "Today", balance: displayBalance }];
 
@@ -557,21 +575,30 @@ export default function Dashboard() {
           )}
           <div className="flex items-center gap-2 mt-1">
             {isPnlNeutral ? (
-              <>
-                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm font-mono text-muted-foreground">+$0.00 {periodLabel}</span>
-              </>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
             ) : isPnlPositive ? (
-              <>
-                <ArrowUpRight className="h-3.5 w-3.5 text-profit" />
-                <span className="text-sm font-mono text-profit">+${currentPeriodPnl.toFixed(2)} {periodLabel}</span>
-              </>
+              <ArrowUpRight className="h-3.5 w-3.5 text-profit" />
             ) : (
-              <>
-                <ArrowDownRight className="h-3.5 w-3.5 text-loss" />
-                <span className="text-sm font-mono text-loss">-${Math.abs(currentPeriodPnl).toFixed(2)} {periodLabel}</span>
-              </>
+              <ArrowDownRight className="h-3.5 w-3.5 text-loss" />
             )}
+            <span className={cn("text-sm font-mono", isPnlNeutral ? "text-muted-foreground" : isPnlPositive ? "text-profit" : "text-loss")}>
+              {pnlDisplayText} {periodLabel}
+            </span>
+            {/* $ / % toggle */}
+            <div className="flex rounded-md bg-white/[0.06] p-0.5 ml-auto">
+              {(["$", "%"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => togglePnlMode(mode)}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
+                    pnlDisplayMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Period Toggle */}
