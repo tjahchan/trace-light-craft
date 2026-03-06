@@ -841,6 +841,39 @@ export type Database = {
           },
         ]
       }
+      user_plans: {
+        Row: {
+          ai_requests_this_month: number
+          created_at: string
+          csv_imports_this_month: number
+          current_billing_cycle_start: string
+          id: string
+          plan: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_requests_this_month?: number
+          created_at?: string
+          csv_imports_this_month?: number
+          current_billing_cycle_start?: string
+          id?: string
+          plan?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_requests_this_month?: number
+          created_at?: string
+          csv_imports_this_month?: number
+          current_billing_cycle_start?: string
+          id?: string
+          plan?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_streaks: {
         Row: {
           best_streak: number
@@ -888,6 +921,10 @@ export type Database = {
           email: string
           rank: number
         }[]
+      }
+      increment_usage: {
+        Args: { p_type: string; p_user_id: string }
+        Returns: Json
       }
       like_post: { Args: { post_id: string }; Returns: undefined }
       record_note_activity: { Args: { p_user_id: string }; Returns: Json }
