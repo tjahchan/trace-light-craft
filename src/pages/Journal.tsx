@@ -499,8 +499,13 @@ export default function Journal() {
 
   const showInsightsPanel = editorMode === "trade" && selectedTrade;
 
+  const handleTourCreateEntry = useCallback(() => {
+    handleCreateEntry("note");
+  }, [handleCreateEntry]);
+
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col">
+      <JournalOnboardingTour onCreateEntry={handleTourCreateEntry} />
       <MobileTabBar />
 
       <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
