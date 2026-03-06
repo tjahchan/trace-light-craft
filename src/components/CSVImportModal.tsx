@@ -74,6 +74,7 @@ function getVal(row: string[], mapping: Record<number, string>, field: string): 
 
 export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete }: CSVImportModalProps) {
   const { user } = useAuth();
+  const { checkAndIncrementUsage, triggerUpgrade, csvImportsUsed, csvLimit, isPro } = usePlan();
   const [step, setStep] = useState<"upload" | "map" | "preview">("upload");
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
