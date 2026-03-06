@@ -28,6 +28,7 @@ export interface Account {
   id: string;
   name: string;
   balance: number;
+  initialBalance: number;
 }
 
 interface ManageAccountsModalProps {
@@ -63,7 +64,7 @@ export function ManageAccountsModal({
       .select()
       .single();
     if (newAcc) {
-      const acc: Account = { id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance) };
+      const acc: Account = { id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance), initialBalance: 0 };
       onAccountsChange([...accounts, acc]);
       setActiveTab(accounts.length);
     }
@@ -81,11 +82,10 @@ export function ManageAccountsModal({
   };
 
   const handleDone = async () => {
-    // Save all account changes to Supabase
     for (const acc of accounts) {
       await supabase
         .from("accounts")
-        .update({ name: acc.name, balance: acc.balance })
+        .update({ name: acc.name, initial_balance: acc.initialBalance } as any)
         .eq("id", acc.id);
     }
     // Refresh balance for the current account
@@ -148,8 +148,8 @@ export function ManageAccountsModal({
                 <Label className="text-foreground text-xs">Initial Balance</Label>
                 <Input
                   type="number"
-                  value={current.balance || ""}
-                  onChange={(e) => updateAccount(activeTab, "balance", parseFloat(e.target.value) || 0)}
+                  value={current.initialBalance || ""}
+                  onChange={(e) => updateAccount(activeTab, "initialBalance", parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
                   className="bg-white/[0.05] border-white/[0.08] text-foreground font-mono"
                 />
