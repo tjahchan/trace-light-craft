@@ -12,6 +12,7 @@ import {
   Filter,
   Pin,
   Settings2,
+  Loader2,
 } from "lucide-react";
 import { AnimatedFlame } from "@/components/AnimatedFlame";
 import { useStreak } from "@/hooks/useStreak";
@@ -42,66 +43,9 @@ import {
   type ClosedPositionFilters,
 } from "@/components/ClosedPositionsFilter";
 import { cn } from "@/lib/utils";
-
-/* ---------- Balance history by period ---------- */
-const weekHistory = [
-  { date: "Mon", balance: 13100 },
-  { date: "Tue", balance: 13050 },
-  { date: "Wed", balance: 13200 },
-  { date: "Thu", balance: 13350 },
-  { date: "Fri", balance: 13280 },
-  { date: "Sat", balance: 13420 },
-  { date: "Sun", balance: 13500 },
-];
-
-const monthHistory = [
-  { date: "Feb 5", balance: 12800 },
-  { date: "Feb 10", balance: 12950 },
-  { date: "Feb 15", balance: 13100 },
-  { date: "Feb 20", balance: 12900 },
-  { date: "Feb 25", balance: 13200 },
-  { date: "Mar 1", balance: 13350 },
-  { date: "Mar 5", balance: 13500 },
-];
-
-const yearHistory = [
-  { date: "Apr", balance: 10000 },
-  { date: "May", balance: 10450 },
-  { date: "Jun", balance: 10200 },
-  { date: "Jul", balance: 11300 },
-  { date: "Aug", balance: 11100 },
-  { date: "Sep", balance: 12400 },
-  { date: "Oct", balance: 12800 },
-  { date: "Nov", balance: 12600 },
-  { date: "Dec", balance: 13000 },
-  { date: "Jan", balance: 13200 },
-  { date: "Feb", balance: 13100 },
-  { date: "Mar", balance: 13500 },
-];
-
-const historyMap: Record<string, typeof weekHistory> = {
-  week: weekHistory,
-  month: monthHistory,
-  year: yearHistory,
-};
-
-const changeMap: Record<string, { amount: number; label: string }> = {
-  week: { amount: 400, label: "this week" },
-  month: { amount: 700, label: "this month" },
-  year: { amount: 3500, label: "this year" },
-};
-
-/* ---------- Mock data ---------- */
-const openPositions: any[] = [];
-
-const closedPositions = [
-  { id: "1", tags: ["Scalp"], alias: "Morning Dip", closedAt: "2026-03-04 14:32", symbol: "EUR/USD", side: "Long", qty: 1.5, entry: 1.0842, exit: 1.0891, sl: 1.0810, pnl: 73.5, session: "London", hasNote: true },
-  { id: "2", tags: ["Swing"], alias: "Gold Short", closedAt: "2026-03-03 19:15", symbol: "XAU/USD", side: "Short", qty: 0.5, entry: 2045.3, exit: 2058.1, sl: null, pnl: -64.0, session: "New York", hasNote: false },
-  { id: "3", tags: ["Breakout"], alias: "", closedAt: "2026-03-02 03:45", symbol: "GBP/JPY", side: "Long", qty: 2.0, entry: 189.42, exit: 190.18, sl: 188.90, pnl: 152.0, session: "Tokyo", hasNote: true },
-];
+import { Skeleton } from "@/components/ui/skeleton";
 
 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
-
 
 const emptyFilters: ClosedPositionFilters = {
   dateFrom: undefined,
@@ -125,6 +69,8 @@ function riskColor(pct: number) {
   return "text-loss";
 }
 
+const STORAGE_KEY = "selectedAccountId";
+
 type BalancePeriod = "week" | "month" | "year";
 
 export default function Dashboard() {
@@ -144,57 +90,239 @@ export default function Dashboard() {
   const [filters, setFilters] = useState<ClosedPositionFilters>(emptyFilters);
   const [dbTrades, setDbTrades] = useState<any[]>([]);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(true);
+  const [periodPnl, setPeriodPnl] = useState<Record<string, number>>({ week: 0, month: 0, year: 0 });
+  const [chartData, setChartData] = useState<{ date: string; balance: number }[]>([]);
 
   const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
   const streakDays = getWeekDots();
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? accounts[0] ?? { id: "", name: "Loading...", balance: 0 };
+  const selectedAccount = useMemo(() => {
+    if (accounts.length === 0) return null;
+    return accounts.find((a) => a.id === selectedAccountId) ?? accounts[0];
+  }, [accounts, selectedAccountId]);
 
-  // Fetch accounts from Supabase
-  const fetchAccounts = useCallback(async () => {
+  const isValidAccount = !!selectedAccount && selectedAccount.id !== "";
+
+  // Persist selectedAccountId to localStorage
+  const selectAccount = useCallback((id: string) => {
+    setSelectedAccountId(id);
+    localStorage.setItem(STORAGE_KEY, id);
+  }, []);
+
+  // ---- Fetch accounts from Supabase ----
+  useEffect(() => {
     if (!user) return;
-    const { data, error } = await supabase
-      .from("accounts")
-      .select("*")
-      .eq("user_id", user.id);
-    if (!error && data && data.length > 0) {
-      const mapped = data.map((a) => ({ id: a.id, name: a.name, balance: Number(a.balance) }));
-      setAccounts(mapped);
-      if (!selectedAccountId || !mapped.find((a) => a.id === selectedAccountId)) {
-        setSelectedAccountId(mapped[0].id);
+    const load = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("accounts")
+          .select("*")
+          .eq("user_id", user.id);
+
+        let accs: Account[] = [];
+        if (!error && data && data.length > 0) {
+          accs = data.map((a) => ({ id: a.id, name: a.name, balance: Number(a.balance) }));
+        } else if (!error && (!data || data.length === 0)) {
+          const { data: newAcc } = await supabase
+            .from("accounts")
+            .insert({ user_id: user.id, name: "Main Account", balance: 0 })
+            .select()
+            .single();
+          if (newAcc) {
+            accs = [{ id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance) }];
+          }
+        }
+
+        setAccounts(accs);
+
+        // Restore from localStorage or default to first
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored && accs.find((a) => a.id === stored)) {
+          setSelectedAccountId(stored);
+        } else if (accs.length > 0) {
+          setSelectedAccountId(accs[0].id);
+          localStorage.setItem(STORAGE_KEY, accs[0].id);
+        }
+        setAccountsLoaded(true);
+      } catch (err) {
+        console.error("[Dashboard] Error loading accounts:", err);
+        setAccountsLoaded(true);
       }
-    } else if (!error && (!data || data.length === 0)) {
-      // Auto-create a default account
-      const { data: newAcc } = await supabase
+    };
+    load();
+  }, [user]);
+
+  // ---- Reusable: fetch and set balance ----
+  const fetchAndSetBalance = useCallback(async (accountId: string) => {
+    if (!accountId || !user) return;
+    setBalanceLoading(true);
+    try {
+      // 1. Get account initial balance (stored balance)
+      const { data: accData } = await supabase
         .from("accounts")
-        .insert({ user_id: user.id, name: "Main Account", balance: 0 })
-        .select()
+        .select("balance")
+        .eq("id", accountId)
         .single();
-      if (newAcc) {
-        setAccounts([{ id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance) }]);
-        setSelectedAccountId(newAcc.id);
-      }
-    }
-    setAccountsLoaded(true);
-  }, [user, selectedAccountId]);
+      const storedBalance = accData ? Number(accData.balance) : 0;
 
-  useEffect(() => { fetchAccounts(); }, [user]);
-
-  const fetchTrades = useCallback(async () => {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from("trades" as any)
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "closed")
-      .order("close_time", { ascending: false });
-    if (!error && data) {
-      console.log("[Dashboard] Loaded", data.length, "closed trades from DB");
-      setDbTrades(data as any[]);
+      // Update local state
+      setAccounts((prev) =>
+        prev.map((a) => (a.id === accountId ? { ...a, balance: storedBalance } : a))
+      );
+    } catch (err) {
+      console.error("[Dashboard] Error fetching balance:", err);
+    } finally {
+      setBalanceLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { fetchTrades(); }, [fetchTrades]);
+  // ---- Fetch trades (only when valid account) ----
+  const fetchTrades = useCallback(async () => {
+    if (!user || !isValidAccount) return;
+    try {
+      const { data, error } = await supabase
+        .from("trades" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("account_id", selectedAccount!.id)
+        .eq("status", "closed")
+        .order("close_time", { ascending: false });
+      if (!error && data) {
+        console.log("[Dashboard] Loaded", data.length, "closed trades from DB");
+        setDbTrades(data as any[]);
+      }
+    } catch (err) {
+      console.error("[Dashboard] Error fetching trades:", err);
+    }
+  }, [user, isValidAccount, selectedAccount]);
+
+  // ---- Fetch period PnL from DB ----
+  const fetchPeriodPnl = useCallback(async () => {
+    if (!user || !isValidAccount) {
+      setPeriodPnl({ week: 0, month: 0, year: 0 });
+      return;
+    }
+    try {
+      const now = new Date();
+      const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
+      const monthAgo = new Date(now); monthAgo.setMonth(now.getMonth() - 1);
+      const yearAgo = new Date(now); yearAgo.setFullYear(now.getFullYear() - 1);
+
+      const fetchPnlSince = async (since: Date) => {
+        const { data } = await supabase
+          .from("trades" as any)
+          .select("pnl")
+          .eq("user_id", user.id)
+          .eq("account_id", selectedAccount!.id)
+          .eq("status", "closed")
+          .gte("close_time", since.toISOString());
+        if (!data) return 0;
+        return (data as any[]).reduce((sum: number, t: any) => sum + (Number(t.pnl) || 0), 0);
+      };
+
+      const [w, m, y] = await Promise.all([
+        fetchPnlSince(weekAgo),
+        fetchPnlSince(monthAgo),
+        fetchPnlSince(yearAgo),
+      ]);
+      setPeriodPnl({ week: w, month: m, year: y });
+    } catch (err) {
+      console.error("[Dashboard] Error fetching PnL:", err);
+    }
+  }, [user, isValidAccount, selectedAccount]);
+
+  // ---- Build chart data from real transactions + trades ----
+  const buildChartData = useCallback(async () => {
+    if (!user || !isValidAccount) {
+      setChartData([]);
+      return;
+    }
+    try {
+      const accId = selectedAccount!.id;
+
+      // Get account creation date and initial balance
+      const { data: accRow } = await supabase
+        .from("accounts")
+        .select("balance, created_at")
+        .eq("id", accId)
+        .single();
+
+      const initialBalance = accRow ? Number(accRow.balance) : 0;
+
+      // Get all transactions for this account
+      const { data: txns } = await supabase
+        .from("transactions")
+        .select("date, type, amount")
+        .eq("account_id", accId)
+        .eq("user_id", user.id)
+        .order("date", { ascending: true });
+
+      // Get all closed trades for this account
+      const { data: trades } = await supabase
+        .from("trades" as any)
+        .select("close_time, pnl")
+        .eq("account_id", accId)
+        .eq("user_id", user.id)
+        .eq("status", "closed")
+        .order("close_time", { ascending: true });
+
+      // Build daily events map
+      const events: Record<string, number> = {};
+      if (txns) {
+        for (const tx of txns) {
+          const day = new Date(tx.date).toISOString().split("T")[0];
+          const amt = Number(tx.amount) || 0;
+          events[day] = (events[day] || 0) + (tx.type === "deposit" ? amt : -amt);
+        }
+      }
+      if (trades) {
+        for (const t of trades as any[]) {
+          if (!t.close_time) continue;
+          const day = new Date(t.close_time).toISOString().split("T")[0];
+          events[day] = (events[day] || 0) + (Number(t.pnl) || 0);
+        }
+      }
+
+      const sortedDays = Object.keys(events).sort();
+      if (sortedDays.length === 0) {
+        // No history — show flat line at current balance
+        const today = new Date().toISOString().split("T")[0];
+        setChartData([{ date: today, balance: initialBalance }]);
+        return;
+      }
+
+      // Build running balance
+      let running = initialBalance;
+      const points: { date: string; balance: number }[] = [];
+      for (const day of sortedDays) {
+        running += events[day];
+        const d = new Date(day);
+        const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        points.push({ date: label, balance: running });
+      }
+      setChartData(points);
+    } catch (err) {
+      console.error("[Dashboard] Error building chart:", err);
+    }
+  }, [user, isValidAccount, selectedAccount]);
+
+  // ---- Trigger data fetches when account is ready ----
+  useEffect(() => {
+    if (!accountsLoaded || !isValidAccount) return;
+    fetchAndSetBalance(selectedAccount!.id);
+    fetchTrades();
+    fetchPeriodPnl();
+    buildChartData();
+  }, [accountsLoaded, isValidAccount, selectedAccount?.id]);
+
+  const refreshAll = useCallback(() => {
+    if (!isValidAccount) return;
+    fetchAndSetBalance(selectedAccount!.id);
+    fetchTrades();
+    fetchPeriodPnl();
+    buildChartData();
+  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchPeriodPnl, buildChartData]);
 
   const handleTransaction = (
     tx: Omit<Transaction, "id">,
@@ -202,13 +330,10 @@ export default function Dashboard() {
   ) => {
     const newTx: Transaction = { ...tx, id: crypto.randomUUID() };
     setTransactions((prev) => [newTx, ...prev]);
-    setAccounts((prev) =>
-      prev.map((acc) =>
-        acc.id === selectedAccountId
-          ? { ...acc, balance: tx.type === "deposit" ? acc.balance + tx.amount : acc.balance - tx.amount }
-          : acc
-      )
-    );
+    // Refresh balance from DB after transaction
+    if (isValidAccount) {
+      setTimeout(() => refreshAll(), 500);
+    }
     if (recurring) {
       const rule: RecurringRule = {
         id: crypto.randomUUID(),
@@ -228,9 +353,9 @@ export default function Dashboard() {
     setRecurringRules((prev) => prev.filter((r) => r.id !== id));
   };
 
-  // Merge mock + DB trades for closed positions
+  // Merge DB trades for closed positions (no more mock data)
   const allClosedPositions = useMemo(() => {
-    const fromDb = dbTrades.map((t: any) => ({
+    return dbTrades.map((t: any) => ({
       id: t.id,
       tags: t.tags || [],
       alias: "",
@@ -245,22 +370,27 @@ export default function Dashboard() {
       session: "",
       hasNote: !!t.note,
     }));
-    return [...fromDb, ...closedPositions];
   }, [dbTrades]);
 
   const uniqueSymbols = useMemo(() => [...new Set(allClosedPositions.map((p) => p.symbol))], [allClosedPositions]);
   const filteredPositions = useMemo(() => applyFilters(allClosedPositions, filters), [allClosedPositions, filters]);
   const filtersActive = hasActiveFilters(filters);
 
-  const periodData = historyMap[balancePeriod];
-  const periodChange = changeMap[balancePeriod];
-  const isPositive = periodChange.amount >= 0;
+  const currentPeriodPnl = periodPnl[balancePeriod] || 0;
+  const periodLabel = balancePeriod === "week" ? "this week" : balancePeriod === "month" ? "this month" : "this year";
+  const isPnlPositive = currentPeriodPnl > 0;
+  const isPnlNeutral = currentPeriodPnl === 0;
+
+  const displayBalance = selectedAccount?.balance ?? 0;
+
+  // Use real chart data, or fall back to flat line
+  const finalChartData = chartData.length > 0 ? chartData : [{ date: "Today", balance: displayBalance }];
 
   return (
     <div className="flex gap-6 flex-col xl:flex-row">
       {/* Left Panel */}
       <div className="w-full xl:w-80 shrink-0 space-y-4">
-        {/* Streak Tracker Card — TOP */}
+        {/* Streak Tracker Card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -297,16 +427,20 @@ export default function Dashboard() {
           className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 space-y-3"
         >
           <div className="flex items-center gap-2">
-            <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-              <SelectTrigger className="flex-1 bg-white/[0.04] border-white/[0.08]">
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((acc) => (
-                  <SelectItem key={acc.id} value={acc.id}>{acc.name || "Unnamed Account"}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {accountsLoaded && accounts.length > 0 ? (
+              <Select value={selectedAccountId} onValueChange={selectAccount}>
+                <SelectTrigger className="flex-1 bg-white/[0.04] border-white/[0.08]">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>{acc.name || "Unnamed Account"}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Skeleton className="h-9 flex-1" />
+            )}
             <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground hover:bg-white/[0.05]" onClick={() => setManageOpen(true)}>
               <Settings2 className="h-4 w-4" />
             </Button>
@@ -332,18 +466,30 @@ export default function Dashboard() {
           className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6"
         >
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Total Balance</p>
-          <p className="text-3xl font-mono font-medium text-foreground">
-            ${selectedAccount.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-          </p>
+          {!accountsLoaded || balanceLoading ? (
+            <Skeleton className="h-9 w-40 mb-2" />
+          ) : (
+            <p className="text-3xl font-mono font-medium text-foreground">
+              ${displayBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </p>
+          )}
           <div className="flex items-center gap-2 mt-1">
-            {isPositive ? (
-              <ArrowUpRight className="h-3.5 w-3.5 text-profit" />
+            {isPnlNeutral ? (
+              <>
+                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-sm font-mono text-muted-foreground">+$0.00 {periodLabel}</span>
+              </>
+            ) : isPnlPositive ? (
+              <>
+                <ArrowUpRight className="h-3.5 w-3.5 text-profit" />
+                <span className="text-sm font-mono text-profit">+${currentPeriodPnl.toFixed(2)} {periodLabel}</span>
+              </>
             ) : (
-              <ArrowDownRight className="h-3.5 w-3.5 text-loss" />
+              <>
+                <ArrowDownRight className="h-3.5 w-3.5 text-loss" />
+                <span className="text-sm font-mono text-loss">-${Math.abs(currentPeriodPnl).toFixed(2)} {periodLabel}</span>
+              </>
             )}
-            <span className={cn("text-sm font-mono", isPositive ? "text-profit" : "text-loss")}>
-              {isPositive ? "+" : "-"}${Math.abs(periodChange.amount).toFixed(2)} {periodChange.label}
-            </span>
           </div>
 
           {/* Period Toggle */}
@@ -363,39 +509,45 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-3 h-28">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={periodData}>
-                <XAxis
-                  dataKey="date"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  hide={false}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                  tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
-                  width={40}
-                  domain={["dataMin - 200", "dataMax + 200"]}
-                />
-                <Line type="monotone" dataKey="balance" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
-                <Tooltip
-                  contentStyle={{
-                    background: "rgba(0,0,0,0.8)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    fontFamily: "monospace",
-                    fontSize: "12px",
-                  }}
-                  formatter={(value: number) => [`$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, "Balance"]}
-                  labelFormatter={(label: string) => label}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {accountsLoaded && isValidAccount ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={finalChartData}>
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    hide={false}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                    tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
+                    width={40}
+                    domain={["dataMin - 200", "dataMax + 200"]}
+                  />
+                  <Line type="monotone" dataKey="balance" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "rgba(0,0,0,0.8)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontFamily: "monospace",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value: number) => [`$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, "Balance"]}
+                    labelFormatter={(label: string) => label}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </div>
           <Button
             variant="outline"
@@ -423,9 +575,7 @@ export default function Dashboard() {
               <Filter className="h-3.5 w-3.5" />
             </Button>
           </div>
-          {openPositions.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">No orders to display. Create your first order.</div>
-          ) : null}
+          <div className="p-8 text-center text-muted-foreground text-sm">No orders to display. Create your first order.</div>
         </motion.div>
 
         {/* Closed Positions Card */}
@@ -445,77 +595,83 @@ export default function Dashboard() {
 
           <ClosedPositionsFilter open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} onApply={setFilters} symbols={uniqueSymbols} />
 
-          <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.06] text-muted-foreground text-xs uppercase tracking-wider">
-                  <th className="p-3 text-left font-medium"><Pin className="h-3 w-3" /></th>
-                  <th className="p-3 text-left font-medium">Tags</th>
-                  <th className="p-3 text-left font-medium">Alias</th>
-                  <th className="p-3 text-left font-medium">Closed At</th>
-                  <th className="p-3 text-left font-medium">Symbol</th>
-                  <th className="p-3 text-left font-medium">Side</th>
-                  <th className="p-3 text-right font-medium">Qty</th>
-                  <th className="p-3 text-right font-medium">Entry</th>
-                  <th className="p-3 text-right font-medium">Exit</th>
-                  <th className="p-3 text-right font-medium">Risk %</th>
-                  <th className="p-3 text-right font-medium">PnL</th>
-                  <th className="p-3 text-left font-medium">Session</th>
-                  <th className="p-3 text-center font-medium">📓</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPositions.map((pos) => {
-                  const risk = getRiskPercent(pos.entry, pos.sl, pos.qty, pos.symbol, selectedAccount.balance);
-                  return (
-                    <tr key={pos.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer" onClick={() => navigate(`/trade/${pos.id}`)}>
-                      <td className="p-3"><Pin className="h-3 w-3 text-muted-foreground cursor-pointer hover:text-foreground" /></td>
-                      <td className="p-3">
-                        <div className="flex gap-1">
-                          {pos.tags.map((t: string) => (
-                            <span key={t} className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.06] text-muted-foreground">{t}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-3 text-foreground">{pos.alias || "—"}</td>
-                      <td className="p-3 font-mono text-xs text-muted-foreground">{pos.closedAt}</td>
-                      <td className="p-3 font-mono font-medium text-foreground">{pos.symbol}</td>
-                      <td className="p-3">
-                        <span className={pos.side === "Long" ? "badge-long" : "badge-short"}>{pos.side}</span>
-                      </td>
-                      <td className="p-3 text-right font-mono text-foreground">{pos.qty}</td>
-                      <td className="p-3 text-right font-mono text-foreground">{pos.entry}</td>
-                      <td className="p-3 text-right font-mono text-foreground">{pos.exit}</td>
-                      <td className="p-3 text-right font-mono">
-                        {risk !== null ? (
-                          <span className={riskColor(risk)}>{risk.toFixed(1)}%</span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className={`p-3 text-right font-mono font-medium ${pos.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {pos.pnl >= 0 ? "+" : ""}${Math.abs(pos.pnl).toFixed(2)}
-                      </td>
-                      <td className="p-3 text-xs text-muted-foreground">{pos.session}</td>
-                      <td className="p-3 text-center">
-                        {pos.hasNote && <span className="cursor-pointer hover:opacity-80" title="View linked journal entry">📓</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filteredPositions.length === 0 && (
-                  <tr>
-                    <td colSpan={13} className="p-6 text-center text-muted-foreground text-sm">No positions match your filters.</td>
+          {!accountsLoaded ? (
+            <div className="p-8 text-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-6 px-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/[0.06] text-muted-foreground text-xs uppercase tracking-wider">
+                    <th className="p-3 text-left font-medium"><Pin className="h-3 w-3" /></th>
+                    <th className="p-3 text-left font-medium">Tags</th>
+                    <th className="p-3 text-left font-medium">Alias</th>
+                    <th className="p-3 text-left font-medium">Closed At</th>
+                    <th className="p-3 text-left font-medium">Symbol</th>
+                    <th className="p-3 text-left font-medium">Side</th>
+                    <th className="p-3 text-right font-medium">Qty</th>
+                    <th className="p-3 text-right font-medium">Entry</th>
+                    <th className="p-3 text-right font-medium">Exit</th>
+                    <th className="p-3 text-right font-medium">Risk %</th>
+                    <th className="p-3 text-right font-medium">PnL</th>
+                    <th className="p-3 text-left font-medium">Session</th>
+                    <th className="p-3 text-center font-medium">📓</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredPositions.map((pos) => {
+                    const risk = getRiskPercent(pos.entry, pos.sl, pos.qty, pos.symbol, displayBalance);
+                    return (
+                      <tr key={pos.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer" onClick={() => navigate(`/trade/${pos.id}`)}>
+                        <td className="p-3"><Pin className="h-3 w-3 text-muted-foreground cursor-pointer hover:text-foreground" /></td>
+                        <td className="p-3">
+                          <div className="flex gap-1">
+                            {pos.tags.map((t: string) => (
+                              <span key={t} className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.06] text-muted-foreground">{t}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-3 text-foreground">{pos.alias || "—"}</td>
+                        <td className="p-3 font-mono text-xs text-muted-foreground">{pos.closedAt}</td>
+                        <td className="p-3 font-mono font-medium text-foreground">{pos.symbol}</td>
+                        <td className="p-3">
+                          <span className={pos.side === "Long" ? "badge-long" : "badge-short"}>{pos.side}</span>
+                        </td>
+                        <td className="p-3 text-right font-mono text-foreground">{pos.qty}</td>
+                        <td className="p-3 text-right font-mono text-foreground">{pos.entry}</td>
+                        <td className="p-3 text-right font-mono text-foreground">{pos.exit}</td>
+                        <td className="p-3 text-right font-mono">
+                          {risk !== null ? (
+                            <span className={riskColor(risk)}>{risk.toFixed(1)}%</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className={`p-3 text-right font-mono font-medium ${pos.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                          {pos.pnl >= 0 ? "+" : ""}${Math.abs(pos.pnl).toFixed(2)}
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">{pos.session}</td>
+                        <td className="p-3 text-center">
+                          {pos.hasNote && <span className="cursor-pointer hover:opacity-80" title="View linked journal entry">📓</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredPositions.length === 0 && (
+                    <tr>
+                      <td colSpan={13} className="p-6 text-center text-muted-foreground text-sm">No closed positions yet. Import trades to get started.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </motion.div>
       </div>
 
       <TradeImportModal open={importOpen} onOpenChange={setImportOpen} />
-      <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={fetchTrades} />
+      <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
       <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} />
       <DepositWithdrawModal
         open={depositOpen}
