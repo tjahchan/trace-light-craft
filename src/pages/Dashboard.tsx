@@ -123,10 +123,42 @@ export default function Dashboard() {
     <div className="flex gap-6 flex-col xl:flex-row">
       {/* Left Panel */}
       <div className="w-full xl:w-80 shrink-0 space-y-4">
+        {/* Streak Tracker Card — TOP */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <AnimatedFlame active={currentStreak >= 1} size={32} />
+            <span className="font-semibold text-foreground">
+              {streakLoading ? "…" : `${currentStreak} day streak`}
+            </span>
+            <span className="text-xs text-muted-foreground ml-auto">Best: {bestStreak}</span>
+          </div>
+          <div className="flex gap-2 justify-between">
+            {dayLabels.map((d, i) => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <span className="text-[10px] text-muted-foreground">{d}</span>
+                <div
+                  className={`h-3 w-3 rounded-full ${
+                    streakDays[i] ? "bg-profit" : "bg-white/[0.08]"
+                  } ${
+                    i === 5
+                      ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                      : ""
+                  }`}
+                />
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
         {/* Combined Account + Actions Card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
           className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6 space-y-3"
         >
           {/* Row 1: Account selector + gear */}
@@ -229,41 +261,10 @@ export default function Dashboard() {
           </Button>
         </motion.div>
 
-        {/* Streak Tracker Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.09 }}
-          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6"
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <AnimatedFlame active={currentStreak >= 1} size={32} />
-            <span className="font-semibold text-foreground">
-              {streakLoading ? "…" : `${currentStreak} day streak`}
-            </span>
-            <span className="text-xs text-muted-foreground ml-auto">Best: {bestStreak}</span>
-          </div>
-          <div className="flex gap-2 justify-between">
-            {dayLabels.map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">{d}</span>
-                <div
-                  className={`h-3 w-3 rounded-full ${
-                    streakDays[i] ? "bg-profit" : "bg-white/[0.08]"
-                  } ${
-                    i === 5
-                      ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
-                      : ""
-                  }`}
-                />
-              </div>
-            ))}
-          </div>
-        </motion.div>
       </div>
 
       {/* Main Panel */}
-      <div className="flex-1 space-y-6 min-w-0 mt-20 xl:mt-20">
+      <div className="flex-1 space-y-6 min-w-0">
         {/* Open Positions Card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}

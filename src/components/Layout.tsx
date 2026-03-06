@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { TopNav } from "@/components/TopNav";
 import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
-import { AmbientFocusWidget } from "@/components/AmbientFocusWidget";
+import { FocusWidget } from "@/components/FocusWidget";
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -64,8 +65,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Ambient Focus Widget */}
-      <AmbientFocusWidget />
+      {/* Focus Widget */}
+      <FocusWidget />
+
+      {/* Feedback Widget */}
+      <FeedbackWidget />
 
       {/* Background Switcher */}
       <BackgroundSwitcher />
