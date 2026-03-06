@@ -54,7 +54,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-black/40" />
         </div>
       )}
-      {!bg.image && !prevImage && <div className="fixed inset-0 z-0 bg-background" />}
+      {!bg.image && !transitioning && <div className="fixed inset-0 z-0 bg-background" />}
 
       {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen">
