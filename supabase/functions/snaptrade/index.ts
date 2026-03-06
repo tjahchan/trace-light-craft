@@ -174,13 +174,14 @@ async function generateConnectUrl(userId: string, supabaseAdmin: ReturnType<type
     throw new Error("No SnapTrade user registered. Call register first.");
   }
 
-  // TODO: Generate the redirect URL using SnapTrade's connection portal endpoint
-  // POST /api/v1/snapTrade/login with userId, userSecret, and broker (optional)
-  const result = await snapTradeRequest("POST", "/snapTrade/login", {
-    userId: integration.snaptrade_user_id,
-    userSecret: integration.snaptrade_user_secret_encrypted,
-    ...(redirectUri ? { customRedirect: redirectUri } : {}),
-  });
+  // POST /api/v1/snapTrade/login — userId and userSecret go as query params
+  const result = await snapTradeRequest("POST", "/snapTrade/login",
+    redirectUri ? { customRedirect: redirectUri } : {},
+    {
+      userId: integration.snaptrade_user_id,
+      userSecret: integration.snaptrade_user_secret_encrypted || "",
+    }
+  );
 
   return {
     redirect_url: result?.loginLink || result?.redirectURI || result?.url || "",
