@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Settings, User, LogOut } from "lucide-react";
+import { Settings, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { MomentraAI } from "@/components/MomentraAI";
 
 const navItems = [
   { title: "Dashboard", url: "/" },
@@ -60,6 +61,9 @@ export function TopNav() {
 
       {/* Right Side */}
       <div className="flex items-center gap-2">
+        {/* Momentra AI Button */}
+        <MomentraAI />
+
         <NavLink
           to="/settings"
           className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors"

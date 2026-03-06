@@ -18,6 +18,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,6 +54,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 
 const timeframes = ["1m", "30m", "1h"];
+
+const triggerCelebration = () => {
+  console.log("🎉 Confetti triggered");
+  confetti({
+    particleCount: 80,
+    spread: 70,
+    origin: { y: 0.75 },
+    colors: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ffffff'],
+  });
+};
 
 export default function TradeDetail() {
   const { tradeId } = useParams<{ tradeId: string }>();
@@ -52,6 +74,7 @@ export default function TradeDetail() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [symbol, setSymbol] = useState("");
   const [side, setSide] = useState("Long");
@@ -67,6 +90,8 @@ export default function TradeDetail() {
   const [journalNote, setJournalNote] = useState("");
   const [saved, setSaved] = useState(false);
   const [selectedTf, setSelectedTf] = useState("1m");
+  const [isDirty, setIsDirty] = useState(false);
+  const [journalSaving, setJournalSaving] = useState(false);
 
   // Edit history
   const [editHistory, setEditHistory] = useState<any[]>([]);
@@ -119,6 +144,7 @@ export default function TradeDetail() {
     setOpenedAt(data.open_time ? new Date(data.open_time) : new Date());
     setJournalNote(data.note || "");
     lastSavedNoteRef.current = data.note || "";
+    setIsDirty(false);
     setLoading(false);
   }
 
@@ -160,6 +186,32 @@ export default function TradeDetail() {
   const riskReward = slNum && tpNum && entryNum
     ? (Math.abs(tpNum - entryNum) / Math.abs(entryNum - slNum)).toFixed(2)
     : "—";
+
+  // Save journal note only
+  const handleSaveJournal = async () => {
+    if (!tradeId || !user || !isDirty) return;
+    setJournalSaving(true);
+
+    const { error } = await supabase
+      .from("trades")
+      .update({ note: journalNote })
+      .eq("id", tradeId);
+
+    if (!error && trade?.status === "closed") {
+      triggerCelebration();
+      toast({ title: "Journal entry saved 🎉", description: "Keep reflecting on your trades!" });
+      lastSavedNoteRef.current = journalNote;
+      setIsDirty(false);
+    } else if (!error) {
+      toast({ title: "Journal entry saved" });
+      lastSavedNoteRef.current = journalNote;
+      setIsDirty(false);
+    } else {
+      console.error("Journal save error:", error);
+      toast({ title: "Failed to save journal", variant: "destructive" });
+    }
+    setJournalSaving(false);
+  };
 
   const handleSave = async () => {
     if (!tradeId || !user) return;
@@ -221,6 +273,7 @@ export default function TradeDetail() {
 
     if (error) {
       console.error("Save error:", error);
+      toast({ title: "Failed to save trade", variant: "destructive" });
       setSaving(false);
       return;
     }
@@ -241,21 +294,38 @@ export default function TradeDetail() {
     setTrade({ ...trade, ...updatedFields, tags: newTags });
 
     // Confetti for journal note save on closed trades
-    const noteChanged = journalNote.trim() !== lastSavedNoteRef.current.trim() && journalNote.trim().length > 0;
-    if (noteChanged && updatedFields.status === "closed") {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.75 },
-        colors: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ffffff'],
-      });
+    if (isDirty && updatedFields.status === "closed") {
+      triggerCelebration();
       toast({ title: "Journal entry saved 🎉", description: "Keep reflecting on your trades!" });
+    } else {
+      toast({ title: "Trade saved" });
     }
     lastSavedNoteRef.current = journalNote;
+    setIsDirty(false);
 
     setSaved(true);
     setSaving(false);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  // Delete trade
+  const handleDeleteTrade = async () => {
+    if (!tradeId || !user) return;
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from("trades")
+      .delete()
+      .eq("id", tradeId);
+
+    if (!error) {
+      toast({ title: "Trade deleted" });
+      navigate("/");
+    } else {
+      console.log("Delete error:", error);
+      toast({ title: "Failed to delete trade", description: error.message, variant: "destructive" });
+    }
+    setDeleting(false);
   };
 
   // Loading state
@@ -320,9 +390,32 @@ export default function TradeDetail() {
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                 <Pin className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-loss">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-loss">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-card border-white/[0.08]">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this trade?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This cannot be undone. The trade will be permanently removed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteTrade}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={deleting}
+                    >
+                      {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
 
@@ -497,9 +590,25 @@ export default function TradeDetail() {
       <div className="backdrop-blur-xl bg-black/40 border-t border-white/[0.06] h-[25vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-2 border-b border-white/[0.06]">
           <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Trade Journal</h3>
-          <span className={cn("text-xs transition-opacity", saved ? "text-profit opacity-100" : "opacity-0")}>
-            Saved ✓
-          </span>
+          <div className="flex items-center gap-2">
+            {isDirty && (
+              <span className="text-[10px] text-muted-foreground">Unsaved changes</span>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSaveJournal}
+              disabled={!isDirty || journalSaving}
+              className="gap-1.5 h-7 text-xs"
+            >
+              {journalSaving ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Save className="h-3 w-3" />
+              )}
+              Save Journal
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-1 px-6 py-1.5 border-b border-white/[0.06]">
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
@@ -522,7 +631,10 @@ export default function TradeDetail() {
         <div className="flex-1 overflow-y-auto px-6 py-3">
           <Textarea
             value={journalNote}
-            onChange={(e) => setJournalNote(e.target.value)}
+            onChange={(e) => {
+              setJournalNote(e.target.value);
+              setIsDirty(true);
+            }}
             placeholder="Write your trade journal entry here..."
             className="min-h-full bg-transparent border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm"
           />

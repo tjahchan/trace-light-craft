@@ -3,7 +3,7 @@ import { TopNav } from "@/components/TopNav";
 import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
 import { FocusWidget } from "@/components/FocusWidget";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
-import { MomentraAI } from "@/components/MomentraAI";
+// MomentraAI is now rendered inside TopNav
 import { BottomToolbar } from "@/components/BottomToolbar";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
@@ -84,8 +84,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <BackgroundSwitcher externalOpen={bgOpen} onExternalClose={() => setBgOpen(false)} />
       <FeedbackWidget externalOpen={feedbackOpen} onExternalClose={() => setFeedbackOpen(false)} />
 
-      {/* Momentra AI — bottom-right */}
-      <MomentraAI />
+      {/* Momentra AI is now in TopNav */}
     </div>
   );
 }
