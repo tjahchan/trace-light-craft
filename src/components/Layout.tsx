@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { TopNav } from "@/components/TopNav";
 import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
+import { AmbientFocusWidget } from "@/components/AmbientFocusWidget";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -62,6 +63,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Ambient Focus Widget */}
+      <AmbientFocusWidget />
 
       {/* Background Switcher */}
       <BackgroundSwitcher />

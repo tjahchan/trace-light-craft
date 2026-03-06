@@ -71,10 +71,15 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
       {/* Background */}
       <div
-        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url(/backgrounds/forest.jpg)" }}
+        className="fixed inset-0 z-0 bg-no-repeat"
+        style={{
+          backgroundImage: "url(/backgrounds/forest.jpg)",
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundAttachment: "fixed",
+        }}
       >
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/50" />
       </div>
 
       {/* Auth Card */}
