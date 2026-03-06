@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      community_posts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          likes: number
+          parent_id: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          likes?: number
+          parent_id?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          likes?: number
+          parent_id?: string | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_posts_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           created_at: string
@@ -109,6 +147,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_streak_leaderboard: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          best_streak: number
+          current_streak: number
+          display_name: string
+          email: string
+          rank: number
+        }[]
+      }
+      like_post: { Args: { post_id: string }; Returns: undefined }
       record_note_activity: { Args: { p_user_id: string }; Returns: Json }
     }
     Enums: {
