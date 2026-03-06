@@ -64,7 +64,7 @@ export function ManageAccountsModal({
       .select()
       .single();
     if (newAcc) {
-      const acc: Account = { id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance) };
+      const acc: Account = { id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance), initialBalance: 0 };
       onAccountsChange([...accounts, acc]);
       setActiveTab(accounts.length);
     }
@@ -82,11 +82,10 @@ export function ManageAccountsModal({
   };
 
   const handleDone = async () => {
-    // Save all account changes to Supabase — write initial_balance, not balance
     for (const acc of accounts) {
       await supabase
         .from("accounts")
-        .update({ name: acc.name, initial_balance: acc.balance } as any)
+        .update({ name: acc.name, initial_balance: acc.initialBalance } as any)
         .eq("id", acc.id);
     }
     // Refresh balance for the current account

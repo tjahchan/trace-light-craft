@@ -120,7 +120,7 @@ export default function Dashboard() {
 
         let accs: Account[] = [];
         if (!error && data && data.length > 0) {
-          accs = data.map((a) => ({ id: a.id, name: a.name, balance: Number(a.balance) }));
+          accs = data.map((a) => ({ id: a.id, name: a.name, balance: Number(a.balance), initialBalance: Number((a as any).initial_balance ?? a.balance ?? 0) }));
         } else if (!error && (!data || data.length === 0)) {
           const { data: newAcc } = await supabase
             .from("accounts")
@@ -128,7 +128,7 @@ export default function Dashboard() {
             .select()
             .single();
           if (newAcc) {
-            accs = [{ id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance) }];
+            accs = [{ id: newAcc.id, name: newAcc.name, balance: Number(newAcc.balance), initialBalance: 0 }];
           }
         }
 
