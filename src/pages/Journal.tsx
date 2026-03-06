@@ -21,6 +21,7 @@ import { TradeInsightsPanel } from "@/components/journal/TradeInsightsPanel";
 import { NotebookSidebar } from "@/components/journal/NotebookSidebar";
 import { RichTextEditor } from "@/components/journal/RichTextEditor";
 import { NoteScreenshots } from "@/components/journal/NoteScreenshots";
+import { AiInsightPanel } from "@/components/journal/AiInsightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Trade {
@@ -751,22 +752,41 @@ export default function Journal() {
           </div>
         )}
 
-        {/* RIGHT PANEL — Trade Insights (only for trade mode) */}
-        {showInsightsPanel && (
+        {/* RIGHT PANEL — AI Insight + Trade Insights */}
+        {(showInsightsPanel || (editorMode === "entry" && selectedEntryId)) && (
           <motion.div
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             className={cn(
-              "w-72 shrink-0 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl overflow-hidden",
+              "w-72 shrink-0 flex flex-col gap-3 overflow-hidden",
               isMobile && mobilePanel !== "insights" && "hidden"
             )}
           >
-            <TradeInsightsPanel
-              trade={selectedTrade}
-              meta={meta}
-              accountBalance={accountBalance}
-              onMetaChange={handleMetaChange}
+            {/* AI Insight Panel */}
+            <AiInsightPanel
+              content={editorMode === "trade" ? journalNote : entryContent}
+              mode={editorMode === "trade" ? "trade" : "note"}
+              tradeContext={selectedTrade ? {
+                symbol: selectedTrade.symbol,
+                side: selectedTrade.side,
+                pnl: selectedTrade.pnl,
+                entry_price: selectedTrade.entry_price,
+                exit_price: selectedTrade.exit_price,
+                session: meta.session,
+              } : undefined}
             />
+
+            {/* Trade Insights (only for trade mode) */}
+            {showInsightsPanel && (
+              <div className="flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl overflow-auto">
+                <TradeInsightsPanel
+                  trade={selectedTrade!}
+                  meta={meta}
+                  accountBalance={accountBalance}
+                  onMetaChange={handleMetaChange}
+                />
+              </div>
+            )}
           </motion.div>
         )}
       </div>
