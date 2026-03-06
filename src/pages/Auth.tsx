@@ -82,10 +82,8 @@ export default function Auth() {
         <div className="backdrop-blur-xl bg-black/50 border border-white/[0.1] rounded-2xl p-8 shadow-2xl">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mb-4">
-              <span className="text-primary-foreground font-bold text-xl">T</span>
-            </div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">TradeLog</h1>
+            <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-primary to-primary/40 mb-4" />
+            <h1 className="text-2xl text-foreground tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>Momentra</h1>
             <p className="text-muted-foreground text-sm mt-1">Your trading edge, journaled.</p>
           </div>
 

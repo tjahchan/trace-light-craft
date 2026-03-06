@@ -14,9 +14,9 @@ const BackgroundContext = createContext<BackgroundContextType>({
 
 export const backgrounds: Record<BackgroundTheme, { label: string; image: string | null; desc: string }> = {
   forest: { label: "Forest", image: "/backgrounds/forest.jpg", desc: "Dark green cinematic" },
-  beach: { label: "Beach", image: "/backgrounds/beach.jpg", desc: "Warm golden hour" },
-  mountains: { label: "Mountains", image: "/backgrounds/mountains.jpg", desc: "Misty grey peaks" },
-  nightcity: { label: "Night City", image: "/backgrounds/nightcity.jpg", desc: "Dark neon vibes" },
+  beach: { label: "Ocean", image: "/backgrounds/ocean.jpg", desc: "Deep underwater rays" },
+  mountains: { label: "Mountains", image: "/backgrounds/mountains.jpg", desc: "Starlit snow peaks" },
+  nightcity: { label: "Night City", image: "/backgrounds/nightcity.jpg", desc: "City skyline glow" },
   minimal: { label: "Minimal", image: null, desc: "Pure dark" },
 };
 

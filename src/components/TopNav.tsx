@@ -36,12 +36,10 @@ export function TopNav() {
   return (
     <header className="h-14 flex items-center justify-between px-6 backdrop-blur-xl bg-black/40 border-b border-white/[0.08] shrink-0 z-50 sticky top-0">
       {/* Logo */}
-      <div className="flex items-center gap-2.5">
-        <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-          <span className="text-primary-foreground font-bold text-sm">T</span>
-        </div>
-        <span className="text-foreground font-semibold text-lg tracking-tight hidden sm:inline">
-          TradeLog
+      <div className="flex items-center gap-2">
+        <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/40" />
+        <span className="text-foreground text-lg tracking-[0.15em] hidden sm:inline" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          Momentra
         </span>
       </div>
 

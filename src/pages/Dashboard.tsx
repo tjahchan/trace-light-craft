@@ -263,7 +263,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Panel */}
-      <div className="flex-1 space-y-6 min-w-0">
+      <div className="flex-1 space-y-6 min-w-0 mt-20 xl:mt-20">
         {/* Open Positions Card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -331,8 +331,9 @@ export default function Dashboard() {
                   <th className="p-3 text-left font-medium">Symbol</th>
                   <th className="p-3 text-left font-medium">Side</th>
                   <th className="p-3 text-right font-medium">Qty</th>
-                  <th className="p-3 text-right font-medium">Entry</th>
+                   <th className="p-3 text-right font-medium">Entry</th>
                   <th className="p-3 text-right font-medium">Exit</th>
+                  <th className="p-3 text-right font-medium">Risk %</th>
                   <th className="p-3 text-right font-medium">PnL</th>
                   <th className="p-3 text-left font-medium">Session</th>
                   <th className="p-3 text-center font-medium">📓</th>
@@ -374,6 +375,7 @@ export default function Dashboard() {
                     <td className="p-3 text-right font-mono text-foreground">{pos.qty}</td>
                     <td className="p-3 text-right font-mono text-foreground">{pos.entry}</td>
                     <td className="p-3 text-right font-mono text-foreground">{pos.exit}</td>
+                    <td className="p-3 text-right font-mono text-muted-foreground">—</td>
                     <td
                       className={`p-3 text-right font-mono font-medium ${
                         pos.pnl >= 0 ? "text-profit" : "text-loss"
@@ -393,7 +395,7 @@ export default function Dashboard() {
                 ))}
                 {filteredPositions.length === 0 && (
                   <tr>
-                    <td colSpan={12} className="p-6 text-center text-muted-foreground text-sm">
+                    <td colSpan={13} className="p-6 text-center text-muted-foreground text-sm">
                       No positions match your filters.
                     </td>
                   </tr>
