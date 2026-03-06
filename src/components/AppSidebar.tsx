@@ -6,6 +6,7 @@ import {
   Users,
   GraduationCap,
   Settings,
+  Link2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -25,6 +26,7 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Overview", url: "/overview", icon: BarChart3 },
   { title: "Journal", url: "/journal", icon: BookOpen },
+  { title: "Brokers", url: "/broker-connections", icon: Link2 },
   { title: "Watchlist", url: "/watchlist", icon: Eye },
   { title: "Community", url: "/community", icon: Users },
   { title: "Learning", url: "/learning", icon: GraduationCap },
