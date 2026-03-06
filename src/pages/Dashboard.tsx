@@ -68,6 +68,7 @@ function riskColor(pct: number) {
 }
 
 const STORAGE_KEY = "selectedAccountId";
+const ROWS_PER_PAGE = 10;
 
 type BalancePeriod = "week" | "month" | "year";
 
