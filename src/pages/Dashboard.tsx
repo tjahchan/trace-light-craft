@@ -885,7 +885,7 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      <TradeImportModal open={importOpen} onOpenChange={setImportOpen} />
+      <TradeImportModal open={importOpen} onOpenChange={setImportOpen} accountId={selectedAccountId} onTradeCreated={refreshAll} />
       <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
       <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} userId={user?.id || ""} onBalanceRefresh={fetchAndSetBalance} />
       <DepositWithdrawModal
