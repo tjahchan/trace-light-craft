@@ -483,6 +483,115 @@ export type Database = {
         }
         Relationships: []
       }
+      trade_journal_metadata: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          discipline: number | null
+          emotion_after: string | null
+          emotion_before: string | null
+          execution: number | null
+          id: string
+          improvements: string | null
+          lessons_learned: string | null
+          mistakes: string[] | null
+          session: string | null
+          setup: string | null
+          strategy: string | null
+          trade_id: string
+          updated_at: string | null
+          user_id: string
+          what_went_well: string | null
+          what_went_wrong: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          discipline?: number | null
+          emotion_after?: string | null
+          emotion_before?: string | null
+          execution?: number | null
+          id?: string
+          improvements?: string | null
+          lessons_learned?: string | null
+          mistakes?: string[] | null
+          session?: string | null
+          setup?: string | null
+          strategy?: string | null
+          trade_id: string
+          updated_at?: string | null
+          user_id: string
+          what_went_well?: string | null
+          what_went_wrong?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          discipline?: number | null
+          emotion_after?: string | null
+          emotion_before?: string | null
+          execution?: number | null
+          id?: string
+          improvements?: string | null
+          lessons_learned?: string | null
+          mistakes?: string[] | null
+          session?: string | null
+          setup?: string | null
+          strategy?: string | null
+          trade_id?: string
+          updated_at?: string | null
+          user_id?: string
+          what_went_well?: string | null
+          what_went_wrong?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_journal_metadata_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: true
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trade_screenshots: {
+        Row: {
+          created_at: string | null
+          id: string
+          label: string | null
+          sort_order: number | null
+          storage_path: string
+          trade_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          label?: string | null
+          sort_order?: number | null
+          storage_path: string
+          trade_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          label?: string | null
+          sort_order?: number | null
+          storage_path?: string
+          trade_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_screenshots_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trades: {
         Row: {
           account_id: string
