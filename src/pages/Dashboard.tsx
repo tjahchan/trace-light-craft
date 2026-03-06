@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -131,6 +133,7 @@ type BalancePeriod = "week" | "month" | "year";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [importOpen, setImportOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
@@ -143,11 +146,28 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
   const [filters, setFilters] = useState<ClosedPositionFilters>(emptyFilters);
+  const [dbTrades, setDbTrades] = useState<any[]>([]);
 
   const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
   const streakDays = getWeekDots();
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? accounts[0];
+
+  const fetchTrades = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("trades" as any)
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "closed")
+      .order("close_time", { ascending: false });
+    if (!error && data) {
+      console.log("[Dashboard] Loaded", data.length, "closed trades from DB");
+      setDbTrades(data as any[]);
+    }
+  }, [user]);
+
+  useEffect(() => { fetchTrades(); }, [fetchTrades]);
 
   const handleTransaction = (
     tx: Omit<Transaction, "id">,
@@ -181,8 +201,28 @@ export default function Dashboard() {
     setRecurringRules((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const uniqueSymbols = useMemo(() => [...new Set(closedPositions.map((p) => p.symbol))], []);
-  const filteredPositions = useMemo(() => applyFilters(closedPositions, filters), [filters]);
+  // Merge mock + DB trades for closed positions
+  const allClosedPositions = useMemo(() => {
+    const fromDb = dbTrades.map((t: any) => ({
+      id: t.id,
+      tags: t.tags || [],
+      alias: "",
+      closedAt: t.close_time ? new Date(t.close_time).toLocaleString() : "",
+      symbol: t.symbol,
+      side: t.side,
+      qty: t.quantity,
+      entry: t.entry_price,
+      exit: t.exit_price,
+      sl: t.sl,
+      pnl: t.pnl || 0,
+      session: "",
+      hasNote: !!t.note,
+    }));
+    return [...fromDb, ...closedPositions];
+  }, [dbTrades]);
+
+  const uniqueSymbols = useMemo(() => [...new Set(allClosedPositions.map((p) => p.symbol))], [allClosedPositions]);
+  const filteredPositions = useMemo(() => applyFilters(allClosedPositions, filters), [allClosedPositions, filters]);
   const filtersActive = hasActiveFilters(filters);
 
   const periodData = historyMap[balancePeriod];
@@ -448,7 +488,7 @@ export default function Dashboard() {
       </div>
 
       <TradeImportModal open={importOpen} onOpenChange={setImportOpen} />
-      <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} />
+      <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={fetchTrades} />
       <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} />
       <DepositWithdrawModal
         open={depositOpen}

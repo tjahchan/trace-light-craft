@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,19 +15,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Upload, AlertCircle, CheckCircle2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface CSVImportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  accountId: string;
+  onImportComplete?: () => void;
 }
 
 const REQUIRED_FIELDS = ["Symbol", "Side", "Qty", "Entry", "Exit"];
-const ALL_FIELDS = ["Symbol", "Side", "Qty", "Entry", "Exit", "TP", "SL", "Open Time", "Close Time", "PnL", "Tags", "—skip—"];
+const ALL_FIELDS = ["Symbol", "Side", "Qty", "Entry", "Exit", "TP", "SL", "Open Time", "Close Time", "PnL", "Tags", "Commissions", "—skip—"];
 
 function parseCSV(text: string): { headers: string[]; rows: string[][] } {
   const lines = text.trim().split("\n");
   const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, ""));
-  const rows = lines.slice(1).map(line => line.split(",").map(c => c.trim().replace(/"/g, "")));
+  const rows = lines.slice(1).filter(l => l.trim()).map(line => line.split(",").map(c => c.trim().replace(/"/g, "")));
   return { headers, rows };
 }
 
@@ -44,6 +50,7 @@ function autoMapHeaders(csvHeaders: string[]): Record<number, string> {
     "Close Time": ["close time", "close date", "closed", "exit time", "exit date"],
     PnL: ["pnl", "profit", "p&l", "realized pnl", "net profit", "result"],
     Tags: ["tags", "label", "category", "setup"],
+    Commissions: ["commissions", "commission", "fees", "fee", "broker fee"],
   };
 
   csvHeaders.forEach((h, i) => {
@@ -58,11 +65,19 @@ function autoMapHeaders(csvHeaders: string[]): Record<number, string> {
   return mapping;
 }
 
-export function CSVImportModal({ open, onOpenChange }: CSVImportModalProps) {
+function getVal(row: string[], mapping: Record<number, string>, field: string): string | undefined {
+  const entry = Object.entries(mapping).find(([, v]) => v === field);
+  if (!entry) return undefined;
+  return row[parseInt(entry[0])] || undefined;
+}
+
+export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete }: CSVImportModalProps) {
+  const { user } = useAuth();
   const [step, setStep] = useState<"upload" | "map" | "preview">("upload");
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,6 +86,7 @@ export function CSVImportModal({ open, onOpenChange }: CSVImportModalProps) {
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       const parsed = parseCSV(text);
+      console.log("[CSV Import] Parsed CSV:", parsed.headers.length, "columns,", parsed.rows.length, "rows");
       setCsvData(parsed);
       setColumnMapping(autoMapHeaders(parsed.headers));
       setStep("map");
@@ -94,6 +110,7 @@ export function CSVImportModal({ open, onOpenChange }: CSVImportModalProps) {
   }, []);
 
   const validateAndPreview = () => {
+    console.log("[CSV Import] Validating mappings:", columnMapping);
     const mappedFields = Object.values(columnMapping);
     const missingRequired = REQUIRED_FIELDS.filter(f => !mappedFields.includes(f));
     if (missingRequired.length > 0) {
@@ -101,21 +118,77 @@ export function CSVImportModal({ open, onOpenChange }: CSVImportModalProps) {
       return;
     }
 
-    // Validate rows
     const rowErrors: string[] = [];
     csvData?.rows.forEach((row, i) => {
-      const symbolIdx = Object.entries(columnMapping).find(([, v]) => v === "Symbol")?.[0];
-      if (symbolIdx !== undefined && !row[parseInt(symbolIdx)]) {
-        rowErrors.push(`Row ${i + 1}: Missing symbol`);
-      }
+      const symbol = getVal(row, columnMapping, "Symbol");
+      if (!symbol) rowErrors.push(`Row ${i + 1}: Missing symbol`);
     });
 
+    console.log("[CSV Import] Validation complete. Errors:", rowErrors.length);
     setErrors(rowErrors);
     setStep("preview");
   };
 
-  const handleImport = () => {
-    // TODO: Actually import trades to state/database
+  const handleImport = async () => {
+    if (!user || !csvData) return;
+    setImporting(true);
+    console.log("[CSV Import] Starting import of", csvData.rows.length, "trades");
+
+    try {
+      const trades = csvData.rows.map((row) => {
+        const side = getVal(row, columnMapping, "Side") || "Long";
+        const normalizedSide = side.toLowerCase().includes("buy") || side.toLowerCase().includes("long") ? "Long" : "Short";
+        return {
+          user_id: user.id,
+          account_id: accountId,
+          symbol: getVal(row, columnMapping, "Symbol") || "",
+          side: normalizedSide,
+          quantity: parseFloat(getVal(row, columnMapping, "Qty") || "0") || 0,
+          entry_price: parseFloat(getVal(row, columnMapping, "Entry") || "0") || 0,
+          exit_price: parseFloat(getVal(row, columnMapping, "Exit") || "0") || null,
+          tp: parseFloat(getVal(row, columnMapping, "TP") || "") || null,
+          sl: parseFloat(getVal(row, columnMapping, "SL") || "") || null,
+          open_time: getVal(row, columnMapping, "Open Time") || null,
+          close_time: getVal(row, columnMapping, "Close Time") || null,
+          pnl: parseFloat(getVal(row, columnMapping, "PnL") || "0") || 0,
+          commissions: parseFloat(getVal(row, columnMapping, "Commissions") || "0") || 0,
+          tags: getVal(row, columnMapping, "Tags") ? [getVal(row, columnMapping, "Tags")!] : [],
+          status: "closed" as const,
+        };
+      });
+
+      console.log("[CSV Import] Inserting trades:", trades.length);
+      const { error } = await supabase.from("trades" as any).insert(trades as any);
+
+      if (error) {
+        console.error("[CSV Import] Insert error:", error);
+        toast.error(`Import failed: ${error.message}`);
+        return;
+      }
+
+      console.log("[CSV Import] Insert successful!");
+      toast.success(`✓ ${trades.length} trades imported successfully`);
+      onOpenChange(false);
+      setStep("upload");
+      setCsvData(null);
+      setColumnMapping({});
+      setErrors([]);
+      onImportComplete?.();
+    } catch (err: any) {
+      console.error("[CSV Import] Unexpected error:", err);
+      toast.error(`Import failed: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Mapped field names for preview table headers
+  const mappedEntries = useMemo(() =>
+    Object.entries(columnMapping).filter(([, v]) => v !== "—skip—" && v),
+    [columnMapping]
+  );
+
+  const close = () => {
     onOpenChange(false);
     setStep("upload");
     setCsvData(null);
@@ -124,14 +197,23 @@ export function CSVImportModal({ open, onOpenChange }: CSVImportModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setStep("upload"); setCsvData(null); } }}>
-      <DialogContent className="backdrop-blur-xl bg-black/60 border-white/[0.1] max-w-2xl max-h-[80vh] overflow-auto">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) close(); else onOpenChange(v); }}>
+      <DialogContent className={
+        step === "upload"
+          ? "backdrop-blur-xl bg-black/60 border-white/[0.1] max-w-2xl"
+          : "backdrop-blur-xl bg-black/60 border-white/[0.1] w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] flex flex-col"
+      }>
         <DialogHeader>
           <DialogTitle className="text-foreground">
             {step === "upload" && "Import CSV"}
             {step === "map" && "Map Columns"}
             {step === "preview" && "Preview Import"}
           </DialogTitle>
+          <DialogDescription className="text-muted-foreground text-xs">
+            {step === "upload" && "Upload a CSV file to import trades"}
+            {step === "map" && `Found ${csvData?.headers.length || 0} columns and ${csvData?.rows.length || 0} rows`}
+            {step === "preview" && `Review ${csvData?.rows.length || 0} trades before importing`}
+          </DialogDescription>
         </DialogHeader>
 
         {step === "upload" && (
@@ -157,58 +239,60 @@ export function CSVImportModal({ open, onOpenChange }: CSVImportModalProps) {
         )}
 
         {step === "map" && csvData && (
-          <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Found {csvData.headers.length} columns and {csvData.rows.length} rows. Map each CSV column to a trade field:
-            </p>
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 flex gap-6 min-h-0">
+              {/* Left: Column mapping */}
+              <div className="w-1/2 overflow-y-auto space-y-2 pr-2">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Column Mapping</p>
+                {csvData.headers.map((header, idx) => (
+                  <div key={idx} className="flex items-center gap-3 py-3 px-3 rounded-lg bg-white/[0.02]">
+                    <span className="text-sm text-foreground font-mono w-40 truncate shrink-0">{header}</span>
+                    <span className="text-muted-foreground text-sm">→</span>
+                    <Select
+                      value={columnMapping[idx] || ""}
+                      onValueChange={(v) => setColumnMapping(prev => ({ ...prev, [idx]: v }))}
+                    >
+                      <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-sm h-10">
+                        <SelectValue placeholder="Select field" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALL_FIELDS.map(f => (
+                          <SelectItem key={f} value={f} className="text-sm">{f}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
 
-            <div className="space-y-2 max-h-64 overflow-auto">
-              {csvData.headers.map((header, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <span className="text-xs text-foreground font-mono w-32 truncate shrink-0">{header}</span>
-                  <span className="text-muted-foreground text-xs">→</span>
-                  <Select
-                    value={columnMapping[idx] || ""}
-                    onValueChange={(v) => setColumnMapping(prev => ({ ...prev, [idx]: v }))}
-                  >
-                    <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-xs h-8">
-                      <SelectValue placeholder="Select field" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ALL_FIELDS.map(f => (
-                        <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>
+              {/* Right: Live preview */}
+              <div className="w-1/2 overflow-auto border-l border-white/[0.06] pl-4">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Live Preview (first 5 rows)</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        {mappedEntries.map(([, field]) => (
+                          <th key={field} className="p-2 text-left text-muted-foreground font-medium whitespace-nowrap">{field}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvData.rows.slice(0, 5).map((row, i) => (
+                        <tr key={i} className="border-b border-white/[0.04]">
+                          {mappedEntries.map(([colIdx]) => (
+                            <td key={colIdx} className="p-2 text-foreground font-mono whitespace-nowrap">{row[parseInt(colIdx)] || "—"}</td>
+                          ))}
+                        </tr>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
-
-            {/* Preview first 3 rows */}
-            <div className="overflow-x-auto">
-              <p className="text-[10px] text-muted-foreground mb-1">Preview (first 3 rows):</p>
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="border-b border-white/[0.06]">
-                    {csvData.headers.map((h, i) => (
-                      <th key={i} className="p-1.5 text-left text-muted-foreground font-medium">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {csvData.rows.slice(0, 3).map((row, i) => (
-                    <tr key={i} className="border-b border-white/[0.04]">
-                      {row.map((cell, j) => (
-                        <td key={j} className="p-1.5 text-foreground font-mono">{cell}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              </div>
             </div>
 
             {errors.length > 0 && (
-              <div className="space-y-1">
+              <div className="space-y-1 pt-3">
                 {errors.map((err, i) => (
                   <div key={i} className="flex items-center gap-2 text-loss text-xs">
                     <AlertCircle className="h-3 w-3 shrink-0" /> {err}
@@ -217,70 +301,68 @@ export function CSVImportModal({ open, onOpenChange }: CSVImportModalProps) {
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-4 border-t border-white/[0.06] mt-4">
               <Button variant="outline" onClick={() => setStep("upload")} className="glass-card border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] text-foreground">
                 Back
               </Button>
               <Button onClick={validateAndPreview} className="flex-1">
-                Validate & Preview
+                Continue to Preview
               </Button>
             </div>
           </div>
         )}
 
         {step === "preview" && csvData && (
-          <div className="space-y-4">
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Validation summary */}
             {errors.length > 0 ? (
-              <div className="space-y-1">
-                {errors.map((err, i) => (
-                  <div key={i} className="flex items-center gap-2 text-loss text-xs">
-                    <AlertCircle className="h-3 w-3 shrink-0" /> {err}
+              <div className="space-y-1 pb-3">
+                <div className="flex items-center gap-2 text-loss text-sm font-medium">
+                  <AlertCircle className="h-4 w-4" />
+                  ⚠ {errors.length} rows have errors
+                </div>
+                {errors.slice(0, 5).map((err, i) => (
+                  <div key={i} className="flex items-center gap-2 text-loss text-xs pl-6">
+                    {err}
                   </div>
                 ))}
+                {errors.length > 5 && <p className="text-xs text-muted-foreground pl-6">...and {errors.length - 5} more</p>}
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-profit text-sm">
+              <div className="flex items-center gap-2 text-profit text-sm pb-3">
                 <CheckCircle2 className="h-4 w-4" />
-                All {csvData.rows.length} rows validated successfully
+                ✓ All {csvData.rows.length} rows validated successfully
               </div>
             )}
 
-            <div className="overflow-x-auto max-h-64">
+            {/* Scrollable table */}
+            <div className="flex-1 overflow-auto min-h-0 border border-white/[0.06] rounded-lg">
               <table className="w-full text-[11px]">
-                <thead>
+                <thead className="sticky top-0 bg-black/80 backdrop-blur z-10">
                   <tr className="border-b border-white/[0.06]">
-                    {Object.entries(columnMapping)
-                      .filter(([, v]) => v !== "—skip—")
-                      .map(([, field]) => (
-                        <th key={field} className="p-1.5 text-left text-muted-foreground font-medium">{field}</th>
-                      ))}
+                    {mappedEntries.map(([, field]) => (
+                      <th key={field} className="p-2.5 text-left text-muted-foreground font-medium whitespace-nowrap">{field}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {csvData.rows.slice(0, 10).map((row, i) => (
+                  {csvData.rows.map((row, i) => (
                     <tr key={i} className="border-b border-white/[0.04]">
-                      {Object.entries(columnMapping)
-                        .filter(([, v]) => v !== "—skip—")
-                        .map(([colIdx]) => (
-                          <td key={colIdx} className="p-1.5 text-foreground font-mono">{row[parseInt(colIdx)]}</td>
-                        ))}
+                      {mappedEntries.map(([colIdx]) => (
+                        <td key={colIdx} className="p-2.5 text-foreground font-mono whitespace-nowrap">{row[parseInt(colIdx)] || "—"}</td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {csvData.rows.length > 10 && (
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  ...and {csvData.rows.length - 10} more rows
-                </p>
-              )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-4 border-t border-white/[0.06] mt-4">
               <Button variant="outline" onClick={() => setStep("map")} className="glass-card border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] text-foreground">
                 Back
               </Button>
-              <Button onClick={handleImport} className="flex-1" disabled={errors.length > 0}>
-                Import {csvData.rows.length} Trades
+              <Button onClick={handleImport} className="flex-1" disabled={errors.length > 0 || importing}>
+                {importing ? "Importing..." : `Import ${csvData.rows.length} Trades`}
               </Button>
             </div>
           </div>
