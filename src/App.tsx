@@ -7,6 +7,7 @@ import { Layout } from "@/components/Layout";
 import { BackgroundProvider } from "@/contexts/BackgroundContext";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import BrokerConnections from "./pages/BrokerConnections";
 import Overview from "./pages/Overview";
