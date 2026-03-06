@@ -1,0 +1,241 @@
+import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { ArrowRight, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const ease = [0.22, 1, 0.36, 1];
+
+function MockDashboard() {
+  return (
+    <div className="relative w-full max-w-5xl mx-auto mt-16 px-4">
+      {/* Glow behind */}
+      <div className="absolute inset-0 -top-20 bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="relative flex items-start justify-center gap-4 md:gap-6">
+        {/* Left — Journal */}
+        <motion.div
+          initial={{ opacity: 0, x: -60, rotateY: 8 }}
+          animate={{ opacity: 1, x: 0, rotateY: 4 }}
+          transition={{ duration: 1.2, delay: 0.4, ease }}
+          className="hidden md:block w-56 lg:w-64 shrink-0 -mt-4"
+        >
+          <div className="glass-card p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Trade Journal</span>
+            </div>
+            <div className="space-y-2">
+              <div className="h-2.5 w-3/4 rounded bg-foreground/10" />
+              <div className="h-2 w-full rounded bg-foreground/5" />
+              <div className="h-2 w-5/6 rounded bg-foreground/5" />
+            </div>
+            <div className="pt-2 border-t border-white/[0.06] space-y-2">
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Emotion</p>
+              <div className="flex gap-1.5">
+                {["😤", "😐", "🙂", "😊", "🔥"].map((e, i) => (
+                  <span key={i} className={`text-sm p-1 rounded ${i === 3 ? "bg-primary/20 ring-1 ring-primary/40" : "opacity-40"}`}>{e}</span>
+                ))}
+              </div>
+            </div>
+            <div className="pt-2 border-t border-white/[0.06]">
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1.5">Discipline</p>
+              <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <div className="h-full w-[85%] rounded-full bg-gradient-to-r from-primary/60 to-primary" />
+              </div>
+              <p className="text-[10px] text-primary/70 mt-1 text-right font-mono">8.5/10</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Center — Dashboard */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.2, ease }}
+          className="w-full max-w-md lg:max-w-lg z-10"
+        >
+          <div className="glass-card p-5 space-y-4 ring-1 ring-primary/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Account Balance</p>
+                <p className="text-2xl font-mono font-bold text-foreground mt-0.5">$51,186.00</p>
+              </div>
+              <span className="text-xs font-mono text-profit bg-profit/10 px-2 py-1 rounded-md">+2.37%</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Win Rate", value: "80%", color: "text-profit" },
+                { label: "Trades", value: "10", color: "text-foreground" },
+                { label: "Streak", value: "7 days", color: "text-primary" },
+              ].map((s) => (
+                <div key={s.label} className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05] text-center">
+                  <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
+                  <p className={`text-sm font-mono font-semibold mt-0.5 ${s.color}`}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Recent Trades</p>
+              {[
+                { sym: "EUR/USD", pnl: "+$335.00", side: "Long", color: "text-profit" },
+                { sym: "BTC/USD", pnl: "+$185.00", side: "Long", color: "text-profit" },
+                { sym: "NZD/USD", pnl: "-$108.00", side: "Short", color: "text-loss" },
+              ].map((t) => (
+                <div key={t.sym} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-medium text-foreground">{t.sym}</span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${t.side === "Long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>{t.side}</span>
+                  </div>
+                  <span className={`text-xs font-mono font-medium ${t.color}`}>{t.pnl}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Right — AI Coach */}
+        <motion.div
+          initial={{ opacity: 0, x: 60, rotateY: -8 }}
+          animate={{ opacity: 1, x: 0, rotateY: -4 }}
+          transition={{ duration: 1.2, delay: 0.6, ease }}
+          className="hidden md:block w-56 lg:w-64 shrink-0 mt-8"
+        >
+          <div className="glass-card p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary to-primary/40 flex items-center justify-center text-[9px]">🤖</div>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">AI Coach</span>
+            </div>
+            <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+              <p className="text-[10px] text-foreground/80 leading-relaxed">
+                Strong execution on EUR/USD. Your London session entries continue to outperform. Consider tightening SL on NZD pairs.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-profit" />
+                <span className="text-[9px] text-muted-foreground">Entry timing: excellent</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-profit" />
+                <span className="text-[9px] text-muted-foreground">Risk management: strong</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-yellow-400" />
+                <span className="text-[9px] text-muted-foreground">Position sizing: review</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+export function LandingHero() {
+  return (
+    <section className="relative min-h-screen flex flex-col">
+      {/* Background grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background pointer-events-none" />
+
+      {/* Nav */}
+      <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/40" />
+          <span className="text-foreground text-lg tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+            Momentra
+          </span>
+        </div>
+        <div className="hidden md:flex items-center gap-8">
+          {["Features", "AI Coach", "Analytics"].map((item) => (
+            <a
+              key={item}
+              href={`#${item.toLowerCase().replace(/\s/g, "-")}`}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {item}
+            </a>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to="/auth">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              Sign In
+            </Button>
+          </Link>
+          <Link to="/auth">
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              Get Started
+            </Button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* Hero content */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 -mt-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease }}
+        >
+          <span className="inline-block text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-6 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5">
+            The Trading Performance System
+          </span>
+        </motion.div>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.1, ease }}
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground max-w-4xl leading-[1.08]"
+        >
+          Build Your{" "}
+          <span className="bg-gradient-to-r from-primary via-blue-400 to-primary bg-clip-text text-transparent">
+            Trading Edge
+          </span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.25, ease }}
+          className="mt-6 text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed"
+        >
+          Track trades, analyze decisions, and refine your strategy with the most advanced trading performance system ever built.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4, ease }}
+          className="mt-8 flex items-center gap-4"
+        >
+          <Link to="/auth">
+            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-8 h-12 text-base">
+              Start Journaling <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+          <a href="#features">
+            <Button variant="outline" size="lg" className="h-12 text-base border-white/[0.1] hover:bg-white/[0.05]">
+              See How It Works
+            </Button>
+          </a>
+        </motion.div>
+
+        <MockDashboard />
+      </div>
+
+      {/* Scroll indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2 }}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+      >
+        <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
+          <ChevronDown className="h-5 w-5 text-muted-foreground/40" />
+        </motion.div>
+      </motion.div>
+    </section>
+  );
+}
