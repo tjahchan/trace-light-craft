@@ -72,6 +72,7 @@ type BalancePeriod = "week" | "month" | "year";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [importOpen, setImportOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
@@ -364,6 +365,12 @@ export default function Dashboard() {
     buildChartData();
   }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchPeriodPnl, buildChartData]);
 
+  // Re-fetch all data when navigating back to dashboard (e.g. after editing a trade)
+  useEffect(() => {
+    if (location.pathname === "/" && accountsLoaded && isValidAccount) {
+      refreshAll();
+    }
+  }, [location.pathname]);
 
   // Merge DB trades for closed positions (no more mock data)
   const allClosedPositions = useMemo(() => {
