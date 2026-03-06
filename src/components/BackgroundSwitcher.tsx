@@ -1,19 +1,43 @@
-import { useState } from "react";
-import { Image } from "lucide-react";
+import { useEffect } from "react";
+import { X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useBackground, backgrounds, BackgroundTheme } from "@/contexts/BackgroundContext";
 
-export function BackgroundSwitcher() {
+interface BackgroundSwitcherProps {
+  externalOpen?: boolean;
+  onExternalClose?: () => void;
+}
+
+export function BackgroundSwitcher({ externalOpen, onExternalClose }: BackgroundSwitcherProps) {
   const { theme, setTheme } = useBackground();
-  const [open, setOpen] = useState(false);
+
+  // Close on escape
+  useEffect(() => {
+    if (!externalOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onExternalClose?.(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [externalOpen, onExternalClose]);
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      {open && (
-        <div className="mb-2 backdrop-blur-xl bg-black/60 border border-white/[0.1] rounded-2xl p-3 space-y-2 w-48">
+    <AnimatePresence>
+      {externalOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.95 }}
+          className="fixed bottom-16 left-4 z-[300] backdrop-blur-xl bg-black/70 border border-white/[0.1] rounded-2xl p-4 space-y-2 w-52"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-foreground">Backgrounds</span>
+            <button onClick={onExternalClose} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
           {(Object.keys(backgrounds) as BackgroundTheme[]).map((key) => (
             <button
               key={key}
-              onClick={() => { setTheme(key); setOpen(false); }}
+              onClick={() => { setTheme(key); onExternalClose?.(); }}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-sm transition-all ${
                 theme === key
                   ? "bg-white/[0.1] text-foreground"
@@ -28,19 +52,11 @@ export function BackgroundSwitcher() {
               ) : (
                 <div className="h-6 w-6 rounded-md bg-background border border-white/[0.1] shrink-0" />
               )}
-              <div>
-                <p className="text-xs font-medium">{backgrounds[key].label}</p>
-              </div>
+              <p className="text-xs font-medium">{backgrounds[key].label}</p>
             </button>
           ))}
-        </div>
+        </motion.div>
       )}
-      <button
-        onClick={() => setOpen(!open)}
-        className="h-10 w-10 rounded-full backdrop-blur-xl bg-black/40 border border-white/[0.1] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <Image className="h-4 w-4" />
-      </button>
-    </div>
+    </AnimatePresence>
   );
 }
