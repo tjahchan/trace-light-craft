@@ -26,28 +26,41 @@ function getSupabaseAdmin() {
   );
 }
 
-// Generate SnapTrade HMAC-SHA256 signature
+// Recursively sorted JSON.stringify matching SnapTrade SDK's JSONstringifyOrder
+function JSONstringifyOrder(obj: unknown): string {
+  const allKeys: string[] = [];
+  const seen: Record<string, boolean> = {};
+  JSON.stringify(obj, function (key, value) {
+    if (!(key in seen)) {
+      allKeys.push(key);
+      seen[key] = true;
+    }
+    return value;
+  });
+  allKeys.sort();
+  return JSON.stringify(obj, allKeys);
+}
+
+// Generate SnapTrade HMAC-SHA256 signature (matches official SDK)
 async function generateSignature(
   consumerKey: string,
-  requestData: Record<string, unknown> | undefined,
+  requestData: Record<string, unknown> | null,
   requestPath: string,
   requestQuery: string
 ): Promise<string> {
-  // SnapTrade requires sorted keys and compact JSON (no spaces)
-  const sigObject: Record<string, unknown> = {
-    content: requestData || {},
+  const sigObject = {
+    content: requestData,
     path: requestPath,
     query: requestQuery,
   };
-  // Sort keys and produce compact JSON like Python's separators=(',', ':')
-  const sortedKeys = Object.keys(sigObject).sort();
-  const sorted: Record<string, unknown> = {};
-  for (const k of sortedKeys) sorted[k] = sigObject[k];
-  const sigContent = JSON.stringify(sorted);
+  const sigContent = JSONstringifyOrder(sigObject);
+
+  // SDK uses encodeURI on consumerKey
+  const encodedKey = encodeURI(consumerKey);
 
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(consumerKey),
+    new TextEncoder().encode(encodedKey),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]
@@ -59,7 +72,6 @@ async function generateSignature(
     new TextEncoder().encode(sigContent)
   );
 
-  // Convert to base64
   const bytes = new Uint8Array(signature);
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
@@ -87,8 +99,9 @@ async function snapTradeRequest(
   const queryString = params.toString();
   const fullUrl = `${SNAPTRADE_BASE_URL}${path}?${queryString}`;
 
-  // Generate HMAC signature
-  const signature = await generateSignature(consumerKey, body, `/api/v1${path}`, queryString);
+  // Generate HMAC signature - pass null for empty body (matches SDK behavior)
+  const sigBody = body && Object.keys(body).length > 0 ? body : null;
+  const signature = await generateSignature(consumerKey, sigBody, `/api/v1${path}`, queryString);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
