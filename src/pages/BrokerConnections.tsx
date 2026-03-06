@@ -78,6 +78,10 @@ export default function BrokerConnections() {
   }, [fetchData]);
 
   const handleConnectBroker = async () => {
+    if (!canUseBrokerSync) {
+      triggerUpgrade("Broker auto sync is available on the Pro plan. Upgrade to automatically import your trades.");
+      return;
+    }
     setConnecting(true);
     try {
       // Step 1: Register SnapTrade user if needed
