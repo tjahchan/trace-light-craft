@@ -31,41 +31,8 @@ interface TradeImportModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function detectAssetType(symbol: string): "forex" | "crypto" | "stock" {
-  const s = symbol.toUpperCase().replace(/[^A-Z]/g, "");
-  const forexPairs = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "NZDUSD", "USDCHF", "GBPJPY", "EURJPY", "EURGBP", "XAUUSD", "XAGUSD"];
-  if (forexPairs.some(p => s.includes(p))) return "forex";
-  const crypto = ["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "BNB", "AVAX"];
-  if (crypto.some(c => s.includes(c))) return "crypto";
-  return "stock";
-}
-
-function calculatePnL(
-  symbol: string,
-  side: string,
-  qty: number,
-  entry: number,
-  exit: number
-): number | null {
-  if (!side || !qty || !entry || !exit) return null;
-  const type = detectAssetType(symbol);
-  let pnl: number;
-
-  if (type === "forex") {
-    pnl = (exit - entry) * qty * 100000;
-    if (symbol.toUpperCase().includes("JPY")) {
-      pnl = (exit - entry) * qty * 1000;
-    }
-    if (symbol.toUpperCase().includes("XAU")) {
-      pnl = (exit - entry) * qty * 100;
-    }
-  } else {
-    pnl = (exit - entry) * qty;
-  }
-
-  if (side === "short") pnl = -pnl;
-  return pnl;
-}
+// Use shared calculation from trade-utils
+import { calculatePnl, getAssetClass } from "@/lib/trade-utils";
 
 export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) {
   const [symbol, setSymbol] = useState("");
