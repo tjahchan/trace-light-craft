@@ -1,11 +1,11 @@
-import { motion } from "framer-motion";
+import { motion, type Easing } from "framer-motion";
 import { Brain, Eye, TrendingDown } from "lucide-react";
 
-const ease = [0.22, 1, 0.36, 1];
+const ease: Easing = [0.22, 1, 0.36, 1];
 const fadeUp = {
   initial: { opacity: 0, y: 40 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: "-80px" },
+  viewport: { once: true, margin: "-80px" as const },
   transition: { duration: 0.7, ease },
 };
 

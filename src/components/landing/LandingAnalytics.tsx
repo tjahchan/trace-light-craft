@@ -1,7 +1,7 @@
-import { motion } from "framer-motion";
+import { motion, type Easing } from "framer-motion";
 import { Trophy } from "lucide-react";
 
-const ease = [0.22, 1, 0.36, 1];
+const ease: Easing = [0.22, 1, 0.36, 1];
 
 function MockCalendar() {
   // Simplified calendar heatmap

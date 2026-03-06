@@ -1,9 +1,9 @@
-import { motion } from "framer-motion";
+import { motion, type Easing } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const ease = [0.22, 1, 0.36, 1];
+const ease: Easing = [0.22, 1, 0.36, 1];
 
 export function LandingCTA() {
   return (
