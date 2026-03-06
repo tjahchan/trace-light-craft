@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -21,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface Transaction {
   id: string;
@@ -45,10 +48,9 @@ export interface RecurringRule {
 interface DepositWithdrawModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  transactions: Transaction[];
-  onConfirm: (tx: Omit<Transaction, "id">, recurring?: { frequency: string; startDate: Date }) => void;
-  recurringRules?: RecurringRule[];
-  onDeleteRecurring?: (id: string) => void;
+  accountId: string;
+  userId: string;
+  onTransactionComplete: () => void;
 }
 
 type TabType = "deposit" | "withdrawal" | "history";
@@ -56,10 +58,9 @@ type TabType = "deposit" | "withdrawal" | "history";
 export function DepositWithdrawModal({
   open,
   onOpenChange,
-  transactions,
-  onConfirm,
-  recurringRules = [],
-  onDeleteRecurring,
+  accountId,
+  userId,
+  onTransactionComplete,
 }: DepositWithdrawModalProps) {
   const [tab, setTab] = useState<TabType>("deposit");
   const [amount, setAmount] = useState("");
@@ -68,30 +69,171 @@ export function DepositWithdrawModal({
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState("monthly");
   const [startDate, setStartDate] = useState<Date>(new Date());
+  const [submitting, setSubmitting] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const type = tab === "history" ? "deposit" : tab;
 
-  const handleConfirm = () => {
+  // Load transactions and recurring rules when modal opens
+  const loadData = async () => {
+    if (!accountId || !userId || loaded) return;
+    const { data: txns } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("account_id", accountId)
+      .eq("user_id", userId)
+      .order("date", { ascending: false });
+    if (txns) {
+      setTransactions(txns.map((t) => ({
+        id: t.id,
+        type: t.type as "deposit" | "withdrawal",
+        amount: Number(t.amount),
+        note: t.note || "",
+        date: new Date(t.date),
+        is_recurring: t.is_recurring,
+      })));
+    }
+    const { data: rules } = await supabase
+      .from("recurring_transactions")
+      .select("*")
+      .eq("account_id", accountId)
+      .eq("user_id", userId)
+      .eq("active", true);
+    if (rules) {
+      setRecurringRules(rules.map((r) => ({
+        id: r.id,
+        type: r.type as "deposit" | "withdrawal",
+        amount: Number(r.amount),
+        frequency: r.frequency,
+        start_date: r.start_date,
+        next_due_date: r.next_due_date,
+        note: r.note || "",
+        active: r.active,
+      })));
+    }
+    setLoaded(true);
+  };
+
+  // Load data when modal opens
+  if (open && !loaded) {
+    loadData();
+  }
+
+  // Reset loaded state when modal closes
+  const handleOpenChange = (v: boolean) => {
+    if (!v) setLoaded(false);
+    onOpenChange(v);
+  };
+
+  const handleConfirm = async () => {
     const parsedAmount = parseFloat(amount);
     if (!parsedAmount || parsedAmount <= 0) return;
-    onConfirm(
-      { type, amount: parsedAmount, note, date },
-      isRecurring ? { frequency, startDate } : undefined
-    );
-    setAmount("");
-    setNote("");
-    setDate(new Date());
-    setIsRecurring(false);
+
+    // Guard: valid account ID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(accountId)) {
+      toast.error("No account selected. Please select an account first.");
+      return;
+    }
+
+    console.log("Depositing into account:", accountId, "user:", userId, "type:", type, "amount:", parsedAmount);
+    setSubmitting(true);
+
+    try {
+      // 1. Insert transaction into Supabase
+      const { error: txError } = await supabase
+        .from("transactions")
+        .insert({
+          user_id: userId,
+          account_id: accountId,
+          type,
+          amount: parsedAmount,
+          note: note || "",
+          date: date.toISOString(),
+        });
+
+      if (txError) {
+        console.error("[Deposit] Insert error:", txError);
+        toast.error(`Transaction failed: ${txError.message}`);
+        return;
+      }
+
+      // 2. Update account balance in Supabase
+      const { data: accData } = await supabase
+        .from("accounts")
+        .select("balance")
+        .eq("id", accountId)
+        .single();
+
+      const currentBalance = accData ? Number(accData.balance) : 0;
+      const newBalance = type === "deposit"
+        ? currentBalance + parsedAmount
+        : currentBalance - parsedAmount;
+
+      await supabase
+        .from("accounts")
+        .update({ balance: newBalance })
+        .eq("id", accountId);
+
+      // 3. Handle recurring rule
+      if (isRecurring) {
+        await supabase
+          .from("recurring_transactions")
+          .insert({
+            user_id: userId,
+            account_id: accountId,
+            type,
+            amount: parsedAmount,
+            frequency,
+            start_date: startDate.toISOString().split("T")[0],
+            next_due_date: startDate.toISOString().split("T")[0],
+            note: note || "",
+          });
+      }
+
+      // 4. Success
+      toast.success(`✓ ${type === "deposit" ? "Deposit" : "Withdrawal"} confirmed`);
+      setAmount("");
+      setNote("");
+      setDate(new Date());
+      setIsRecurring(false);
+      setLoaded(false); // Force reload on next open
+
+      // 5. Refresh parent balance + chart
+      onTransactionComplete();
+
+      // 6. Close modal
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error("[Deposit] Unexpected error:", err);
+      toast.error(`Transaction failed: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteRecurring = async (id: string) => {
+    await supabase
+      .from("recurring_transactions")
+      .update({ active: false })
+      .eq("id", id);
+    setRecurringRules((prev) => prev.filter((r) => r.id !== id));
+    toast.success("Recurring rule cancelled");
   };
 
   const totalDeposited = transactions.filter(t => t.type === "deposit").reduce((s, t) => s + t.amount, 0);
   const totalWithdrawn = transactions.filter(t => t.type === "withdrawal").reduce((s, t) => s + t.amount, 0);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="bg-card border-white/[0.1] max-w-md">
         <DialogHeader>
           <DialogTitle className="text-foreground">Deposit / Withdraw</DialogTitle>
+          <DialogDescription className="text-muted-foreground text-xs">
+            Add or withdraw funds from your account
+          </DialogDescription>
         </DialogHeader>
 
         {/* Tabs */}
@@ -227,8 +369,8 @@ export function DepositWithdrawModal({
               </Popover>
             </div>
 
-            <Button onClick={handleConfirm} className="w-full" disabled={!amount || parseFloat(amount) <= 0}>
-              Confirm {type === "deposit" ? "Deposit" : "Withdrawal"}
+            <Button onClick={handleConfirm} className="w-full" disabled={!amount || parseFloat(amount) <= 0 || submitting}>
+              {submitting ? "Processing..." : `Confirm ${type === "deposit" ? "Deposit" : "Withdrawal"}`}
             </Button>
 
             {/* Active Recurring Rules */}
@@ -248,14 +390,12 @@ export function DepositWithdrawModal({
                         </span>
                         <span className="text-muted-foreground capitalize">{rule.frequency}</span>
                       </div>
-                      {onDeleteRecurring && (
-                        <button
-                          onClick={() => onDeleteRecurring(rule.id)}
-                          className="text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleDeleteRecurring(rule.id)}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
                   ))}
                 </div>
