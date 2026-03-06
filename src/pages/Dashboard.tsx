@@ -568,6 +568,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.06 }}
           className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6"
+          data-tour="balance-card"
         >
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Total Balance</p>
           {!accountsLoaded || balanceLoading ? (
