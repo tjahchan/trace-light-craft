@@ -1,10 +1,15 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronDown, Zap, Bot, BarChart3, Link2 } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Easing } from "framer-motion";
 
 const ease: Easing = [0.22, 1, 0.36, 1];
+
+const brokers = [
+  "Interactive Brokers", "TD Ameritrade", "Schwab", "Robinhood",
+  "Fidelity", "Coinbase", "Kraken", "Wealthsimple",
+];
 
 function MockDashboard() {
   return (
@@ -64,9 +69,9 @@ function MockDashboard() {
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Win Rate", value: "—", color: "text-foreground" },
-                { label: "Trades", value: "0", color: "text-foreground" },
-                { label: "Streak", value: "0 days", color: "text-primary" },
+                { label: "Win Rate", value: "67%", color: "text-profit" },
+                { label: "Trades", value: "12", color: "text-foreground" },
+                { label: "Streak", value: "7 days", color: "text-primary" },
               ].map((s) => (
                 <div key={s.label} className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.05] text-center">
                   <p className="text-[8px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
@@ -77,9 +82,9 @@ function MockDashboard() {
             <div className="space-y-1.5">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Recent Trades</p>
               {[
-                { sym: "EUR/USD", pnl: "+$335.00", side: "Long", color: "text-profit" },
-                { sym: "BTC/USD", pnl: "+$185.00", side: "Long", color: "text-profit" },
-                { sym: "NZD/USD", pnl: "-$108.00", side: "Short", color: "text-loss" },
+                { sym: "EUR/USD", pnl: "+$335", side: "Long", color: "text-profit" },
+                { sym: "BTC/USD", pnl: "+$185", side: "Long", color: "text-profit" },
+                { sym: "NZD/USD", pnl: "-$108", side: "Short", color: "text-loss" },
               ].map((t) => (
                 <div key={t.sym} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
                   <div className="flex items-center gap-2">
@@ -146,22 +151,9 @@ export function LandingHero() {
           </span>
         </div>
         <div className="hidden md:flex items-center gap-8">
-          {[
-            { label: "Features", href: "#features" },
-            { label: "AI Coach", href: "#ai-coach" },
-            { label: "Analytics", href: "#analytics" },
-            { label: "Pricing", href: "/pricing" },
-          ].map((item) => (
-            item.href.startsWith("/") ? (
-              <Link key={item.label} to={item.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                {item.label}
-              </Link>
-            ) : (
-              <a key={item.label} href={item.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                {item.label}
-              </a>
-            )
-          ))}
+          <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+          <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
+          <Link to="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
         </div>
         <div className="flex items-center gap-3">
           <Link to="/auth">
@@ -207,33 +199,13 @@ export function LandingHero() {
           transition={{ duration: 0.8, delay: 0.25, ease }}
           className="mt-6 text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed"
         >
-          Track trades, analyze decisions, and refine your strategy with the most advanced trading performance system built for serious traders.
+          Track trades, analyze decisions, and refine your strategy with the most advanced trading performance system.
         </motion.p>
-
-        {/* Feature pills */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.35, ease }}
-          className="mt-5 flex flex-wrap items-center justify-center gap-3"
-        >
-          {[
-            { icon: Zap, label: "Free to Start" },
-            { icon: Link2, label: "Broker Auto Sync" },
-            { icon: Bot, label: "AI Trading Coach" },
-            { icon: BarChart3, label: "Performance Analytics" },
-          ].map((pill) => (
-            <div key={pill.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] text-[11px] text-muted-foreground">
-              <pill.icon className="h-3 w-3 text-primary/70" />
-              {pill.label}
-            </div>
-          ))}
-        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.45, ease }}
+          transition={{ duration: 0.8, delay: 0.4, ease }}
           className="mt-8 flex items-center gap-4"
         >
           <Link to="/auth">
@@ -246,6 +218,26 @@ export function LandingHero() {
               See How It Works
             </Button>
           </Link>
+        </motion.div>
+
+        {/* Broker logo strip */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 0.6, ease }}
+          className="mt-10 flex flex-col items-center gap-3"
+        >
+          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">Auto-sync with your broker</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            {brokers.map((b) => (
+              <span
+                key={b}
+                className="text-[11px] font-medium text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors cursor-default"
+              >
+                {b}
+              </span>
+            ))}
+          </div>
         </motion.div>
 
         <MockDashboard />

@@ -1,7 +1,16 @@
-import { motion, type Easing } from "framer-motion";
-import { Sparkles, MessageSquare } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence, type Easing } from "framer-motion";
+import { Sparkles } from "lucide-react";
 
 const ease: Easing = [0.22, 1, 0.36, 1];
+
+const exampleQuestions = [
+  "What mistakes do I repeat most?",
+  "Summarize my last 10 trades.",
+  "Explain risk management.",
+  "Why are my London trades more profitable?",
+  "Break down my EUR/USD performance.",
+];
 
 function MockAIPanel() {
   const insights = [
@@ -64,34 +73,34 @@ function MockAIPanel() {
   );
 }
 
-function AskAnythingExamples() {
-  const examples = [
-    "What mistakes do I repeat most?",
-    "Summarize my last 10 trades.",
-    "Explain risk management.",
-    "Why are my London trades more profitable?",
-    "Break down my EUR/USD performance.",
-  ];
+function CyclingQuestions() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % exampleQuestions.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div className="space-y-2 mt-6">
-      <div className="flex items-center gap-2 mb-3">
-        <MessageSquare className="h-4 w-4 text-primary/60" />
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Ask anything</p>
+    <div className="mt-8 space-y-3">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Ask anything</p>
+      <div className="h-12 flex items-center p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+        <span className="text-primary/50 text-xs mr-2">→</span>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={index}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.4, ease }}
+            className="text-sm text-muted-foreground italic"
+          >
+            "{exampleQuestions[index]}"
+          </motion.span>
+        </AnimatePresence>
       </div>
-      {examples.map((q, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, x: -15 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.5 + i * 0.08, ease }}
-          className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-primary/20 transition-colors cursor-default"
-        >
-          <span className="text-primary/50 text-xs">→</span>
-          <span className="text-[11px] text-muted-foreground italic">"{q}"</span>
-        </motion.div>
-      ))}
     </div>
   );
 }
@@ -114,32 +123,11 @@ export function LandingAI() {
               Your AI Trading<br />Coach & Analyst
             </h2>
             <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed max-w-md">
-              More than a summary tool. Momentra AI is your personal trading analyst and knowledge assistant — it analyzes your trades, answers any trading question, and helps you improve faster.
+              Ask anything about trading or your own journal. Momentra AI analyzes your trades, detects patterns, and gives personalized insights to help you improve faster.
             </p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3, ease }}
-            className="space-y-3 pt-4"
-          >
-            {[
-              "Summarize trades and extract key lessons",
-              "Detect recurring mistakes and patterns",
-              "Answer any trading or strategy question",
-              "Explain concepts like risk management and psychology",
-              "Generate personalized improvement plans",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                <span className="text-sm text-muted-foreground">{item}</span>
-              </div>
-            ))}
-          </motion.div>
-
-          <AskAnythingExamples />
+          <CyclingQuestions />
         </div>
 
         <motion.div

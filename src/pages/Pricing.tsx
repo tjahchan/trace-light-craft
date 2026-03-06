@@ -15,7 +15,7 @@ const plans = [
     highlighted: false,
     features: [
       { text: "Full trading journal", included: true },
-      { text: "Notes & playbook folders", included: true },
+      { text: "Trading library folders", included: true },
       { text: "Trade analytics dashboard", included: true },
       { text: "Performance overview", included: true },
       { text: "Leaderboard access", included: true },
@@ -24,7 +24,7 @@ const plans = [
       { text: "Broker auto sync", included: false },
       { text: "Unlimited AI requests", included: false },
       { text: "AI insights in journal", included: false },
-      { text: "Unlimited CSV/AI imports", included: false },
+      { text: "Unlimited CSV imports", included: false },
     ],
   },
   {
@@ -32,7 +32,7 @@ const plans = [
     price: "$14",
     period: "/month",
     desc: "For serious traders who want the full edge.",
-    cta: "Go Pro",
+    cta: "Upgrade to Pro",
     highlighted: true,
     badge: "Recommended",
     features: [
@@ -40,7 +40,7 @@ const plans = [
       { text: "Broker auto sync", included: true },
       { text: "Unlimited AI requests", included: true },
       { text: "AI insights inside journal", included: true },
-      { text: "Unlimited CSV/AI imports", included: true },
+      { text: "Unlimited CSV imports", included: true },
       { text: "Full AI trading coach", included: true },
       { text: "Priority support", included: true },
       { text: "Early access to new features", included: true },
@@ -59,16 +59,17 @@ export default function Pricing() {
             Momentra
           </span>
         </Link>
+        <div className="hidden md:flex items-center gap-8">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</Link>
+          <Link to="/pricing" className="text-sm text-foreground transition-colors">Pricing</Link>
+          <Link to="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
+        </div>
         <div className="flex items-center gap-3">
           <Link to="/auth">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-              Sign In
-            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Sign In</Button>
           </Link>
           <Link to="/auth">
-            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              Get Started
-            </Button>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">Get Started</Button>
           </Link>
         </div>
       </nav>
@@ -101,9 +102,7 @@ export default function Pricing() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: i * 0.15, ease }}
-              className={`relative glass-card p-8 space-y-6 ${
-                plan.highlighted ? "ring-2 ring-primary/30" : ""
-              }`}
+              className={`relative glass-card p-8 space-y-6 ${plan.highlighted ? "ring-2 ring-primary/30" : ""}`}
             >
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -143,9 +142,7 @@ export default function Pricing() {
                     ) : (
                       <X className="h-4 w-4 text-muted-foreground/30 shrink-0" />
                     )}
-                    <span className={`text-sm ${f.included ? "text-foreground" : "text-muted-foreground/40"}`}>
-                      {f.text}
-                    </span>
+                    <span className={`text-sm ${f.included ? "text-foreground" : "text-muted-foreground/40"}`}>{f.text}</span>
                   </div>
                 ))}
               </div>
@@ -153,7 +150,6 @@ export default function Pricing() {
           ))}
         </div>
 
-        {/* FAQ hint */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -172,9 +168,11 @@ export default function Pricing() {
             Momentra
           </span>
         </Link>
-        <p className="text-xs text-muted-foreground/50">
-          © {new Date().getFullYear()} Momentra. The Trading Performance System.
-        </p>
+        <div className="flex items-center gap-6">
+          <Link to="/blog" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">Blog</Link>
+          <Link to="/auth" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">Sign In</Link>
+        </div>
+        <p className="text-xs text-muted-foreground/50">© {new Date().getFullYear()} Momentra. The Trading Performance System.</p>
       </div>
     </div>
   );
