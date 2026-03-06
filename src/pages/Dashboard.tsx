@@ -238,11 +238,29 @@ export default function Dashboard() {
         .eq("status", "closed")
         .order("close_time", { ascending: false });
       if (!error && data) {
-        console.log("[Dashboard] Loaded", data.length, "closed trades from DB");
         setDbTrades(data as any[]);
       }
     } catch (err) {
       console.error("[Dashboard] Error fetching trades:", err);
+    }
+  }, [user, isValidAccount, selectedAccount]);
+
+  // ---- Fetch open trades ----
+  const fetchOpenTrades = useCallback(async () => {
+    if (!user || !isValidAccount) return;
+    try {
+      const { data, error } = await supabase
+        .from("trades" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("account_id", selectedAccount!.id)
+        .eq("status", "open")
+        .order("open_time", { ascending: false });
+      if (!error && data) {
+        setOpenTrades(data as any[]);
+      }
+    } catch (err) {
+      console.error("[Dashboard] Error fetching open trades:", err);
     }
   }, [user, isValidAccount, selectedAccount]);
 
