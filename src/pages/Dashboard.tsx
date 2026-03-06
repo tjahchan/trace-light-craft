@@ -927,5 +927,6 @@ export default function Dashboard() {
         onTransactionComplete={refreshAll}
       />
     </div>
+    </div>
   );
 }
