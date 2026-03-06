@@ -352,7 +352,8 @@ export function MomentraAI() {
       {/* M Button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-4 right-4 z-[200] h-12 w-12 rounded-full flex items-center justify-center backdrop-blur-xl bg-black/60 border border-white/[0.15] shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:shadow-[0_0_30px_rgba(99,102,241,0.3)] transition-all duration-300 group"
+        className="fixed bottom-6 right-6 z-[9999] h-12 w-12 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:shadow-[0_0_30px_rgba(99,102,241,0.3)] transition-all duration-300 group"
+        style={{ background: "rgba(10, 12, 10, 0.95)", border: "1px solid rgba(255,255,255,0.15)" }}
       >
         <span className="text-lg font-bold bg-gradient-to-br from-blue-400 to-indigo-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:to-indigo-300 transition-all">
           M
@@ -367,7 +368,7 @@ export function MomentraAI() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed bottom-20 right-4 z-[9999] w-[420px] h-[580px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] backdrop-blur-2xl bg-black/80 border border-white/[0.12] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-[88px] right-6 z-[9999] w-[420px] h-[580px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] backdrop-blur-2xl bg-black/80 border border-white/[0.12] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.08]">
