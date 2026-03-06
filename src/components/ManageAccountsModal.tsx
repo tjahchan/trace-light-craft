@@ -28,6 +28,7 @@ export interface Account {
   id: string;
   name: string;
   balance: number;
+  initialBalance: number;
 }
 
 interface ManageAccountsModalProps {
@@ -148,8 +149,8 @@ export function ManageAccountsModal({
                 <Label className="text-foreground text-xs">Initial Balance</Label>
                 <Input
                   type="number"
-                  value={current.balance || ""}
-                  onChange={(e) => updateAccount(activeTab, "balance", parseFloat(e.target.value) || 0)}
+                  value={current.initialBalance || ""}
+                  onChange={(e) => updateAccount(activeTab, "initialBalance", parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
                   className="bg-white/[0.05] border-white/[0.08] text-foreground font-mono"
                 />
