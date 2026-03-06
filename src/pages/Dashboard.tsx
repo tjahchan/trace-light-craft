@@ -201,8 +201,28 @@ export default function Dashboard() {
     setRecurringRules((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const uniqueSymbols = useMemo(() => [...new Set(closedPositions.map((p) => p.symbol))], []);
-  const filteredPositions = useMemo(() => applyFilters(closedPositions, filters), [filters]);
+  // Merge mock + DB trades for closed positions
+  const allClosedPositions = useMemo(() => {
+    const fromDb = dbTrades.map((t: any) => ({
+      id: t.id,
+      tags: t.tags || [],
+      alias: "",
+      closedAt: t.close_time ? new Date(t.close_time).toLocaleString() : "",
+      symbol: t.symbol,
+      side: t.side,
+      qty: t.quantity,
+      entry: t.entry_price,
+      exit: t.exit_price,
+      sl: t.sl,
+      pnl: t.pnl || 0,
+      session: "",
+      hasNote: !!t.note,
+    }));
+    return [...fromDb, ...closedPositions];
+  }, [dbTrades]);
+
+  const uniqueSymbols = useMemo(() => [...new Set(allClosedPositions.map((p) => p.symbol))], [allClosedPositions]);
+  const filteredPositions = useMemo(() => applyFilters(allClosedPositions, filters), [allClosedPositions, filters]);
   const filtersActive = hasActiveFilters(filters);
 
   const periodData = historyMap[balancePeriod];
