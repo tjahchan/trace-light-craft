@@ -172,7 +172,7 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
       });
 
       console.log("[CSV Import] Inserting trades:", trades.length);
-      const { error } = await supabase.from("trades" as any).insert(trades as any);
+      const { data: insertedTrades, error } = await supabase.from("trades" as any).insert(trades as any).select();
 
       if (error) {
         console.error("[CSV Import] Insert error:", error);

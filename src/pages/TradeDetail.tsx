@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowLeft,
   Pin,
@@ -11,6 +11,8 @@ import {
   Heading2,
   ImagePlus,
   Check,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,35 +33,84 @@ import {
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-/* Mock trade data — in production pull from Supabase */
-const mockTrades: Record<string, any> = {
-  "1": { id: "1", symbol: "EUR/USD", side: "Long", qty: 1.5, entry: 1.0842, exit: 1.0891, sl: 1.081, tp: 1.092, pnl: 73.5, status: "Closed", closedAt: "2026-03-04T14:32:00Z", tags: ["Scalp"], brokerFee: 2.5, note: "" },
-  "2": { id: "2", symbol: "XAU/USD", side: "Short", qty: 0.5, entry: 2045.3, exit: 2058.1, sl: null, tp: 2030, pnl: -64.0, status: "Closed", closedAt: "2026-03-03T19:15:00Z", tags: ["Swing"], brokerFee: 3.0, note: "" },
-  "3": { id: "3", symbol: "GBP/JPY", side: "Long", qty: 2.0, entry: 189.42, exit: 190.18, sl: 188.9, tp: 191.0, pnl: 152.0, status: "Closed", closedAt: "2026-03-02T03:45:00Z", tags: ["Breakout"], brokerFee: 1.8, note: "" },
-};
+import { Skeleton } from "@/components/ui/skeleton";
 
 const timeframes = ["1m", "30m", "1h"];
 
 export default function TradeDetail() {
   const { tradeId } = useParams<{ tradeId: string }>();
   const navigate = useNavigate();
-  const trade = mockTrades[tradeId || ""];
 
-  const [symbol, setSymbol] = useState(trade?.symbol || "");
-  const [side, setSide] = useState(trade?.side || "Long");
-  const [qty, setQty] = useState(trade?.qty?.toString() || "");
-  const [entry, setEntry] = useState(trade?.entry?.toString() || "");
-  const [exit, setExit] = useState(trade?.exit?.toString() || "");
-  const [sl, setSl] = useState(trade?.sl?.toString() || "");
-  const [tp, setTp] = useState(trade?.tp?.toString() || "");
-  const [brokerFee, setBrokerFee] = useState(trade?.brokerFee?.toString() || "");
-  const [status, setStatus] = useState(trade?.status || "Closed");
-  const [tags, setTags] = useState(trade?.tags?.join(", ") || "");
-  const [openedAt, setOpenedAt] = useState<Date | undefined>(trade?.closedAt ? new Date(trade.closedAt) : new Date());
-  const [journalNote, setJournalNote] = useState(trade?.note || "");
+  const [trade, setTrade] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const [symbol, setSymbol] = useState("");
+  const [side, setSide] = useState("Long");
+  const [qty, setQty] = useState("");
+  const [entry, setEntry] = useState("");
+  const [exit, setExit] = useState("");
+  const [sl, setSl] = useState("");
+  const [tp, setTp] = useState("");
+  const [brokerFee, setBrokerFee] = useState("");
+  const [status, setStatus] = useState("Closed");
+  const [tags, setTags] = useState("");
+  const [openedAt, setOpenedAt] = useState<Date | undefined>(new Date());
+  const [journalNote, setJournalNote] = useState("");
   const [saved, setSaved] = useState(false);
   const [selectedTf, setSelectedTf] = useState("1m");
+
+  async function fetchTrade() {
+    if (!tradeId) {
+      setFetchError("No trade ID provided");
+      setLoading(false);
+      return;
+    }
+
+    console.log("Trade ID from URL:", tradeId);
+    setLoading(true);
+    setFetchError(null);
+
+    const { data, error } = await supabase
+      .from("trades")
+      .select("*")
+      .eq("id", tradeId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Trade fetch error:", error, "for id:", tradeId);
+      setFetchError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (!data) {
+      console.log("Trade not found for id:", tradeId);
+      setFetchError(null);
+      setTrade(null);
+      setLoading(false);
+      return;
+    }
+
+    setTrade(data);
+    setSymbol(data.symbol || "");
+    setSide(data.side || "Long");
+    setQty(data.quantity?.toString() || "");
+    setEntry(data.entry_price?.toString() || "");
+    setExit(data.exit_price?.toString() || "");
+    setSl(data.sl?.toString() || "");
+    setTp(data.tp?.toString() || "");
+    setBrokerFee(data.commissions?.toString() || "");
+    setStatus(data.status === "closed" ? "Closed" : "Open");
+    setTags(data.tags?.join(", ") || "");
+    setOpenedAt(data.open_time ? new Date(data.open_time) : new Date());
+    setJournalNote(data.note || "");
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchTrade();
+  }, [tradeId]);
 
   const entryNum = parseFloat(entry) || 0;
   const exitNum = parseFloat(exit) || 0;
@@ -72,13 +123,66 @@ export default function TradeDetail() {
     ? (Math.abs(tpNum - entryNum) / Math.abs(entryNum - slNum)).toFixed(2)
     : "—";
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!tradeId) return;
+    const { error } = await supabase
+      .from("trades")
+      .update({
+        symbol,
+        side,
+        quantity: parseFloat(qty) || 0,
+        entry_price: parseFloat(entry) || 0,
+        exit_price: parseFloat(exit) || null,
+        sl: parseFloat(sl) || null,
+        tp: parseFloat(tp) || null,
+        commissions: parseFloat(brokerFee) || 0,
+        status: status.toLowerCase(),
+        tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [],
+        open_time: openedAt?.toISOString() || null,
+        note: journalNote,
+      })
+      .eq("id", tradeId);
+
+    if (error) {
+      console.error("Save error:", error);
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const tvSymbol = symbol.replace("/", "").toUpperCase();
+  // Loading state
+  if (loading) {
+    return (
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading trade…</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Error state
+  if (fetchError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center space-y-4">
+          <p className="text-destructive font-medium">Error loading trade: {fetchError}</p>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={fetchTrade} className="gap-2">
+              <RefreshCw className="h-4 w-4" /> Retry
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
+              <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not found state
   if (!trade) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -91,6 +195,9 @@ export default function TradeDetail() {
       </div>
     );
   }
+
+  const pnl = trade.pnl || 0;
+  const tvSymbol = symbol.replace("/", "").toUpperCase();
 
   return (
     <div className="h-[calc(100vh-4rem)] grid grid-rows-[1fr_auto] gap-0 overflow-hidden">
@@ -115,9 +222,9 @@ export default function TradeDetail() {
 
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">{symbol}</h1>
-            <p className="text-sm text-muted-foreground">Closed Order #{trade.id}</p>
-            <p className={cn("text-lg font-mono font-semibold mt-1", trade.pnl >= 0 ? "text-profit" : "text-loss")}>
-              Realized PnL: {trade.pnl >= 0 ? "+" : ""}${Math.abs(trade.pnl).toFixed(2)}
+            <p className="text-sm text-muted-foreground">Closed Order</p>
+            <p className={cn("text-lg font-mono font-semibold mt-1", pnl >= 0 ? "text-profit" : "text-loss")}>
+              Realized PnL: {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
             </p>
           </div>
 
