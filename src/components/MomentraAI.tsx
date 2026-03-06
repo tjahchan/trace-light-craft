@@ -4,6 +4,7 @@ import { X, Send, RotateCcw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 import ReactMarkdown from "react-markdown";
 import {
   Tooltip,

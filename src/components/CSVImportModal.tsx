@@ -17,6 +17,7 @@ import {
 import { Upload, AlertCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 import { toast } from "sonner";
 
 interface CSVImportModalProps {
@@ -131,6 +132,13 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
 
   const handleImport = async () => {
     if (!user || !csvData) return;
+
+    // Check plan limits
+    const usageResult = await checkAndIncrementUsage("csv");
+    if (!usageResult.allowed) {
+      triggerUpgrade("You've reached your monthly CSV import limit. Upgrade to Pro for unlimited imports.");
+      return;
+    }
 
     // UUID validation
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
