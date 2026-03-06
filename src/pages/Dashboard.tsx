@@ -287,11 +287,11 @@ export default function Dashboard() {
       // Get account creation date and initial balance
       const { data: accRow } = await supabase
         .from("accounts")
-        .select("balance, created_at")
+        .select("initial_balance, balance, created_at")
         .eq("id", accId)
         .single();
 
-      const initialBalance = accRow ? Number(accRow.balance) : 0;
+      const initialBalance = accRow ? Number((accRow as any).initial_balance ?? accRow.balance ?? 0) : 0;
 
       // Get all transactions for this account
       const { data: txns } = await supabase
