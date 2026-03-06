@@ -91,6 +91,8 @@ export default function Dashboard() {
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [periodPnl, setPeriodPnl] = useState<Record<string, number>>({ week: 0, month: 0, year: 0 });
   const [chartData, setChartData] = useState<{ date: string; balance: number }[]>([]);
+  const [closedPage, setClosedPage] = useState(1);
+  const [openPage, setOpenPage] = useState(1);
 
   const { currentStreak, bestStreak, getWeekDots, loading: streakLoading } = useStreak();
   const streakDays = getWeekDots();
