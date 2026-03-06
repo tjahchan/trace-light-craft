@@ -118,6 +118,7 @@ export default function TradeDetail() {
     setTags(data.tags?.join(", ") || "");
     setOpenedAt(data.open_time ? new Date(data.open_time) : new Date());
     setJournalNote(data.note || "");
+    lastSavedNoteRef.current = data.note || "";
     setLoading(false);
   }
 
