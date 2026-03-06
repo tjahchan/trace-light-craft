@@ -1,6 +1,7 @@
 // SnapTrade broker integration edge function
 // Handles all server-side SnapTrade API operations
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { encode as base64Encode } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +11,6 @@ const corsHeaders = {
 
 const SNAPTRADE_BASE_URL = "https://api.snaptrade.com/api/v1";
 
-// TODO: Replace with real SnapTrade credentials once added as secrets
 function getSnapTradeConfig() {
   const clientId = Deno.env.get("SNAPTRADE_CLIENT_ID");
   const consumerKey = Deno.env.get("SNAPTRADE_CONSUMER_KEY");
@@ -27,30 +27,69 @@ function getSupabaseAdmin() {
   );
 }
 
-// SnapTrade API request helper with signature
-// TODO: SnapTrade requires HMAC signature for some endpoints — implement signing with consumerKey
+// Generate SnapTrade HMAC-SHA256 signature
+async function generateSignature(
+  consumerKey: string,
+  requestData: Record<string, unknown> | undefined,
+  requestPath: string,
+  requestQuery: string
+): Promise<string> {
+  const sigObject = {
+    content: requestData || {},
+    path: requestPath,
+    query: requestQuery,
+  };
+  const sigContent = JSON.stringify(sigObject);
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(consumerKey),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(sigContent)
+  );
+
+  return base64Encode(new Uint8Array(signature));
+}
+
+// SnapTrade API request helper with HMAC signature
 async function snapTradeRequest(
   method: string,
   path: string,
   body?: Record<string, unknown>,
   queryParams?: Record<string, string>
 ) {
-  const { clientId } = getSnapTradeConfig();
-  const url = new URL(`${SNAPTRADE_BASE_URL}${path}`);
+  const { clientId, consumerKey } = getSnapTradeConfig();
+
+  // Build query string
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const params = new URLSearchParams();
+  params.set("clientId", clientId);
+  params.set("timestamp", timestamp);
   if (queryParams) {
-    Object.entries(queryParams).forEach(([k, v]) => url.searchParams.set(k, v));
+    Object.entries(queryParams).forEach(([k, v]) => params.set(k, v));
   }
-  url.searchParams.set("clientId", clientId);
+
+  const queryString = params.toString();
+  const fullUrl = `${SNAPTRADE_BASE_URL}${path}?${queryString}`;
+
+  // Generate HMAC signature
+  const signature = await generateSignature(consumerKey, body, `/api/v1${path}`, queryString);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Signature": signature,
   };
 
-  // TODO: Add SnapTrade HMAC signature header
-  // The signature should be computed as: HMAC-SHA256(consumerKey, requestBody + path + timestamp)
-  // Refer to SnapTrade docs: https://docs.snaptrade.com/reference/getting-started
+  console.log(`[SnapTrade] ${method} ${path} (query: ${queryString})`);
 
-  const res = await fetch(url.toString(), {
+  const res = await fetch(fullUrl, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
