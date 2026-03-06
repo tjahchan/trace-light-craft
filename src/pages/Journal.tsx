@@ -515,10 +515,6 @@ export default function Journal() {
           data-tour="notebook-sidebar"
         >
           <NotebookSidebar
-            isMobile && mobilePanel !== "list" && "hidden"
-          )}
-        >
-          <NotebookSidebar
             userId={user!.id}
             selectedEntryId={selectedEntryId}
             selectedTradeId={selectedTradeId}
