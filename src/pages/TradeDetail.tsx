@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import confetti from "canvas-confetti";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,6 +39,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/hooks/use-toast";
 
 const timeframes = ["1m", "30m", "1h"];
 
@@ -69,6 +71,7 @@ export default function TradeDetail() {
   // Edit history
   const [editHistory, setEditHistory] = useState<any[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const lastSavedNoteRef = useRef("");
 
   async function fetchTrade() {
     if (!tradeId) {
@@ -115,6 +118,7 @@ export default function TradeDetail() {
     setTags(data.tags?.join(", ") || "");
     setOpenedAt(data.open_time ? new Date(data.open_time) : new Date());
     setJournalNote(data.note || "");
+    lastSavedNoteRef.current = data.note || "";
     setLoading(false);
   }
 
@@ -235,6 +239,19 @@ export default function TradeDetail() {
 
     // Update local trade state so subsequent edits diff correctly
     setTrade({ ...trade, ...updatedFields, tags: newTags });
+
+    // Confetti for journal note save on closed trades
+    const noteChanged = journalNote.trim() !== lastSavedNoteRef.current.trim() && journalNote.trim().length > 0;
+    if (noteChanged && updatedFields.status === "closed") {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.75 },
+        colors: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ffffff'],
+      });
+      toast({ title: "Journal entry saved 🎉", description: "Keep reflecting on your trades!" });
+    }
+    lastSavedNoteRef.current = journalNote;
 
     setSaved(true);
     setSaving(false);

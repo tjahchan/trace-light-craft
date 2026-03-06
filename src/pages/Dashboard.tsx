@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { calculateRiskPercent } from "@/lib/trade-utils";
+import { calculatePnl, calculateRiskPercent } from "@/lib/trade-utils";
+import { useLivePrices } from "@/hooks/useLivePrices";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -87,6 +88,7 @@ export default function Dashboard() {
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [filters, setFilters] = useState<ClosedPositionFilters>(emptyFilters);
   const [dbTrades, setDbTrades] = useState<any[]>([]);
+  const [openTrades, setOpenTrades] = useState<any[]>([]);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [periodPnl, setPeriodPnl] = useState<Record<string, number>>({ week: 0, month: 0, year: 0 });
@@ -236,11 +238,29 @@ export default function Dashboard() {
         .eq("status", "closed")
         .order("close_time", { ascending: false });
       if (!error && data) {
-        console.log("[Dashboard] Loaded", data.length, "closed trades from DB");
         setDbTrades(data as any[]);
       }
     } catch (err) {
       console.error("[Dashboard] Error fetching trades:", err);
+    }
+  }, [user, isValidAccount, selectedAccount]);
+
+  // ---- Fetch open trades ----
+  const fetchOpenTrades = useCallback(async () => {
+    if (!user || !isValidAccount) return;
+    try {
+      const { data, error } = await supabase
+        .from("trades" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("account_id", selectedAccount!.id)
+        .eq("status", "open")
+        .order("open_time", { ascending: false });
+      if (!error && data) {
+        setOpenTrades(data as any[]);
+      }
+    } catch (err) {
+      console.error("[Dashboard] Error fetching open trades:", err);
     }
   }, [user, isValidAccount, selectedAccount]);
 
@@ -359,6 +379,7 @@ export default function Dashboard() {
     if (!accountsLoaded || !isValidAccount) return;
     fetchAndSetBalance(selectedAccount!.id);
     fetchTrades();
+    fetchOpenTrades();
     fetchPeriodPnl();
     buildChartData();
   }, [accountsLoaded, isValidAccount, selectedAccount?.id]);
@@ -367,9 +388,10 @@ export default function Dashboard() {
     if (!isValidAccount) return;
     fetchAndSetBalance(selectedAccount!.id);
     fetchTrades();
+    fetchOpenTrades();
     fetchPeriodPnl();
     buildChartData();
-  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchPeriodPnl, buildChartData]);
+  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchOpenTrades, fetchPeriodPnl, buildChartData]);
 
   // Re-fetch all data when navigating back to dashboard (e.g. after editing a trade)
   useEffect(() => {
@@ -396,6 +418,31 @@ export default function Dashboard() {
       hasNote: !!t.note,
     }));
   }, [dbTrades]);
+
+  // Open positions data
+  const openPositions = useMemo(() => {
+    return openTrades.map((t: any) => ({
+      id: t.id,
+      symbol: t.symbol,
+      side: t.side,
+      qty: t.quantity,
+      entry: t.entry_price,
+      sl: t.sl,
+      tp: t.tp,
+      openedAt: t.open_time ? new Date(t.open_time).toLocaleString() : "",
+      tags: t.tags || [],
+    }));
+  }, [openTrades]);
+
+  // Live prices for open positions
+  const openSymbols = useMemo(() => openPositions.map(p => p.symbol), [openPositions]);
+  const livePrices = useLivePrices(openSymbols);
+  const hasOpenTrades = openPositions.length > 0;
+
+  // Pagination for open positions
+  const openTotalPages = Math.max(1, Math.ceil(openPositions.length / ROWS_PER_PAGE));
+  const openPageClamped = Math.min(openPage, openTotalPages);
+  const paginatedOpen = openPositions.slice((openPageClamped - 1) * ROWS_PER_PAGE, openPageClamped * ROWS_PER_PAGE);
 
   const uniqueSymbols = useMemo(() => [...new Set(allClosedPositions.map((p) => p.symbol))], [allClosedPositions]);
   const filteredPositions = useMemo(() => applyFilters(allClosedPositions, filters), [allClosedPositions, filters]);
@@ -605,12 +652,97 @@ export default function Dashboard() {
           className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6"
         >
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Open Orders & Positions</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Open Orders & Positions</h2>
+              {hasOpenTrades && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-profit/20 text-profit border border-profit/30 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
+                  LIVE
+                </span>
+              )}
+            </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
               <Filter className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <div className="p-8 text-center text-muted-foreground text-sm">No orders to display. Create your first order.</div>
+          {openPositions.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">No open positions. Click "New Trade" and select "Open Position" to track a live trade.</div>
+          ) : (
+            <>
+              <div className="overflow-x-auto -mx-6 px-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/[0.06] text-muted-foreground text-xs uppercase tracking-wider">
+                      <th className="p-3 text-left font-medium">Symbol</th>
+                      <th className="p-3 text-left font-medium">Side</th>
+                      <th className="p-3 text-right font-medium">Qty</th>
+                      <th className="p-3 text-right font-medium">Entry</th>
+                      <th className="p-3 text-right font-medium">Current Price</th>
+                      <th className="p-3 text-right font-medium">Live PnL</th>
+                      <th className="p-3 text-left font-medium">Opened At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedOpen.map((pos) => {
+                      const currentPrice = livePrices[pos.symbol] ?? null;
+                      const livePnl = currentPrice ? calculatePnl(pos.entry, currentPrice, pos.qty, pos.side, pos.symbol) : null;
+                      return (
+                        <tr key={pos.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer" onClick={() => navigate(`/trade/${pos.id}`)}>
+                          <td className="p-3 font-mono font-medium text-foreground">{pos.symbol}</td>
+                          <td className="p-3">
+                            <span className={pos.side === "Long" ? "badge-long" : "badge-short"}>{pos.side}</span>
+                          </td>
+                          <td className="p-3 text-right font-mono text-foreground">{pos.qty}</td>
+                          <td className="p-3 text-right font-mono text-foreground">{pos.entry}</td>
+                          <td className="p-3 text-right font-mono text-muted-foreground">
+                            {currentPrice !== null ? currentPrice.toFixed(currentPrice < 10 ? 5 : 2) : "—"}
+                          </td>
+                          <td className="p-3 text-right font-mono font-medium">
+                            {livePnl !== null ? (
+                              <span className={cn("flex items-center justify-end gap-1.5", livePnl >= 0 ? "text-profit" : "text-loss")}>
+                                {livePnl >= 0 ? "+" : ""}${Math.abs(livePnl).toFixed(2)}
+                                <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", livePnl >= 0 ? "bg-profit" : "bg-loss")} />
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="p-3 font-mono text-xs text-muted-foreground">{pos.openedAt}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {/* Open positions pagination */}
+              {openPositions.length > ROWS_PER_PAGE && (
+                <div className="flex items-center justify-between mt-4 px-1">
+                  <span className="text-xs text-muted-foreground">
+                    Showing {((openPageClamped - 1) * ROWS_PER_PAGE) + 1}–{Math.min(openPageClamped * ROWS_PER_PAGE, openPositions.length)} of {openPositions.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setOpenPage(p => Math.max(1, p - 1))} disabled={openPageClamped <= 1} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    {Array.from({ length: openTotalPages }, (_, i) => i + 1).map((page) => {
+                      if (openTotalPages <= 7 || page === 1 || page === openTotalPages || Math.abs(page - openPageClamped) <= 1) {
+                        return (
+                          <button key={page} onClick={() => setOpenPage(page)} className={cn("h-7 min-w-[28px] rounded-md text-xs font-medium transition-colors", page === openPageClamped ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.06]")}>
+                            {page}
+                          </button>
+                        );
+                      }
+                      if (page === 2 || page === openTotalPages - 1) return <span key={page} className="text-xs text-muted-foreground px-1">…</span>;
+                      return null;
+                    })}
+                    <button onClick={() => setOpenPage(p => Math.min(openTotalPages, p + 1))} disabled={openPageClamped >= openTotalPages} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </motion.div>
 
         {/* Closed Positions Card */}
@@ -753,7 +885,7 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      <TradeImportModal open={importOpen} onOpenChange={setImportOpen} />
+      <TradeImportModal open={importOpen} onOpenChange={setImportOpen} accountId={selectedAccountId} onTradeCreated={refreshAll} />
       <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
       <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} userId={user?.id || ""} onBalanceRefresh={fetchAndSetBalance} />
       <DepositWithdrawModal

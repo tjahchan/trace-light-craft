@@ -25,27 +25,41 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { calculatePnl, getAssetClass } from "@/lib/trade-utils";
+import { toast } from "@/hooks/use-toast";
 
 interface TradeImportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  accountId?: string;
+  onTradeCreated?: () => void;
 }
 
-// Use shared calculation from trade-utils
-import { calculatePnl, getAssetClass } from "@/lib/trade-utils";
-
-export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) {
+export function TradeImportModal({ open, onOpenChange, accountId, onTradeCreated }: TradeImportModalProps) {
+  const { user } = useAuth();
+  const [tradeStatus, setTradeStatus] = useState<"closed" | "open">("closed");
   const [symbol, setSymbol] = useState("");
   const [side, setSide] = useState("");
   const [qty, setQty] = useState("");
   const [entry, setEntry] = useState("");
   const [exit, setExit] = useState("");
+  const [tp, setTp] = useState("");
+  const [sl, setSl] = useState("");
+  const [tags, setTags] = useState("");
+  const [alias, setAlias] = useState("");
+  const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [hour, setHour] = useState("12");
   const [minute, setMinute] = useState("00");
   const [ampm, setAmpm] = useState<"AM" | "PM">("AM");
+  const [saving, setSaving] = useState(false);
+
+  const isClosed = tradeStatus === "closed";
 
   const pnl = useMemo(() => {
+    if (!isClosed) return null;
     return calculatePnl(
       parseFloat(entry),
       parseFloat(exit),
@@ -53,7 +67,73 @@ export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) 
       side,
       symbol
     );
-  }, [symbol, side, qty, entry, exit]);
+  }, [symbol, side, qty, entry, exit, isClosed]);
+
+  const buildDateTime = () => {
+    if (!selectedDate) return null;
+    const d = new Date(selectedDate);
+    let h = parseInt(hour) || 12;
+    if (ampm === "PM" && h !== 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    d.setHours(h, parseInt(minute) || 0, 0, 0);
+    return d.toISOString();
+  };
+
+  const handleSave = async () => {
+    if (!user || !accountId) {
+      toast({ title: "No account selected", variant: "destructive" });
+      return;
+    }
+    if (!symbol || !side || !entry || !qty) {
+      toast({ title: "Fill in required fields (Symbol, Side, Entry, Qty)", variant: "destructive" });
+      return;
+    }
+    if (isClosed && !exit) {
+      toast({ title: "Exit price is required for closed trades", variant: "destructive" });
+      return;
+    }
+
+    setSaving(true);
+    const entryNum = parseFloat(entry);
+    const exitNum = isClosed ? parseFloat(exit) : null;
+    const qtyNum = parseFloat(qty);
+    const computedPnl = isClosed && exitNum ? calculatePnl(entryNum, exitNum, qtyNum, side, symbol) : null;
+    const dateTime = buildDateTime();
+    const tagArr = tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+
+    const { error } = await supabase.from("trades").insert({
+      user_id: user.id,
+      account_id: accountId,
+      symbol: symbol.toUpperCase(),
+      side: side === "long" ? "Long" : "Short",
+      quantity: qtyNum,
+      entry_price: entryNum,
+      exit_price: exitNum,
+      tp: parseFloat(tp) || null,
+      sl: parseFloat(sl) || null,
+      pnl: computedPnl,
+      status: tradeStatus,
+      open_time: dateTime,
+      close_time: isClosed ? dateTime : null,
+      tags: tagArr,
+      note: notes || "",
+    });
+
+    setSaving(false);
+    if (error) {
+      console.error("Trade insert error:", error);
+      toast({ title: "Failed to save trade", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    toast({ title: isClosed ? "Trade saved" : "Open position created" });
+    // Reset form
+    setSymbol(""); setSide(""); setQty(""); setEntry(""); setExit("");
+    setTp(""); setSl(""); setTags(""); setAlias(""); setNotes("");
+    setSelectedDate(new Date()); setTradeStatus("closed");
+    onOpenChange(false);
+    onTradeCreated?.();
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,6 +142,28 @@ export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) 
           <DialogTitle className="text-foreground">New Trade</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-2">
+          {/* Open / Closed Toggle */}
+          <div className="flex rounded-xl bg-white/[0.05] p-1">
+            <button
+              onClick={() => setTradeStatus("open")}
+              className={cn(
+                "flex-1 py-2 rounded-lg text-xs font-medium transition-colors",
+                !isClosed ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Open Position
+            </button>
+            <button
+              onClick={() => setTradeStatus("closed")}
+              className={cn(
+                "flex-1 py-2 rounded-lg text-xs font-medium transition-colors",
+                isClosed ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Closed Position
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground">Symbol</Label>
@@ -85,7 +187,8 @@ export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) 
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          <div className={cn("grid gap-3", isClosed ? "grid-cols-3" : "grid-cols-2")}>
             <div>
               <Label className="text-xs text-muted-foreground">Qty</Label>
               <Input
@@ -106,20 +209,22 @@ export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) 
                 className="mt-1 bg-white/[0.04] border-white/[0.08] font-mono"
               />
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Exit</Label>
-              <Input
-                type="number"
-                placeholder="1.0891"
-                value={exit}
-                onChange={(e) => setExit(e.target.value)}
-                className="mt-1 bg-white/[0.04] border-white/[0.08] font-mono"
-              />
-            </div>
+            {isClosed && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Exit</Label>
+                <Input
+                  type="number"
+                  placeholder="1.0891"
+                  value={exit}
+                  onChange={(e) => setExit(e.target.value)}
+                  className="mt-1 bg-white/[0.04] border-white/[0.08] font-mono"
+                />
+              </div>
+            )}
           </div>
 
-          {/* Live PnL Preview */}
-          {pnl !== null && (
+          {/* Live PnL Preview — only for closed */}
+          {isClosed && pnl !== null && (
             <div className={`rounded-xl p-4 text-center font-mono ${
               pnl >= 0
                 ? "bg-profit/10 border border-profit/20"
@@ -138,17 +243,17 @@ export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground">Take Profit</Label>
-              <Input type="number" placeholder="TP" className="mt-1 bg-white/[0.04] border-white/[0.08] font-mono" />
+              <Input type="number" placeholder="TP" value={tp} onChange={(e) => setTp(e.target.value)} className="mt-1 bg-white/[0.04] border-white/[0.08] font-mono" />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Stop Loss</Label>
-              <Input type="number" placeholder="SL" className="mt-1 bg-white/[0.04] border-white/[0.08] font-mono" />
+              <Input type="number" placeholder="SL" value={sl} onChange={(e) => setSl(e.target.value)} className="mt-1 bg-white/[0.04] border-white/[0.08] font-mono" />
             </div>
           </div>
 
           {/* Date & Time Picker */}
           <div>
-            <Label className="text-xs text-muted-foreground">Date & Time</Label>
+            <Label className="text-xs text-muted-foreground">{isClosed ? "Date & Time" : "Opened At"}</Label>
             <div className="grid grid-cols-2 gap-3 mt-1">
               <Popover>
                 <PopoverTrigger asChild>
@@ -206,18 +311,20 @@ export function TradeImportModal({ open, onOpenChange }: TradeImportModalProps) 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground">Tags</Label>
-              <Input placeholder="Scalp, Breakout" className="mt-1 bg-white/[0.04] border-white/[0.08]" />
+              <Input placeholder="Scalp, Breakout" value={tags} onChange={(e) => setTags(e.target.value)} className="mt-1 bg-white/[0.04] border-white/[0.08]" />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Alias</Label>
-              <Input placeholder="Morning Dip" className="mt-1 bg-white/[0.04] border-white/[0.08]" />
+              <Input placeholder="Morning Dip" value={alias} onChange={(e) => setAlias(e.target.value)} className="mt-1 bg-white/[0.04] border-white/[0.08]" />
             </div>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Notes</Label>
-            <Textarea placeholder="Trade notes..." className="mt-1 bg-white/[0.04] border-white/[0.08] resize-none" rows={2} />
+            <Textarea placeholder="Trade notes..." value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 bg-white/[0.04] border-white/[0.08] resize-none" rows={2} />
           </div>
-          <Button className="w-full mt-2">Save Trade</Button>
+          <Button className="w-full mt-2" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : isClosed ? "Save Trade" : "Open Trade"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
