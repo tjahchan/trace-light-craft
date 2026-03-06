@@ -33,12 +33,17 @@ async function generateSignature(
   requestPath: string,
   requestQuery: string
 ): Promise<string> {
-  const sigObject = {
+  // SnapTrade requires sorted keys and compact JSON (no spaces)
+  const sigObject: Record<string, unknown> = {
     content: requestData || {},
     path: requestPath,
     query: requestQuery,
   };
-  const sigContent = JSON.stringify(sigObject);
+  // Sort keys and produce compact JSON like Python's separators=(',', ':')
+  const sortedKeys = Object.keys(sigObject).sort();
+  const sorted: Record<string, unknown> = {};
+  for (const k of sortedKeys) sorted[k] = sigObject[k];
+  const sigContent = JSON.stringify(sorted);
 
   const key = await crypto.subtle.importKey(
     "raw",
@@ -201,7 +206,7 @@ async function listConnections(userId: string, supabaseAdmin: ReturnType<typeof 
   }
 
   // Fetch from SnapTrade
-  const connections = await snapTradeRequest("GET", "/connections", undefined, {
+  const connections = await snapTradeRequest("GET", "/authorizations", undefined, {
     userId: integration.snaptrade_user_id,
     userSecret: integration.snaptrade_user_secret_encrypted || "",
   });
@@ -510,7 +515,7 @@ async function disconnectConnection(userId: string, connectionId: string, supaba
       // TODO: Call SnapTrade delete connection endpoint
       await snapTradeRequest(
         "DELETE",
-        `/connections/${conn.snaptrade_connection_id}`,
+        `/authorizations/${conn.snaptrade_connection_id}`,
         undefined,
         {
           userId: integration.snaptrade_user_id,
