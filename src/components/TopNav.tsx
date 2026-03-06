@@ -31,7 +31,7 @@ interface TopNavProps {
 export function TopNav({ onFocusClick, onBackgroundsClick, onFeedbackClick }: TopNavProps) {
   const { user, signOut } = useAuth();
   const { startTour } = useOnboarding();
-  const { isPro, triggerUpgrade } = usePlan();
+  const { isPro, triggerUpgrade, isAdmin } = usePlan();
   const navigate = useNavigate();
 
   const initials = user?.user_metadata?.full_name
