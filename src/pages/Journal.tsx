@@ -789,7 +789,6 @@ export default function Journal() {
             {/* Trade Insights (only for trade mode) */}
             {showInsightsPanel && (
               <div data-tour="trade-insights" className="flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl overflow-auto">
-              <div className="flex-1 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl overflow-auto">
                 <TradeInsightsPanel
                   trade={selectedTrade!}
                   meta={meta}
