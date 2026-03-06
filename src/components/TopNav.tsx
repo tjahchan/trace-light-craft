@@ -10,7 +10,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { MomentraAI } from "@/components/MomentraAI";
+
 
 const navItems = [
   { title: "Dashboard", url: "/" },
@@ -61,8 +61,6 @@ export function TopNav() {
 
       {/* Right Side */}
       <div className="flex items-center gap-2">
-        {/* Momentra AI Button */}
-        <MomentraAI />
 
         <NavLink
           to="/settings"

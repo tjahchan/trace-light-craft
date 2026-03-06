@@ -5,6 +5,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import ReactMarkdown from "react-markdown";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -348,27 +354,59 @@ export function MomentraAI() {
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="relative">
-      {/* M Button — inline in TopNav */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="h-8 w-8 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:shadow-[0_0_30px_rgba(99,102,241,0.3)] transition-all duration-300 group"
-        style={{ background: "rgba(10, 12, 10, 0.95)", border: "1px solid rgba(255,255,255,0.15)" }}
-      >
-        <span className="text-sm font-bold bg-gradient-to-br from-blue-400 to-indigo-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:to-indigo-300 transition-all">
-          M
-        </span>
-      </button>
+    <>
+      {/* Fixed bottom-left M button with animated glow */}
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setOpen(!open)}
+              className="fixed bottom-6 left-6 z-[9999] h-[52px] w-[52px] rounded-full flex items-center justify-center transition-all duration-200 active:scale-[0.92] hover:scale-[1.08] group"
+              style={{
+                background: "rgba(10, 12, 10, 0.95)",
+                border: "none",
+              }}
+            >
+              {/* Animated gradient glow border */}
+              <span
+                className="absolute inset-[-2px] rounded-full opacity-80 group-hover:opacity-100 transition-opacity"
+                style={{
+                  background: "conic-gradient(from 0deg, hsl(217, 91%, 50%), hsl(230, 80%, 65%), hsl(260, 70%, 60%), hsl(217, 91%, 50%))",
+                  animation: "rotateBorder 3s linear infinite",
+                  zIndex: -1,
+                }}
+              />
+              {/* Inner dark circle */}
+              <span className="absolute inset-[2px] rounded-full" style={{ background: "rgba(10, 12, 10, 0.95)" }} />
+              {/* Pulsing glow */}
+              <span
+                className="absolute inset-[-4px] rounded-full pointer-events-none"
+                style={{
+                  animation: "momentraGlow 2.5s ease-in-out infinite",
+                }}
+              />
+              {/* M letter */}
+              <span
+                className="relative z-10 text-lg font-bold text-white"
+                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+              >
+                M
+              </span>
+            </button>
+          </TooltipTrigger>
+          {!open && <TooltipContent side="right">Ask Momentra AI</TooltipContent>}
+        </Tooltip>
+      </TooltipProvider>
 
-      {/* Panel */}
+      {/* Panel — opens upward and to the right from bottom-left */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed top-16 right-6 z-[9999] w-[420px] h-[580px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] backdrop-blur-2xl bg-black/80 border border-white/[0.12] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-[88px] left-6 z-[9999] w-[420px] h-[580px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] backdrop-blur-2xl bg-black/80 border border-white/[0.12] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.08]">
@@ -481,6 +519,6 @@ export function MomentraAI() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

@@ -42,7 +42,7 @@ export function BottomToolbar({ onFocusClick, onBackgroundsClick, onFeedbackClic
   }, [expanded]);
 
   return (
-    <div ref={containerRef} className="fixed bottom-4 left-4 z-[200] flex flex-col-reverse items-start gap-2">
+    <div ref={containerRef} className="fixed bottom-[88px] left-4 z-[200] flex flex-col-reverse items-start gap-2">
       {/* Chevron pill */}
       <TooltipProvider delayDuration={300}>
         <Tooltip>
