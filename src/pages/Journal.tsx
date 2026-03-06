@@ -21,6 +21,7 @@ import { TradeInsightsPanel } from "@/components/journal/TradeInsightsPanel";
 import { NotebookSidebar } from "@/components/journal/NotebookSidebar";
 import { RichTextEditor } from "@/components/journal/RichTextEditor";
 import { NoteScreenshots } from "@/components/journal/NoteScreenshots";
+import { AiInsightPanel } from "@/components/journal/AiInsightPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Trade {
