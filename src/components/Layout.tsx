@@ -3,6 +3,7 @@ import { TopNav } from "@/components/TopNav";
 import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
 import { FocusWidget } from "@/components/FocusWidget";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { MomentraAI } from "@/components/MomentraAI";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -65,11 +66,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Focus Widget */}
+      {/* Focus Widget — bottom-left */}
       <FocusWidget />
 
-      {/* Feedback Widget */}
+      {/* Feedback Widget — above Focus, bottom-left */}
       <FeedbackWidget />
+
+      {/* Momentra AI — bottom-right */}
+      <MomentraAI />
 
       {/* Background Switcher */}
       <BackgroundSwitcher />

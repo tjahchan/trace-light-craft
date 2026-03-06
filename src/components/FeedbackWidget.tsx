@@ -63,7 +63,7 @@ export function FeedbackWidget() {
           <TooltipTrigger asChild>
             <button
               onClick={() => setOpen(true)}
-              className="fixed bottom-4 left-4 z-50 flex items-center justify-center h-10 w-10 rounded-full backdrop-blur-xl bg-black/40 border border-white/[0.1] text-muted-foreground hover:text-foreground transition-colors"
+              className="fixed bottom-16 left-4 z-50 flex items-center justify-center h-10 w-10 rounded-full backdrop-blur-xl bg-black/40 border border-white/[0.1] text-muted-foreground hover:text-foreground transition-colors"
             >
               <MessageSquare className="h-4 w-4" />
             </button>
@@ -78,7 +78,7 @@ export function FeedbackWidget() {
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            className="fixed bottom-16 left-4 z-50 backdrop-blur-xl bg-black/70 border border-white/[0.1] rounded-2xl p-5 w-80 space-y-4"
+            className="fixed bottom-28 left-4 z-50 backdrop-blur-xl bg-black/70 border border-white/[0.1] rounded-2xl p-5 w-80 space-y-4"
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Share Feedback</span>

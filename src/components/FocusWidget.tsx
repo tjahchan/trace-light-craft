@@ -184,7 +184,7 @@ export function FocusWidget() {
       </AnimatePresence>
 
       {/* Widget */}
-      <div className="fixed bottom-4 right-16 z-50" ref={containerRef}>
+      <div className="fixed bottom-4 left-16 z-50" ref={containerRef}>
         <AnimatePresence>
           {expanded && (
             <motion.div
