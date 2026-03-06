@@ -356,6 +356,9 @@ export default function TradeDetail() {
             <div className="grid grid-cols-2 gap-3">
               <FieldCard label="Quantity">
                 <Input value={qty} onChange={(e) => setQty(e.target.value)} type="number" className="bg-white/[0.04] border-white/[0.08]" />
+                {contractSizeLabel && (
+                  <p className="text-[10px] text-muted-foreground mt-1">Contract size: {contractSizeLabel}</p>
+                )}
               </FieldCard>
               <FieldCard label="Qty in Fiat">
                 <Input value={`$${qtyFiat}`} readOnly className="bg-white/[0.02] border-white/[0.06] text-muted-foreground" />
