@@ -488,7 +488,7 @@ export default function Dashboard() {
       </div>
 
       <TradeImportModal open={importOpen} onOpenChange={setImportOpen} />
-      <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} />
+      <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={fetchTrades} />
       <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} />
       <DepositWithdrawModal
         open={depositOpen}
