@@ -39,7 +39,7 @@ export function ShareTradeCard({
     if (!cardRef.current) return null;
     setGenerating(true);
     try {
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true });
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 3, cacheBust: true });
       return dataUrl;
     } catch {
       toast({ title: "Failed to generate image", variant: "destructive" });
@@ -72,21 +72,25 @@ export function ShareTradeCard({
     }
   };
 
-  const handleShareTwitter = async () => {
-    const text = `${isProfit ? "🟢" : "🔴"} ${symbol} ${isProfit ? "+" : ""}$${Math.abs(pnl).toFixed(2)} (${adjustedPct >= 0 ? "+" : ""}${adjustedPct.toFixed(2)}%)\n\nJournaled on @MomentraApp\nmomentra.app`;
+  const handleShareTwitter = () => {
+    const text = `${isProfit ? "🟢" : "🔴"} ${symbol} ${isProfit ? "+" : ""}$${Math.abs(pnl).toFixed(2)} (${adjustedPct >= 0 ? "+" : ""}${adjustedPct.toFixed(2)}%)\n\nTracked on @MomentraApp\nmomentra.app`;
     window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const handleShareDiscord = () => {
-    const text = `${isProfit ? "🟢" : "🔴"} **${symbol}** ${isProfit ? "+" : ""}$${Math.abs(pnl).toFixed(2)} (${adjustedPct >= 0 ? "+" : ""}${adjustedPct.toFixed(2)}%) — Journaled on Momentra`;
+    const text = `${isProfit ? "🟢" : "🔴"} **${symbol}** ${isProfit ? "+" : ""}$${Math.abs(pnl).toFixed(2)} (${adjustedPct >= 0 ? "+" : ""}${adjustedPct.toFixed(2)}%) — Tracked on Momentra`;
     navigator.clipboard.writeText(text);
     toast({ title: "Copied for Discord", description: "Paste it in your Discord channel." });
   };
 
-  // Generate SVG curve path
+  // Dramatic curve paths
   const curvePath = isProfit
-    ? "M 0 70 Q 40 65 80 50 Q 120 30 160 25 Q 200 15 240 8 Q 280 2 320 0"
-    : "M 0 0 Q 40 5 80 20 Q 120 35 160 45 Q 200 55 240 62 Q 280 68 320 70";
+    ? "M 0 140 C 60 135 100 120 160 95 C 220 65 280 30 360 15 C 440 5 520 2 640 0"
+    : "M 0 0 C 60 5 100 20 160 45 C 220 75 280 110 360 125 C 440 135 520 138 640 140";
+
+  const accentColor = isProfit ? "#22c55e" : "#ef4444";
+  const glowColor = isProfit ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)";
+  const softGlow = isProfit ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)";
 
   return (
     <AnimatePresence>
@@ -95,97 +99,169 @@ export function ShareTradeCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
           onClick={onClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md space-y-4"
+            className="w-full max-w-2xl space-y-5"
           >
-            {/* The card to export */}
+            {/* ——— The exportable landscape card ——— */}
             <div
               ref={cardRef}
-              className="rounded-2xl overflow-hidden"
+              className="rounded-2xl overflow-hidden relative"
               style={{
-                background: "linear-gradient(145deg, #0a0a0f 0%, #111118 50%, #0a0a0f 100%)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                aspectRatio: "16 / 9",
+                background: "linear-gradient(160deg, #07070c 0%, #0d0d15 35%, #0a0a12 70%, #060609 100%)",
+                border: "1px solid rgba(255,255,255,0.06)",
               }}
             >
-              {/* Header */}
-              <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-5 w-0.5 rounded-full" style={{ background: "linear-gradient(to bottom, hsl(262,83%,58%), hsl(262,83%,38%))" }} />
-                  <span className="text-white text-sm font-semibold tracking-[0.08em]" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-                    Momentra
+              {/* Ambient glow */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `radial-gradient(ellipse 70% 60% at 75% 50%, ${glowColor}, transparent 70%)`,
+                }}
+              />
+              {/* Subtle grid texture */}
+              <div
+                className="absolute inset-0 pointer-events-none opacity-[0.03]"
+                style={{
+                  backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+                  backgroundSize: "40px 40px",
+                }}
+              />
+              {/* Vignette */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)",
+                }}
+              />
+
+              {/* Content layout */}
+              <div className="relative h-full flex flex-col justify-between p-6 sm:p-8">
+                {/* Top row: brand + username */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="h-5 w-1 rounded-full"
+                      style={{ background: `linear-gradient(to bottom, ${accentColor}, transparent)` }}
+                    />
+                    <span
+                      className="text-white/90 text-sm font-semibold tracking-[0.12em] uppercase"
+                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                    >
+                      Momentra
+                    </span>
+                  </div>
+                  <span className="text-white/40 text-xs font-medium tracking-wide">
+                    {username ? `@${username}` : ""}
                   </span>
                 </div>
-                <span className="text-xs text-gray-500">
-                  {username ? `@${username}` : "Trader"}
-                </span>
-              </div>
 
-              {/* PnL */}
-              <div className="px-6 py-4 text-center">
-                <p
-                  className="text-4xl font-bold font-mono tracking-tight"
-                  style={{ color: isProfit ? "#22c55e" : "#ef4444" }}
-                >
-                  {isProfit ? "+" : "-"}${Math.abs(pnl).toFixed(2)}
-                </p>
-                <p
-                  className="text-sm font-mono mt-1"
-                  style={{ color: isProfit ? "rgba(34,197,94,0.7)" : "rgba(239,68,68,0.7)" }}
-                >
-                  {adjustedPct >= 0 ? "+" : ""}{adjustedPct.toFixed(2)}%
-                </p>
-              </div>
+                {/* Center: PnL + info */}
+                <div className="flex items-end justify-between flex-1 py-2">
+                  {/* Left: PnL */}
+                  <div className="flex flex-col justify-center gap-1 z-10">
+                    <p
+                      className="text-5xl sm:text-6xl font-bold font-mono tracking-tight leading-none"
+                      style={{
+                        color: accentColor,
+                        textShadow: `0 0 40px ${glowColor}, 0 0 80px ${softGlow}`,
+                      }}
+                    >
+                      {isProfit ? "+" : "-"}${Math.abs(pnl).toFixed(2)}
+                    </p>
+                    <p
+                      className="text-lg sm:text-xl font-mono font-medium tracking-tight"
+                      style={{ color: accentColor, opacity: 0.7 }}
+                    >
+                      {adjustedPct >= 0 ? "+" : ""}{adjustedPct.toFixed(2)}%
+                    </p>
+                  </div>
 
-              {/* Chart curve */}
-              <div className="px-6">
-                <svg viewBox="0 0 320 70" className="w-full h-16" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={isProfit ? "#22c55e" : "#ef4444"} stopOpacity="0.3" />
-                      <stop offset="100%" stopColor={isProfit ? "#22c55e" : "#ef4444"} stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <path d={`${curvePath} L 320 70 L 0 70 Z`} fill="url(#curveGrad)" />
-                  <path d={curvePath} fill="none" stroke={isProfit ? "#22c55e" : "#ef4444"} strokeWidth="2" />
-                </svg>
-              </div>
-
-              {/* Footer */}
-              <div className="px-6 pb-5 pt-3 flex items-center justify-between">
-                <div>
-                  <p className="text-white text-sm font-semibold">{symbol}</p>
-                  <p className="text-gray-500 text-[11px]">{date}</p>
+                  {/* Right: Chart graphic */}
+                  <div className="absolute right-0 bottom-0 w-[60%] h-[65%] pointer-events-none">
+                    <svg viewBox="0 0 640 140" className="w-full h-full" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="shareGradFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={accentColor} stopOpacity="0.25" />
+                          <stop offset="100%" stopColor={accentColor} stopOpacity="0" />
+                        </linearGradient>
+                        <filter id="shareGlow">
+                          <feGaussianBlur stdDeviation="4" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                      </defs>
+                      <path d={`${curvePath} L 640 140 L 0 140 Z`} fill="url(#shareGradFill)" />
+                      <path
+                        d={curvePath}
+                        fill="none"
+                        stroke={accentColor}
+                        strokeWidth="2.5"
+                        filter="url(#shareGlow)"
+                        strokeLinecap="round"
+                      />
+                      {/* Endpoint dot */}
+                      <circle
+                        cx={isProfit ? "640" : "640"}
+                        cy={isProfit ? "0" : "140"}
+                        r="4"
+                        fill={accentColor}
+                        filter="url(#shareGlow)"
+                      />
+                    </svg>
+                  </div>
                 </div>
-                <p className="text-gray-600 text-[10px] italic">Journaled on Momentra</p>
+
+                {/* Bottom row: symbol + date */}
+                <div className="flex items-end justify-between z-10">
+                  <div className="flex items-center gap-4">
+                    <span className="text-white text-sm font-semibold tracking-wide">{symbol}</span>
+                    <span className="text-white/30 text-xs">{date}</span>
+                  </div>
+                  <span
+                    className="text-white/20 text-[10px] tracking-wider uppercase"
+                    style={{ fontFamily: "'Montserrat', sans-serif" }}
+                  >
+                    momentra.app
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Actions */}
+            {/* ——— Share actions ——— */}
             <div className="flex flex-wrap gap-2 justify-center">
-              <Button size="sm" variant="outline" onClick={handleCopy} disabled={generating} className="gap-1.5 bg-white/[0.04] border-white/[0.08] text-foreground hover:bg-white/[0.08]">
-                <Copy className="h-3.5 w-3.5" /> Copy Image
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleDownload} disabled={generating} className="gap-1.5 bg-white/[0.04] border-white/[0.08] text-foreground hover:bg-white/[0.08]">
-                <Download className="h-3.5 w-3.5" /> Download
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleShareTwitter} className="gap-1.5 bg-white/[0.04] border-white/[0.08] text-foreground hover:bg-white/[0.08]">
-                <Share2 className="h-3.5 w-3.5" /> Twitter/X
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleShareDiscord} className="gap-1.5 bg-white/[0.04] border-white/[0.08] text-foreground hover:bg-white/[0.08]">
-                <Share2 className="h-3.5 w-3.5" /> Discord
-              </Button>
+              {[
+                { label: "Copy Image", icon: Copy, handler: handleCopy },
+                { label: "Download", icon: Download, handler: handleDownload },
+                { label: "Twitter / X", icon: Share2, handler: handleShareTwitter },
+                { label: "Discord", icon: Share2, handler: handleShareDiscord },
+              ].map(({ label, icon: Icon, handler }) => (
+                <Button
+                  key={label}
+                  size="sm"
+                  variant="outline"
+                  onClick={handler}
+                  disabled={generating && (label === "Copy Image" || label === "Download")}
+                  className="gap-1.5 bg-white/[0.04] border-white/[0.08] text-foreground hover:bg-white/[0.1] hover:border-white/[0.15] transition-all duration-200"
+                >
+                  <Icon className="h-3.5 w-3.5" /> {label}
+                </Button>
+              ))}
             </div>
 
             {/* Close */}
             <div className="flex justify-center">
-              <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground gap-1.5">
+              <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground gap-1.5 hover:text-foreground">
                 <X className="h-3.5 w-3.5" /> Close
               </Button>
             </div>
