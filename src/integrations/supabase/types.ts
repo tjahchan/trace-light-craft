@@ -453,6 +453,9 @@ export type Database = {
           has_seen_tour: boolean
           id: string
           last_active_at: string | null
+          referral_code: string | null
+          referral_count: number
+          referred_by: string | null
           sample_data_enabled: boolean
           updated_at: string
           user_id: string
@@ -466,6 +469,9 @@ export type Database = {
           has_seen_tour?: boolean
           id?: string
           last_active_at?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           sample_data_enabled?: boolean
           updated_at?: string
           user_id: string
@@ -479,6 +485,9 @@ export type Database = {
           has_seen_tour?: boolean
           id?: string
           last_active_at?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           sample_data_enabled?: boolean
           updated_at?: string
           user_id?: string

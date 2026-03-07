@@ -13,6 +13,8 @@ import {
   ChevronRight,
   Flame,
   DollarSign,
+  Copy,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -595,7 +597,7 @@ export default function Community() {
         </AnimatePresence>
       </motion.div>
 
-      {/* ── Right Column — unchanged ── */}
+      {/* ── Right Column ── */}
       <motion.div
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
@@ -638,7 +640,70 @@ export default function Community() {
             and climb the board.
           </p>
         </div>
+
+        {/* Invite Friends */}
+        <ReferralCard />
       </motion.div>
+    </div>
+  );
+}
+
+// ── Referral Card ──
+function ReferralCard() {
+  const { user } = useAuth();
+  const [referralCode, setReferralCode] = useState("");
+  const [referralCount, setReferralCount] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("username, referral_code, referral_count")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          const d = data as any;
+          setReferralCode(d.referral_code || d.username || user.id.slice(0, 8));
+          setReferralCount(d.referral_count || 0);
+        }
+      });
+  }, [user]);
+
+  const referralLink = `momentra.app/ref/${referralCode}`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`https://${referralLink}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="backdrop-blur-xl bg-card/60 border border-border rounded-2xl p-6 space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+          <Users className="h-4 w-4 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Invite Friends</p>
+          <p className="text-[10px] text-muted-foreground">{referralCount} friend{referralCount !== 1 ? "s" : ""} invited</p>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Share your link and grow the Momentra community.
+      </p>
+      <div className="flex gap-2">
+        <Input
+          value={referralLink}
+          readOnly
+          className="text-xs bg-white/[0.04] border-white/[0.08] text-foreground font-mono flex-1"
+        />
+        <Button size="sm" variant="outline" onClick={handleCopy} className="gap-1.5 shrink-0 bg-white/[0.04] border-white/[0.08] text-foreground">
+          <Copy className="h-3 w-3" />
+          {copied ? "Copied!" : "Copy"}
+        </Button>
+      </div>
     </div>
   );
 }

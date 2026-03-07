@@ -192,7 +192,7 @@ export function FocusWidget({ externalOpen, onExternalClose }: FocusWidgetProps)
       </AnimatePresence>
 
       {/* Widget panel */}
-      <div className="fixed bottom-16 left-4 z-[300]" ref={containerRef}>
+      <div className="fixed top-16 right-4 z-[300]" ref={containerRef}>
         <AnimatePresence>
           {expanded && (
             <motion.div

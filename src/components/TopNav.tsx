@@ -23,7 +23,7 @@ const navItems = [
   { title: "Dashboard", url: "/" },
   { title: "Overview", url: "/overview" },
   { title: "Journal", url: "/journal" },
-  { title: "Leaderboard", url: "/community" },
+  { title: "Community", url: "/community" },
 ];
 
 interface TopNavProps {
