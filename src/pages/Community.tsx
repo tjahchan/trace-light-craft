@@ -595,7 +595,7 @@ export default function Community() {
         </AnimatePresence>
       </motion.div>
 
-      {/* ── Right Column — unchanged ── */}
+      {/* ── Right Column ── */}
       <motion.div
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
@@ -638,6 +638,9 @@ export default function Community() {
             and climb the board.
           </p>
         </div>
+
+        {/* Invite Friends */}
+        <ReferralCard />
       </motion.div>
     </div>
   );
