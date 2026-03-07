@@ -490,7 +490,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-0">
       <WelcomeBanner />
-      <div className="flex gap-6 flex-col xl:flex-row">
+      <div className="flex gap-4 sm:gap-6 flex-col xl:flex-row">
       {/* Left Panel */}
       <div className="w-full xl:w-80 shrink-0 space-y-4">
         {/* Streak Tracker Card */}

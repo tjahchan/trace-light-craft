@@ -161,9 +161,9 @@ export default function Overview() {
   const totalPnlPositive = stats.totalPnl >= 0;
 
   return (
-    <div className="flex gap-6 flex-col xl:flex-row">
+    <div className="flex gap-4 sm:gap-6 flex-col xl:flex-row">
       {/* Left Panel — Stats */}
-      <div className="w-full xl:w-80 shrink-0 space-y-4" data-tour="overview-stats">
+      <div className="w-full xl:w-80 shrink-0 space-y-4 grid grid-cols-2 xl:grid-cols-1 gap-4 xl:gap-0 xl:space-y-4" data-tour="overview-stats">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Today's PnL</p>
           <div className="flex items-center gap-2">
