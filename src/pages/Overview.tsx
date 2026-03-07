@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useBackground } from "@/contexts/BackgroundContext";
 
 const PROFIT_COLOR = "hsl(142, 71%, 45%)";
 const LOSS_COLOR = "hsl(0, 84%, 60%)";
@@ -28,6 +29,7 @@ export default function Overview() {
   const { sampleDataEnabled } = useOnboarding();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { calendarOpacity } = useBackground();
   const [month, setMonth] = useState(() => new Date().getMonth());
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [realTrades, setRealTrades] = useState<any[]>([]);
@@ -244,7 +246,7 @@ export default function Overview() {
 
       {/* Right Panel — Calendar */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex-1 min-w-0" data-tour="overview-calendar">
-        <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
+        <div className="backdrop-blur-xl border border-white/[0.1] rounded-2xl p-4 sm:p-6" style={{ backgroundColor: `rgba(0,0,0,${calendarOpacity / 100 * 0.4})` }}>
           <div className="flex items-center justify-between mb-4">
             <Button variant="ghost" size="icon" onClick={prevMonth} className="text-muted-foreground h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
             <div className="text-center">
