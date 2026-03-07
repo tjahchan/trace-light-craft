@@ -1,14 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Link2,
   Plus,
   RefreshCw,
-  AlertTriangle,
-  CheckCircle2,
   Loader2,
-  Unplug,
-  ChevronRight,
   Clock,
   Shield,
   Activity,
@@ -20,6 +16,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/contexts/PlanContext";
 import { BrokerConnectionCard } from "@/components/broker/BrokerConnectionCard";
 import { AccountSelectionModal } from "@/components/broker/AccountSelectionModal";
+import { BrokerSelectionModal } from "@/components/broker/BrokerSelectionModal";
+import { TradeLockerAuthModal } from "@/components/broker/TradeLockerAuthModal";
 import { SyncStatusBanner } from "@/components/broker/SyncStatusBanner";
 import {
   registerSnapTradeUser,
@@ -38,6 +36,8 @@ export default function BrokerConnections() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [showAccountSelection, setShowAccountSelection] = useState(false);
+  const [showBrokerSelection, setShowBrokerSelection] = useState(false);
+  const [showTradeLockerAuth, setShowTradeLockerAuth] = useState(false);
   const [syncingConnectionId, setSyncingConnectionId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -52,7 +52,6 @@ export default function BrokerConnections() {
       setAccounts(acctResult.accounts);
     } catch (err: any) {
       console.error("[BrokerConnections] Error fetching data:", err);
-      // Don't toast on initial load if no integration exists yet
       if (!err.message?.includes("credentials not configured")) {
         toast.error("Failed to load broker connections");
       }
@@ -70,44 +69,49 @@ export default function BrokerConnections() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("broker_connected") === "true") {
       toast.success("Broker connected successfully!");
-      // Clean URL
       window.history.replaceState({}, "", window.location.pathname);
-      // Refresh and show account selection
       fetchData().then(() => setShowAccountSelection(true));
     }
   }, [fetchData]);
 
-  const handleConnectBroker = async () => {
+  // Entry point: show broker selection modal (or upgrade modal for free users)
+  const handleConnectBroker = () => {
     if (!canUseBrokerSync) {
       triggerUpgrade("Broker auto sync is available on the Pro plan. Upgrade to automatically import your trades.");
       return;
     }
+    setShowBrokerSelection(true);
+  };
+
+  // SnapTrade flow
+  const handleSelectSnapTrade = async () => {
+    setShowBrokerSelection(false);
     setConnecting(true);
     try {
-      // Step 1: Register SnapTrade user if needed
       await registerSnapTradeUser();
-
-      // Step 2: Generate connection portal URL
       const redirectUri = `${window.location.origin}/broker-connections?broker_connected=true`;
       const { redirect_url } = await generateConnectUrl(redirectUri);
-
       if (!redirect_url) {
         toast.error("Could not generate broker connection link. Please try again.");
         return;
       }
-
-      // Step 3: Redirect to SnapTrade hosted flow
       window.location.href = redirect_url;
     } catch (err: any) {
-      console.error("[BrokerConnections] Connect error:", err);
+      console.error("[BrokerConnections] SnapTrade connect error:", err);
       if (err.message?.includes("credentials not configured")) {
         toast.error("Broker integration is not configured yet. Please add your SnapTrade API credentials.");
       } else {
-        toast.error(err.message || "Failed to start broker connection. Please try again.");
+        toast.error(err.message || "Failed to start broker connection.");
       }
     } finally {
       setConnecting(false);
     }
+  };
+
+  // TradeLocker flow
+  const handleSelectTradeLocker = () => {
+    setShowBrokerSelection(false);
+    setShowTradeLockerAuth(true);
   };
 
   const connectedCount = connections.filter((c) => c.connection_status === "connected").length;
@@ -216,7 +220,7 @@ export default function BrokerConnections() {
             <div>
               <p className="text-foreground font-medium">No brokers connected yet</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-                Securely connect your brokerage and auto-import your trade history into Momentra. Your broker credentials are handled through a secure connection provider.
+                Securely connect your brokerage and auto-import your trade history into Momentra.
               </p>
             </div>
             <Button onClick={handleConnectBroker} disabled={connecting} className="gap-2">
@@ -254,12 +258,28 @@ export default function BrokerConnections() {
         <div>
           <p className="text-xs text-foreground font-medium">Secure Broker Connection</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Momentra uses a secure broker connection flow to sync your account activity. Your broker credentials are handled through the connection provider, not stored directly in Momentra.
+            Momentra uses read-only access to sync your account activity. Your credentials are handled securely and never stored in plain text. Momentra cannot execute trades or place orders on your behalf.
           </p>
         </div>
       </motion.div>
 
-      {/* Account Selection Modal */}
+      {/* Modals */}
+      <BrokerSelectionModal
+        open={showBrokerSelection}
+        onOpenChange={setShowBrokerSelection}
+        onSelectSnapTrade={handleSelectSnapTrade}
+        onSelectTradeLocker={handleSelectTradeLocker}
+      />
+
+      <TradeLockerAuthModal
+        open={showTradeLockerAuth}
+        onOpenChange={setShowTradeLockerAuth}
+        onComplete={() => {
+          setShowTradeLockerAuth(false);
+          fetchData();
+        }}
+      />
+
       <AccountSelectionModal
         open={showAccountSelection}
         onOpenChange={setShowAccountSelection}
