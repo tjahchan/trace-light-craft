@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronRight,
   Save,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,7 @@ import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
+import { ShareTradeCard } from "@/components/ShareTradeCard";
 
 const timeframes = ["1m", "30m", "1h"];
 
@@ -97,6 +99,8 @@ export default function TradeDetail() {
   const [editHistory, setEditHistory] = useState<any[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const lastSavedNoteRef = useRef("");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUsername, setShareUsername] = useState("");
 
   async function fetchTrade() {
     if (!tradeId) {
@@ -162,7 +166,13 @@ export default function TradeDetail() {
   useEffect(() => {
     fetchTrade();
     fetchEditHistory();
-  }, [tradeId]);
+    // Fetch username for sharing
+    if (user) {
+      supabase.from("profiles").select("username, display_name").eq("user_id", user.id).single().then(({ data }) => {
+        if (data) setShareUsername((data as any).username || data.display_name || "");
+      });
+    }
+  }, [tradeId, user]);
 
   // Live PnL recalculation
   const livePnl = useMemo(() => {
@@ -389,6 +399,9 @@ export default function TradeDetail() {
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                 <Pin className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setShareOpen(true)} className="h-8 w-8 text-muted-foreground hover:text-primary">
+                <Share2 className="h-4 w-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
