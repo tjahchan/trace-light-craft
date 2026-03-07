@@ -8,7 +8,7 @@ import { LandingCTA } from "@/components/landing/LandingCTA";
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden max-w-[100vw]">
       <LandingHero />
       <LandingProblem />
       <LandingAI />
