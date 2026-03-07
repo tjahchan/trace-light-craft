@@ -378,9 +378,9 @@ export default function TradeDetail() {
   return (
     <div className="h-[calc(100vh-4rem)] grid grid-rows-[1fr_auto] gap-0 overflow-hidden">
       {/* Top section: left info + right chart */}
-      <div className="grid grid-cols-1 xl:grid-cols-[35%_65%] gap-0 min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 xl:grid-cols-[30%_70%] gap-0 min-h-0 overflow-hidden">
         {/* Left Panel — Order Info */}
-        <div className="backdrop-blur-xl bg-black/40 border-r border-white/[0.06] overflow-y-auto p-6 space-y-4">
+        <div className="backdrop-blur-xl bg-black/40 border-r border-white/[0.06] overflow-y-auto p-4 sm:p-6 space-y-4">
           {/* Back + Header */}
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5 text-muted-foreground hover:text-foreground -ml-2">
