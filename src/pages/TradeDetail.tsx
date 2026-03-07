@@ -400,8 +400,16 @@ export default function TradeDetail() {
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                 <Pin className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setShareOpen(true)} className="h-8 w-8 text-muted-foreground hover:text-primary">
-                <Share2 className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShareOpen(true)}
+                className="h-8 w-8 relative text-primary hover:text-primary group"
+                title="Share Trade"
+              >
+                <span className="absolute inset-0 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300" />
+                <span className="absolute inset-0 rounded-md animate-pulse opacity-30 bg-primary/20" />
+                <Share2 className="h-4 w-4 relative z-10 drop-shadow-[0_0_6px_hsl(var(--primary)/0.5)]" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
