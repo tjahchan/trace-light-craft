@@ -55,8 +55,10 @@ export type Database = {
           currency: string | null
           id: string
           is_selected_for_import: boolean
+          provider: string
           snaptrade_account_id: string | null
           status: string
+          tradelocker_account_id: string | null
           updated_at: string
           user_id: string
         }
@@ -70,8 +72,10 @@ export type Database = {
           currency?: string | null
           id?: string
           is_selected_for_import?: boolean
+          provider?: string
           snaptrade_account_id?: string | null
           status?: string
+          tradelocker_account_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -85,8 +89,10 @@ export type Database = {
           currency?: string | null
           id?: string
           is_selected_for_import?: boolean
+          provider?: string
           snaptrade_account_id?: string | null
           status?: string
+          tradelocker_account_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -156,6 +162,7 @@ export type Database = {
           id: string
           integration_id: string
           last_synced_at: string | null
+          provider: string
           snaptrade_connection_id: string | null
           updated_at: string
           user_id: string
@@ -168,6 +175,7 @@ export type Database = {
           id?: string
           integration_id: string
           last_synced_at?: string | null
+          provider?: string
           snaptrade_connection_id?: string | null
           updated_at?: string
           user_id: string
@@ -180,6 +188,7 @@ export type Database = {
           id?: string
           integration_id?: string
           last_synced_at?: string | null
+          provider?: string
           snaptrade_connection_id?: string | null
           updated_at?: string
           user_id?: string
@@ -202,6 +211,10 @@ export type Database = {
           snaptrade_user_id: string | null
           snaptrade_user_secret_encrypted: string | null
           status: string
+          tradelocker_access_token_encrypted: string | null
+          tradelocker_refresh_token_encrypted: string | null
+          tradelocker_server: string | null
+          tradelocker_token_expires_at: string | null
           updated_at: string
           user_id: string
         }
@@ -212,6 +225,10 @@ export type Database = {
           snaptrade_user_id?: string | null
           snaptrade_user_secret_encrypted?: string | null
           status?: string
+          tradelocker_access_token_encrypted?: string | null
+          tradelocker_refresh_token_encrypted?: string | null
+          tradelocker_server?: string | null
+          tradelocker_token_expires_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -222,6 +239,10 @@ export type Database = {
           snaptrade_user_id?: string | null
           snaptrade_user_secret_encrypted?: string | null
           status?: string
+          tradelocker_access_token_encrypted?: string | null
+          tradelocker_refresh_token_encrypted?: string | null
+          tradelocker_server?: string | null
+          tradelocker_token_expires_at?: string | null
           updated_at?: string
           user_id?: string
         }
