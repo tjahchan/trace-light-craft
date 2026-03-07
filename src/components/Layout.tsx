@@ -71,7 +71,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           onBackgroundsClick={() => setBgOpen(true)}
           onFeedbackClick={() => setFeedbackOpen(true)}
         />
-        <main className="flex-1 overflow-auto p-6 page-transition">
+        <main className="flex-1 overflow-auto p-3 sm:p-6 page-transition">
           {children}
         </main>
       </div>
