@@ -653,6 +653,19 @@ export default function TradeDetail() {
           />
         </div>
       </div>
+
+      {/* Share Trade Card Modal */}
+      <ShareTradeCard
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        symbol={symbol}
+        pnl={livePnl}
+        entryPrice={entryNum}
+        exitPrice={exitNum}
+        side={side}
+        date={openedAt ? format(openedAt, "PPP") : "—"}
+        username={shareUsername}
+      />
     </div>
   );
 }
