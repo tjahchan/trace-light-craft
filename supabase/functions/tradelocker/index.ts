@@ -55,16 +55,18 @@ async function tlRequest(
 
 async function authenticate(
   userId: string,
-  server: string,
+  environment: string,
+  serverName: string,
   email: string,
   password: string,
   supabaseAdmin: ReturnType<typeof getSupabaseAdmin>
 ) {
-  // Authenticate with TradeLocker
-  const authResult = await tlRequest(server, "POST", "/auth/jwt/token", undefined, {
+  // environment = API base URL host (e.g. demo.tradelocker.com)
+  // serverName = broker server name for auth body (e.g. BLBRY, FTMO)
+  const authResult = await tlRequest(environment, "POST", "/auth/jwt/token", undefined, {
     email,
     password,
-    server: server.replace("https://", "").replace("http://", ""),
+    server: serverName,
   });
 
   const accessToken = authResult.accessToken || authResult.access_token;
@@ -568,15 +570,18 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "authenticate": {
-        if (!body.server || !body.email || !body.password) {
-          throw new Error("Server, email, and password are required");
+        if (!body.email || !body.password) {
+          throw new Error("Email and password are required");
         }
-        // Validate server looks like a hostname (must contain a dot)
-        const serverHost = body.server.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-        if (!serverHost.includes(".")) {
-          throw new Error(`Invalid server hostname "${serverHost}". Please enter the full TradeLocker server address (e.g. live.tradelocker.com).`);
+        // Support both old format (body.server) and new format (body.environment + body.server_name)
+        const environment = body.environment || "demo.tradelocker.com";
+        const serverName = body.server_name || body.server || "";
+        if (!serverName) {
+          throw new Error("Server name is required (e.g. BLBRY, FTMO)");
         }
-        result = await authenticate(userId, serverHost, body.email, body.password, supabaseAdmin);
+        // Ensure environment is a valid host
+        const envHost = environment.includes(".") ? environment : `${environment}.tradelocker.com`;
+        result = await authenticate(userId, envHost, serverName, body.email, body.password, supabaseAdmin);
         break;
       }
       case "list_accounts":
