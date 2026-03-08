@@ -19,6 +19,19 @@ import {
   type TLAccount,
 } from "@/lib/tradelocker-client";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const SERVER_OPTIONS = [
+  { value: "demo.tradelocker.com", label: "Demo" },
+  { value: "live.tradelocker.com", label: "Live" },
+  { value: "custom", label: "Custom" },
+] as const;
 
 type Step = "credentials" | "connecting" | "accounts" | "importing" | "complete";
 
