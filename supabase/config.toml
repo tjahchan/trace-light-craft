@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.tradelocker]
 verify_jwt = false
+
+[functions.broker-autosync]
+verify_jwt = false

@@ -31,9 +31,10 @@ import {
   Line,
   XAxis,
   YAxis,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useBalanceHistory, type BalancePeriod } from "@/hooks/useBalanceHistory";
 import { TradeImportModal } from "@/components/TradeImportModal";
 import { CSVImportModal } from "@/components/CSVImportModal";
 import { ManageAccountsModal, type Account } from "@/components/ManageAccountsModal";
@@ -72,7 +73,7 @@ function riskColor(pct: number) {
 const STORAGE_KEY = "selectedAccountId";
 const ROWS_PER_PAGE = 10;
 
-type BalancePeriod = "week" | "month" | "year";
+// BalancePeriod type imported from useBalanceHistory
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -83,7 +84,9 @@ export default function Dashboard() {
   const [manageOpen, setManageOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [balancePeriod, setBalancePeriod] = useState<BalancePeriod>("month");
+  const [balancePeriod, setBalancePeriod] = useState<BalancePeriod>(() => {
+    return (localStorage.getItem("balancePeriod") as BalancePeriod) || "month";
+  });
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -93,7 +96,7 @@ export default function Dashboard() {
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [periodPnl, setPeriodPnl] = useState<Record<string, number>>({ week: 0, month: 0, year: 0 });
-  const [chartData, setChartData] = useState<{ date: string; balance: number }[]>([]);
+  // chartData now comes from useBalanceHistory hook
   const [closedPage, setClosedPage] = useState(1);
   const [openPage, setOpenPage] = useState(1);
   const [pnlDisplayMode, setPnlDisplayMode] = useState<"$" | "%">(() => {
