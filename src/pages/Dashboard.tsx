@@ -317,7 +317,7 @@ export default function Dashboard() {
             <Skeleton className="h-9 w-40 mb-2" />
           ) : (
             <p className="text-2xl font-mono font-medium text-foreground">
-              ${displayBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              ${displayBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           )}
           <div className="flex items-center gap-2 mt-1">
@@ -370,7 +370,7 @@ export default function Dashboard() {
                       return (
                         <div style={{ background: "rgba(0,0,0,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", padding: "8px 12px", fontFamily: "monospace", fontSize: "11px", color: "#fff", maxWidth: "220px" }}>
                           <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
-                          <div style={{ color: "hsl(217, 91%, 60%)" }}>Balance: ${point.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+                          <div style={{ color: "hsl(217, 91%, 60%)" }}>Balance: ${point.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                           {point.trades?.length > 0 && (
                             <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4 }}>
                               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 2 }}>Trades:</div>
