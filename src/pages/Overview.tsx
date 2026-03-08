@@ -321,7 +321,7 @@ export default function Overview() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
-              className="mt-4 backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-5"
+              className="mt-4 bg-black/60 border border-white/[0.1] rounded-2xl p-5"
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-foreground">
