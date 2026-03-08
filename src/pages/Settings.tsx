@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AccountReconciliationPanel } from "@/components/AccountReconciliationPanel";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -322,6 +323,11 @@ export default function SettingsPage() {
             <Upload className="h-3.5 w-3.5" /> Import CSV
           </Button>
         </div>
+      </div>
+
+      {/* Account Reconciliation Debug */}
+      <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-5 sm:p-6">
+        <AccountReconciliationPanel />
       </div>
 
       {/* Danger Zone */}
