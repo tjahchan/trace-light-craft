@@ -543,18 +543,21 @@ export default function Dashboard() {
 
           {/* Period Toggle */}
           <div className="flex rounded-lg bg-white/[0.05] p-0.5 mt-3">
-            {(["week", "month", "year"] as BalancePeriod[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setBalancePeriod(p)}
-                className={cn(
-                  "flex-1 py-1 rounded-md text-xs font-medium transition-colors capitalize",
-                  balancePeriod === p ? "bg-white/[0.1] text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {p}
-              </button>
-            ))}
+            {(["day", "week", "month", "year"] as BalancePeriod[]).map((p) => {
+              const labels: Record<BalancePeriod, string> = { day: "D", week: "W", month: "M", year: "Y" };
+              return (
+                <button
+                  key={p}
+                  onClick={() => { setBalancePeriod(p); localStorage.setItem("balancePeriod", p); }}
+                  className={cn(
+                    "flex-1 py-1 rounded-md text-xs font-medium transition-colors",
+                    balancePeriod === p ? "bg-white/[0.1] text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {labels[p]}
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-2 h-24">
@@ -578,17 +581,43 @@ export default function Dashboard() {
                     domain={["dataMin - 200", "dataMax + 200"]}
                   />
                   <Line type="monotone" dataKey="balance" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "rgba(0,0,0,0.8)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                      fontFamily: "monospace",
-                      fontSize: "12px",
+                  <RechartsTooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload || !payload[0]) return null;
+                      const point = payload[0].payload;
+                      const balance = point.balance;
+                      const trades = point.trades || [];
+                      return (
+                        <div style={{
+                          background: "rgba(0,0,0,0.9)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "8px",
+                          padding: "8px 12px",
+                          fontFamily: "monospace",
+                          fontSize: "11px",
+                          color: "#fff",
+                          maxWidth: "220px",
+                        }}>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                          <div style={{ color: "hsl(217, 91%, 60%)" }}>
+                            Balance: ${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                          </div>
+                          {trades.length > 0 && (
+                            <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4 }}>
+                              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 2 }}>Trades:</div>
+                              {trades.map((t: any, i: number) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                  <span>{t.symbol}</span>
+                                  <span style={{ color: t.pnl >= 0 ? "hsl(142, 71%, 45%)" : "hsl(0, 84%, 60%)" }}>
+                                    {t.pnl >= 0 ? "+" : ""}${Math.abs(t.pnl).toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
                     }}
-                    formatter={(value: number) => [`$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, "Balance"]}
-                    labelFormatter={(label: string) => label}
                   />
                 </LineChart>
               </ResponsiveContainer>
