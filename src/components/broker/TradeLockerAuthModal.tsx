@@ -69,14 +69,14 @@ export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) 
   };
 
   const handleConnect = async () => {
-    if (!server.trim() || !email.trim() || !password.trim()) {
+    if (!serverName.trim() || !email.trim() || !password.trim()) {
       toast.error("Please fill in all fields.");
       return;
     }
 
     setStep("connecting");
     try {
-      await authenticateTradeLocker(server.trim(), email.trim(), password.trim());
+      await authenticateTradeLocker(envHost, serverName.trim(), email.trim(), password.trim());
       // Immediately clear password from state
       setPassword("");
 
