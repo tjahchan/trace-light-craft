@@ -132,8 +132,6 @@ export default function Admin() {
   const mrr = (stats?.pro_users ?? 0) * 14;
 
   // Fetch referral stats
-  const [referralStats, setReferralStats] = useState<{ user_id: string; display_name: string; referral_count: number }[]>([]);
-
   useEffect(() => {
     if (!isAdmin) return;
     supabase
