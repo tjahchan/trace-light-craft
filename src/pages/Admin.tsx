@@ -130,6 +130,28 @@ export default function Admin() {
 
   const mrr = (stats?.pro_users ?? 0) * 14;
 
+  // Fetch referral stats
+  const [referralStats, setReferralStats] = useState<{ user_id: string; display_name: string; referral_count: number }[]>([]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase
+      .from("profiles")
+      .select("user_id, display_name, email, referral_count")
+      .gt("referral_count", 0)
+      .order("referral_count", { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (data) {
+          setReferralStats(data.map((d: any) => ({
+            user_id: d.user_id,
+            display_name: d.display_name || d.email?.split("@")[0] || "—",
+            referral_count: d.referral_count || 0,
+          })));
+        }
+      });
+  }, [isAdmin]);
+
   const statCards = [
     { label: "Total Users", value: stats?.total_users ?? 0, icon: Users },
     { label: "Free Users", value: stats?.free_users ?? 0, icon: Users },
@@ -250,6 +272,34 @@ export default function Admin() {
           </table>
         </div>
       </motion.div>
+
+      {/* Referral Tracking */}
+      {referralStats.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-5"
+        >
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4">Top Referrers</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-muted-foreground text-xs uppercase tracking-wider">
+                <th className="p-2 text-left font-medium">User</th>
+                <th className="p-2 text-right font-medium">Referrals</th>
+              </tr>
+            </thead>
+            <tbody>
+              {referralStats.map((r) => (
+                <tr key={r.user_id} className="border-b border-white/[0.04]">
+                  <td className="p-2 text-foreground font-mono text-xs">{r.display_name}</td>
+                  <td className="p-2 text-right font-mono text-foreground">{r.referral_count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      )}
 
       {/* User Detail Panel */}
       {selectedUser && (
