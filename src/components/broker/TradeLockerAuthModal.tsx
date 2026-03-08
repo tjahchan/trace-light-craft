@@ -42,19 +42,20 @@ interface Props {
 
 export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) {
   const [step, setStep] = useState<Step>("credentials");
-  const [serverType, setServerType] = useState("demo.tradelocker.com");
-  const [customServer, setCustomServer] = useState("");
-  const server = serverType === "custom" ? customServer : serverType;
+  const [environment, setEnvironment] = useState("demo");
+  const [serverName, setServerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accounts, setAccounts] = useState<TLAccount[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importStats, setImportStats] = useState({ accounts: 0, activities: 0 });
 
+  const envHost = ENVIRONMENT_OPTIONS.find(e => e.value === environment)?.host || "demo.tradelocker.com";
+
   const resetState = () => {
     setStep("credentials");
-    setServerType("demo.tradelocker.com");
-    setCustomServer("");
+    setEnvironment("demo");
+    setServerName("");
     setEmail("");
     setPassword("");
     setAccounts([]);
