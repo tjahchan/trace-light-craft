@@ -155,27 +155,29 @@ export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) 
         {step === "credentials" && (
           <div className="space-y-4 mt-2">
             <div className="space-y-2">
-              <label className="text-xs text-muted-foreground font-medium">Server</label>
-              <Select value={serverType} onValueChange={setServerType}>
+              <label className="text-xs text-muted-foreground font-medium">Environment</label>
+              <Select value={environment} onValueChange={setEnvironment}>
                 <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SERVER_OPTIONS.map((opt) => (
+                  {ENVIRONMENT_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label} {opt.value !== "custom" && <span className="text-muted-foreground ml-1">({opt.value})</span>}
+                      {opt.label} <span className="text-muted-foreground ml-1">({opt.host})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {serverType === "custom" && (
-                <Input
-                  value={customServer}
-                  onChange={(e) => setCustomServer(e.target.value)}
-                  placeholder="your-broker.tradelocker.com"
-                  className="bg-white/[0.04] border-white/[0.08] text-foreground mt-2"
-                />
-              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground font-medium">Server Name</label>
+              <Input
+                value={serverName}
+                onChange={(e) => setServerName(e.target.value)}
+                placeholder="e.g. BLBRY, FTMO, MyFundedFX"
+                className="bg-white/[0.04] border-white/[0.08] text-foreground"
+              />
+              <p className="text-[10px] text-muted-foreground">The server name from your TradeLocker login credentials.</p>
             </div>
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground font-medium">Email</label>
