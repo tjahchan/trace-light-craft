@@ -96,7 +96,7 @@ export default function Dashboard() {
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [periodPnl, setPeriodPnl] = useState<Record<string, number>>({ week: 0, month: 0, year: 0 });
-  // chartData now comes from useBalanceHistory hook
+  // chartData from useBalanceHistory hook below
   const [closedPage, setClosedPage] = useState(1);
   const [openPage, setOpenPage] = useState(1);
   const [pnlDisplayMode, setPnlDisplayMode] = useState<"$" | "%">(() => {
@@ -306,80 +306,12 @@ export default function Dashboard() {
     }
   }, [user, isValidAccount, selectedAccount]);
 
-  // ---- Build chart data from real transactions + trades ----
-  const buildChartData = useCallback(async () => {
-    if (!user || !isValidAccount) {
-      setChartData([]);
-      return;
-    }
-    try {
-      const accId = selectedAccount!.id;
-
-      // Get account creation date and initial balance
-      const { data: accRow } = await supabase
-        .from("accounts")
-        .select("initial_balance, balance, created_at")
-        .eq("id", accId)
-        .single();
-
-      const initialBalance = accRow ? Number((accRow as any).initial_balance ?? accRow.balance ?? 0) : 0;
-
-      // Get all transactions for this account
-      const { data: txns } = await supabase
-        .from("transactions")
-        .select("date, type, amount")
-        .eq("account_id", accId)
-        .eq("user_id", user.id)
-        .order("date", { ascending: true });
-
-      // Get all closed trades for this account
-      const { data: trades } = await supabase
-        .from("trades" as any)
-        .select("close_time, pnl")
-        .eq("account_id", accId)
-        .eq("user_id", user.id)
-        .eq("status", "closed")
-        .order("close_time", { ascending: true });
-
-      // Build daily events map
-      const events: Record<string, number> = {};
-      if (txns) {
-        for (const tx of txns) {
-          const day = new Date(tx.date).toISOString().split("T")[0];
-          const amt = Number(tx.amount) || 0;
-          events[day] = (events[day] || 0) + (tx.type === "deposit" ? amt : -amt);
-        }
-      }
-      if (trades) {
-        for (const t of trades as any[]) {
-          if (!t.close_time) continue;
-          const day = new Date(t.close_time).toISOString().split("T")[0];
-          events[day] = (events[day] || 0) + (Number(t.pnl) || 0);
-        }
-      }
-
-      const sortedDays = Object.keys(events).sort();
-      if (sortedDays.length === 0) {
-        // No history — show flat line at current balance
-        const today = new Date().toISOString().split("T")[0];
-        setChartData([{ date: today, balance: initialBalance }]);
-        return;
-      }
-
-      // Build running balance
-      let running = initialBalance;
-      const points: { date: string; balance: number }[] = [];
-      for (const day of sortedDays) {
-        running += events[day];
-        const d = new Date(day);
-        const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        points.push({ date: label, balance: running });
-      }
-      setChartData(points);
-    } catch (err) {
-      console.error("[Dashboard] Error building chart:", err);
-    }
-  }, [user, isValidAccount, selectedAccount]);
+  // Use the balance history hook for chart data
+  const { chartData, loading: chartLoading, refresh: refreshChart } = useBalanceHistory(
+    user?.id,
+    selectedAccount?.id,
+    balancePeriod
+  );
 
   // ---- Trigger data fetches when account is ready ----
   useEffect(() => {
@@ -388,7 +320,6 @@ export default function Dashboard() {
     fetchTrades();
     fetchOpenTrades();
     fetchPeriodPnl();
-    buildChartData();
   }, [accountsLoaded, isValidAccount, selectedAccount?.id]);
 
   const refreshAll = useCallback(() => {
@@ -397,8 +328,8 @@ export default function Dashboard() {
     fetchTrades();
     fetchOpenTrades();
     fetchPeriodPnl();
-    buildChartData();
-  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchOpenTrades, fetchPeriodPnl, buildChartData]);
+    refreshChart();
+  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchOpenTrades, fetchPeriodPnl, refreshChart]);
 
   // Re-fetch all data when navigating back to dashboard (e.g. after editing a trade)
   useEffect(() => {
