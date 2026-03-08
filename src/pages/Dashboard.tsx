@@ -274,14 +274,15 @@ export default function Dashboard() {
   // ---- Fetch period PnL from DB ----
   const fetchPeriodPnl = useCallback(async () => {
     if (!user || !isValidAccount) {
-      setPeriodPnl({ week: 0, month: 0, year: 0 });
+      setPeriodPnl({ day: 0, week: 0, month: 0, year: 0 });
       return;
     }
     try {
       const now = new Date();
-      const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
-      const monthAgo = new Date(now); monthAgo.setMonth(now.getMonth() - 1);
-      const yearAgo = new Date(now); yearAgo.setFullYear(now.getFullYear() - 1);
+      const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
       const fetchPnlSince = async (since: Date) => {
         const { data } = await supabase
@@ -295,12 +296,13 @@ export default function Dashboard() {
         return (data as any[]).reduce((sum: number, t: any) => sum + (Number(t.pnl) || 0), 0);
       };
 
-      const [w, m, y] = await Promise.all([
+      const [d, w, m, y] = await Promise.all([
+        fetchPnlSince(dayAgo),
         fetchPnlSince(weekAgo),
         fetchPnlSince(monthAgo),
         fetchPnlSince(yearAgo),
       ]);
-      setPeriodPnl({ week: w, month: m, year: y });
+      setPeriodPnl({ day: d, week: w, month: m, year: y });
     } catch (err) {
       console.error("[Dashboard] Error fetching PnL:", err);
     }
