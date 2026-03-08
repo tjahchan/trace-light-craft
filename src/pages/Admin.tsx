@@ -150,25 +150,6 @@ export default function Admin() {
 
   const mrr = (stats?.pro_users ?? 0) * 14;
 
-  // Fetch referral stats
-  useEffect(() => {
-    if (!isAdmin) return;
-    supabase
-      .from("profiles")
-      .select("user_id, display_name, email, referral_count")
-      .gt("referral_count", 0)
-      .order("referral_count", { ascending: false })
-      .limit(20)
-      .then(({ data }) => {
-        if (data) {
-          setReferralStats(data.map((d: any) => ({
-            user_id: d.user_id,
-            display_name: d.display_name || d.email?.split("@")[0] || "—",
-            referral_count: d.referral_count || 0,
-          })));
-        }
-      });
-  }, [isAdmin]);
 
   const statCards = [
     { label: "Total Users", value: stats?.total_users ?? 0, icon: Users },
