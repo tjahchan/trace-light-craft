@@ -396,8 +396,9 @@ export default function Dashboard() {
     setClosedPage(1);
   };
 
-  const currentPeriodPnl = periodPnl[balancePeriod] || 0;
-  const periodLabel = balancePeriod === "week" ? "this week" : balancePeriod === "month" ? "this month" : "this year";
+  const periodMap: Record<BalancePeriod, string> = { day: "today", week: "this week", month: "this month", year: "this year" };
+  const currentPeriodPnl = periodPnl[balancePeriod] || periodPnl[balancePeriod === "day" ? "week" : balancePeriod] || 0;
+  const periodLabel = periodMap[balancePeriod];
   const isPnlPositive = currentPeriodPnl > 0;
   const isPnlNeutral = currentPeriodPnl === 0;
 
