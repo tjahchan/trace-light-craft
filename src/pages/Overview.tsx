@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useOnboarding, getSampleData } from "@/contexts/OnboardingContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useBackground } from "@/contexts/BackgroundContext";
+import { useAccountLedger } from "@/hooks/useAccountLedger";
 
 const PROFIT_COLOR = "hsl(142, 71%, 45%)";
 const LOSS_COLOR = "hsl(0, 84%, 60%)";
@@ -36,19 +36,27 @@ export default function Overview() {
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  // Fetch real trades
+  // Use the same selected account from localStorage
+  const selectedAccountId = localStorage.getItem("selectedAccountId") || "";
+
+  // Unified ledger — same source of truth as Dashboard
+  const { breakdown } = useAccountLedger(user?.id, selectedAccountId || undefined);
+
+  // Fetch real trades — scoped to the selected account
   const fetchTrades = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
+    let query = supabase
       .from("trades")
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "closed")
       .order("close_time", { ascending: false });
+    if (selectedAccountId) query = query.eq("account_id", selectedAccountId);
+    const { data } = await query;
     setRealTrades(data || []);
     setLoading(false);
-  }, [user]);
+  }, [user, selectedAccountId]);
 
   useEffect(() => { fetchTrades(); }, [fetchTrades]);
 
@@ -170,6 +178,15 @@ export default function Overview() {
             {todayPnlPositive ? <ArrowUpRight className="h-4 w-4 text-profit" /> : <ArrowDownRight className="h-4 w-4 text-loss" />}
             <span className={`text-2xl font-mono font-medium ${todayPnlPositive ? "text-profit" : "text-loss"}`}>
               {todayPnlPositive ? "+" : ""}${Math.abs(stats.todayPnl).toFixed(2)}
+            </span>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Balance</p>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-mono font-medium text-foreground">
+              ${breakdown.currentBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </span>
           </div>
         </motion.div>
