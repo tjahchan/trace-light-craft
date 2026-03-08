@@ -31,9 +31,10 @@ import {
   Line,
   XAxis,
   YAxis,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useBalanceHistory, type BalancePeriod } from "@/hooks/useBalanceHistory";
 import { TradeImportModal } from "@/components/TradeImportModal";
 import { CSVImportModal } from "@/components/CSVImportModal";
 import { ManageAccountsModal, type Account } from "@/components/ManageAccountsModal";
@@ -72,7 +73,7 @@ function riskColor(pct: number) {
 const STORAGE_KEY = "selectedAccountId";
 const ROWS_PER_PAGE = 10;
 
-type BalancePeriod = "week" | "month" | "year";
+// BalancePeriod type imported from useBalanceHistory
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -83,7 +84,9 @@ export default function Dashboard() {
   const [manageOpen, setManageOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [balancePeriod, setBalancePeriod] = useState<BalancePeriod>("month");
+  const [balancePeriod, setBalancePeriod] = useState<BalancePeriod>(() => {
+    return (localStorage.getItem("balancePeriod") as BalancePeriod) || "month";
+  });
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -93,7 +96,7 @@ export default function Dashboard() {
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [periodPnl, setPeriodPnl] = useState<Record<string, number>>({ week: 0, month: 0, year: 0 });
-  const [chartData, setChartData] = useState<{ date: string; balance: number }[]>([]);
+  // chartData from useBalanceHistory hook below
   const [closedPage, setClosedPage] = useState(1);
   const [openPage, setOpenPage] = useState(1);
   const [pnlDisplayMode, setPnlDisplayMode] = useState<"$" | "%">(() => {
@@ -271,14 +274,15 @@ export default function Dashboard() {
   // ---- Fetch period PnL from DB ----
   const fetchPeriodPnl = useCallback(async () => {
     if (!user || !isValidAccount) {
-      setPeriodPnl({ week: 0, month: 0, year: 0 });
+      setPeriodPnl({ day: 0, week: 0, month: 0, year: 0 });
       return;
     }
     try {
       const now = new Date();
-      const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
-      const monthAgo = new Date(now); monthAgo.setMonth(now.getMonth() - 1);
-      const yearAgo = new Date(now); yearAgo.setFullYear(now.getFullYear() - 1);
+      const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
       const fetchPnlSince = async (since: Date) => {
         const { data } = await supabase
@@ -292,91 +296,24 @@ export default function Dashboard() {
         return (data as any[]).reduce((sum: number, t: any) => sum + (Number(t.pnl) || 0), 0);
       };
 
-      const [w, m, y] = await Promise.all([
+      const [d, w, m, y] = await Promise.all([
+        fetchPnlSince(dayAgo),
         fetchPnlSince(weekAgo),
         fetchPnlSince(monthAgo),
         fetchPnlSince(yearAgo),
       ]);
-      setPeriodPnl({ week: w, month: m, year: y });
+      setPeriodPnl({ day: d, week: w, month: m, year: y });
     } catch (err) {
       console.error("[Dashboard] Error fetching PnL:", err);
     }
   }, [user, isValidAccount, selectedAccount]);
 
-  // ---- Build chart data from real transactions + trades ----
-  const buildChartData = useCallback(async () => {
-    if (!user || !isValidAccount) {
-      setChartData([]);
-      return;
-    }
-    try {
-      const accId = selectedAccount!.id;
-
-      // Get account creation date and initial balance
-      const { data: accRow } = await supabase
-        .from("accounts")
-        .select("initial_balance, balance, created_at")
-        .eq("id", accId)
-        .single();
-
-      const initialBalance = accRow ? Number((accRow as any).initial_balance ?? accRow.balance ?? 0) : 0;
-
-      // Get all transactions for this account
-      const { data: txns } = await supabase
-        .from("transactions")
-        .select("date, type, amount")
-        .eq("account_id", accId)
-        .eq("user_id", user.id)
-        .order("date", { ascending: true });
-
-      // Get all closed trades for this account
-      const { data: trades } = await supabase
-        .from("trades" as any)
-        .select("close_time, pnl")
-        .eq("account_id", accId)
-        .eq("user_id", user.id)
-        .eq("status", "closed")
-        .order("close_time", { ascending: true });
-
-      // Build daily events map
-      const events: Record<string, number> = {};
-      if (txns) {
-        for (const tx of txns) {
-          const day = new Date(tx.date).toISOString().split("T")[0];
-          const amt = Number(tx.amount) || 0;
-          events[day] = (events[day] || 0) + (tx.type === "deposit" ? amt : -amt);
-        }
-      }
-      if (trades) {
-        for (const t of trades as any[]) {
-          if (!t.close_time) continue;
-          const day = new Date(t.close_time).toISOString().split("T")[0];
-          events[day] = (events[day] || 0) + (Number(t.pnl) || 0);
-        }
-      }
-
-      const sortedDays = Object.keys(events).sort();
-      if (sortedDays.length === 0) {
-        // No history — show flat line at current balance
-        const today = new Date().toISOString().split("T")[0];
-        setChartData([{ date: today, balance: initialBalance }]);
-        return;
-      }
-
-      // Build running balance
-      let running = initialBalance;
-      const points: { date: string; balance: number }[] = [];
-      for (const day of sortedDays) {
-        running += events[day];
-        const d = new Date(day);
-        const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        points.push({ date: label, balance: running });
-      }
-      setChartData(points);
-    } catch (err) {
-      console.error("[Dashboard] Error building chart:", err);
-    }
-  }, [user, isValidAccount, selectedAccount]);
+  // Use the balance history hook for chart data
+  const { chartData, loading: chartLoading, refresh: refreshChart } = useBalanceHistory(
+    user?.id,
+    selectedAccount?.id,
+    balancePeriod
+  );
 
   // ---- Trigger data fetches when account is ready ----
   useEffect(() => {
@@ -385,7 +322,6 @@ export default function Dashboard() {
     fetchTrades();
     fetchOpenTrades();
     fetchPeriodPnl();
-    buildChartData();
   }, [accountsLoaded, isValidAccount, selectedAccount?.id]);
 
   const refreshAll = useCallback(() => {
@@ -394,8 +330,8 @@ export default function Dashboard() {
     fetchTrades();
     fetchOpenTrades();
     fetchPeriodPnl();
-    buildChartData();
-  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchOpenTrades, fetchPeriodPnl, buildChartData]);
+    refreshChart();
+  }, [isValidAccount, selectedAccount, fetchAndSetBalance, fetchTrades, fetchOpenTrades, fetchPeriodPnl, refreshChart]);
 
   // Re-fetch all data when navigating back to dashboard (e.g. after editing a trade)
   useEffect(() => {
@@ -462,8 +398,9 @@ export default function Dashboard() {
     setClosedPage(1);
   };
 
-  const currentPeriodPnl = periodPnl[balancePeriod] || 0;
-  const periodLabel = balancePeriod === "week" ? "this week" : balancePeriod === "month" ? "this month" : "this year";
+  const periodMap: Record<BalancePeriod, string> = { day: "today", week: "this week", month: "this month", year: "this year" };
+  const currentPeriodPnl = periodPnl[balancePeriod] || periodPnl[balancePeriod === "day" ? "week" : balancePeriod] || 0;
+  const periodLabel = periodMap[balancePeriod];
   const isPnlPositive = currentPeriodPnl > 0;
   const isPnlNeutral = currentPeriodPnl === 0;
 
@@ -608,18 +545,21 @@ export default function Dashboard() {
 
           {/* Period Toggle */}
           <div className="flex rounded-lg bg-white/[0.05] p-0.5 mt-3">
-            {(["week", "month", "year"] as BalancePeriod[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setBalancePeriod(p)}
-                className={cn(
-                  "flex-1 py-1 rounded-md text-xs font-medium transition-colors capitalize",
-                  balancePeriod === p ? "bg-white/[0.1] text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {p}
-              </button>
-            ))}
+            {(["day", "week", "month", "year"] as BalancePeriod[]).map((p) => {
+              const labels: Record<BalancePeriod, string> = { day: "D", week: "W", month: "M", year: "Y" };
+              return (
+                <button
+                  key={p}
+                  onClick={() => { setBalancePeriod(p); localStorage.setItem("balancePeriod", p); }}
+                  className={cn(
+                    "flex-1 py-1 rounded-md text-xs font-medium transition-colors",
+                    balancePeriod === p ? "bg-white/[0.1] text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {labels[p]}
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-2 h-24">
@@ -643,17 +583,43 @@ export default function Dashboard() {
                     domain={["dataMin - 200", "dataMax + 200"]}
                   />
                   <Line type="monotone" dataKey="balance" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "rgba(0,0,0,0.8)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                      fontFamily: "monospace",
-                      fontSize: "12px",
+                  <RechartsTooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload || !payload[0]) return null;
+                      const point = payload[0].payload;
+                      const balance = point.balance;
+                      const trades = point.trades || [];
+                      return (
+                        <div style={{
+                          background: "rgba(0,0,0,0.9)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "8px",
+                          padding: "8px 12px",
+                          fontFamily: "monospace",
+                          fontSize: "11px",
+                          color: "#fff",
+                          maxWidth: "220px",
+                        }}>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                          <div style={{ color: "hsl(217, 91%, 60%)" }}>
+                            Balance: ${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                          </div>
+                          {trades.length > 0 && (
+                            <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4 }}>
+                              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 2 }}>Trades:</div>
+                              {trades.map((t: any, i: number) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                  <span>{t.symbol}</span>
+                                  <span style={{ color: t.pnl >= 0 ? "hsl(142, 71%, 45%)" : "hsl(0, 84%, 60%)" }}>
+                                    {t.pnl >= 0 ? "+" : ""}${Math.abs(t.pnl).toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
                     }}
-                    formatter={(value: number) => [`$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, "Balance"]}
-                    labelFormatter={(label: string) => label}
                   />
                 </LineChart>
               </ResponsiveContainer>

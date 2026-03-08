@@ -44,6 +44,61 @@ export type Database = {
         }
         Relationships: []
       }
+      balance_history: {
+        Row: {
+          account_id: string
+          created_at: string
+          equity: number
+          event_type: string
+          id: string
+          trade_id: string | null
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          equity?: number
+          event_type?: string
+          id?: string
+          trade_id?: string | null
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          equity?: number
+          event_type?: string
+          id?: string
+          trade_id?: string | null
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_history_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balance_history_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balance_history_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_accounts: {
         Row: {
           account_name: string | null
@@ -565,6 +620,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      referral_signups: {
+        Row: {
+          created_at: string
+          id: string
+          new_user_id: string
+          referrer_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          new_user_id: string
+          referrer_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          new_user_id?: string
+          referrer_user_id?: string
+        }
+        Relationships: []
       }
       sync_jobs: {
         Row: {
