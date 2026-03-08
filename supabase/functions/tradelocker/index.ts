@@ -93,7 +93,7 @@ async function authenticate(
     await supabaseAdmin
       .from("broker_integrations")
       .update({
-        tradelocker_server: server,
+        tradelocker_server: environment,
         tradelocker_access_token_encrypted: accessToken,
         tradelocker_refresh_token_encrypted: refreshToken,
         tradelocker_token_expires_at: expiresAt,
@@ -107,7 +107,7 @@ async function authenticate(
       .insert({
         user_id: userId,
         provider: "tradelocker",
-        tradelocker_server: server,
+        tradelocker_server: environment,
         tradelocker_access_token_encrypted: accessToken,
         tradelocker_refresh_token_encrypted: refreshToken,
         tradelocker_token_expires_at: expiresAt,
