@@ -46,13 +46,16 @@ export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) 
   const [serverType, setServerType] = useState("demo.tradelocker.com");
   const [customServer, setCustomServer] = useState("");
   const server = serverType === "custom" ? customServer : serverType;
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [accounts, setAccounts] = useState<TLAccount[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importStats, setImportStats] = useState({ accounts: 0, activities: 0 });
 
   const resetState = () => {
     setStep("credentials");
-    setServer("live.tradelocker.com");
+    setServerType("demo.tradelocker.com");
+    setCustomServer("");
     setEmail("");
     setPassword("");
     setAccounts([]);
