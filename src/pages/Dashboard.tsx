@@ -406,7 +406,7 @@ export default function Dashboard() {
       <div className="flex-1 space-y-6 min-w-0">
         {/* Open Positions Card */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
+          className="bg-black/60 border border-white/[0.1] rounded-2xl p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Open Orders & Positions</h2>
@@ -487,7 +487,7 @@ export default function Dashboard() {
 
         {/* Closed Positions Card */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-6">
+          className="bg-black/60 border border-white/[0.1] rounded-2xl p-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Closed Positions</h2>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground relative" onClick={() => setFilterOpen(!filterOpen)}>
