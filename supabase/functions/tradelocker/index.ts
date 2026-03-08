@@ -552,28 +552,33 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !data?.claims) {
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = data.claims.sub as string;
+    const userId = user.id;
     const body = req.method === "GET" ? {} : await req.json();
     const action = body.action || new URL(req.url).searchParams.get("action");
 
     let result: unknown;
 
     switch (action) {
-      case "authenticate":
+      case "authenticate": {
         if (!body.server || !body.email || !body.password) {
           throw new Error("Server, email, and password are required");
         }
-        result = await authenticate(userId, body.server, body.email, body.password, supabaseAdmin);
+        // Validate server looks like a hostname (must contain a dot)
+        const serverHost = body.server.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+        if (!serverHost.includes(".")) {
+          throw new Error(`Invalid server hostname "${serverHost}". Please enter the full TradeLocker server address (e.g. live.tradelocker.com).`);
+        }
+        result = await authenticate(userId, serverHost, body.email, body.password, supabaseAdmin);
         break;
+      }
       case "list_accounts":
         result = await listAccounts(userId, supabaseAdmin);
         break;
