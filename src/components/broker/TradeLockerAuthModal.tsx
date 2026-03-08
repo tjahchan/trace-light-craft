@@ -19,6 +19,19 @@ import {
   type TLAccount,
 } from "@/lib/tradelocker-client";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const SERVER_OPTIONS = [
+  { value: "demo.tradelocker.com", label: "Demo" },
+  { value: "live.tradelocker.com", label: "Live" },
+  { value: "custom", label: "Custom" },
+] as const;
 
 type Step = "credentials" | "connecting" | "accounts" | "importing" | "complete";
 
@@ -30,7 +43,9 @@ interface Props {
 
 export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) {
   const [step, setStep] = useState<Step>("credentials");
-  const [server, setServer] = useState("live.tradelocker.com");
+  const [serverType, setServerType] = useState("demo.tradelocker.com");
+  const [customServer, setCustomServer] = useState("");
+  const server = serverType === "custom" ? customServer : serverType;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accounts, setAccounts] = useState<TLAccount[]>([]);
@@ -39,7 +54,8 @@ export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) 
 
   const resetState = () => {
     setStep("credentials");
-    setServer("live.tradelocker.com");
+    setServerType("demo.tradelocker.com");
+    setCustomServer("");
     setEmail("");
     setPassword("");
     setAccounts([]);
@@ -140,12 +156,26 @@ export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) 
           <div className="space-y-4 mt-2">
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground font-medium">Server</label>
-              <Input
-                value={server}
-                onChange={(e) => setServer(e.target.value)}
-                placeholder="live.tradelocker.com"
-                className="bg-white/[0.04] border-white/[0.08] text-foreground"
-              />
+              <Select value={serverType} onValueChange={setServerType}>
+                <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label} {opt.value !== "custom" && <span className="text-muted-foreground ml-1">({opt.value})</span>}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {serverType === "custom" && (
+                <Input
+                  value={customServer}
+                  onChange={(e) => setCustomServer(e.target.value)}
+                  placeholder="your-broker.tradelocker.com"
+                  className="bg-white/[0.04] border-white/[0.08] text-foreground mt-2"
+                />
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground font-medium">Email</label>
