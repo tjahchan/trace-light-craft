@@ -42,7 +42,26 @@ serve(async (req) => {
 
     if (customers.data.length === 0) {
       logStep("No Stripe customer found");
-      // Update plan to free
+
+      // Check if user has a manually granted plan (e.g. lifetime Pro)
+      const { data: existingPlan } = await supabaseClient
+        .from("user_plans")
+        .select("plan, billing_cycle_end")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      // If user already has Pro with a far-future billing end, preserve it (manual grant)
+      if (existingPlan?.plan === "pro" && existingPlan?.billing_cycle_end) {
+        const endDate = new Date(existingPlan.billing_cycle_end);
+        if (endDate.getFullYear() >= 2090) {
+          logStep("Preserving manually granted Pro plan", { userId: user.id });
+          return new Response(JSON.stringify({ subscribed: true, plan: "pro", subscription_end: existingPlan.billing_cycle_end }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // No manual grant, set to free
       await supabaseClient.from("user_plans").update({
         plan: "free",
         subscription_status: "none",
