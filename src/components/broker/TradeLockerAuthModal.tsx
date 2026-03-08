@@ -27,10 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const SERVER_OPTIONS = [
-  { value: "demo.tradelocker.com", label: "Demo" },
-  { value: "live.tradelocker.com", label: "Live" },
-  { value: "custom", label: "Custom" },
+const ENVIRONMENT_OPTIONS = [
+  { value: "demo", label: "Demo", host: "demo.tradelocker.com" },
+  { value: "live", label: "Live", host: "live.tradelocker.com" },
 ] as const;
 
 type Step = "credentials" | "connecting" | "accounts" | "importing" | "complete";
@@ -43,19 +42,20 @@ interface Props {
 
 export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) {
   const [step, setStep] = useState<Step>("credentials");
-  const [serverType, setServerType] = useState("demo.tradelocker.com");
-  const [customServer, setCustomServer] = useState("");
-  const server = serverType === "custom" ? customServer : serverType;
+  const [environment, setEnvironment] = useState("demo");
+  const [serverName, setServerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accounts, setAccounts] = useState<TLAccount[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importStats, setImportStats] = useState({ accounts: 0, activities: 0 });
 
+  const envHost = ENVIRONMENT_OPTIONS.find(e => e.value === environment)?.host || "demo.tradelocker.com";
+
   const resetState = () => {
     setStep("credentials");
-    setServerType("demo.tradelocker.com");
-    setCustomServer("");
+    setEnvironment("demo");
+    setServerName("");
     setEmail("");
     setPassword("");
     setAccounts([]);
@@ -69,14 +69,14 @@ export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) 
   };
 
   const handleConnect = async () => {
-    if (!server.trim() || !email.trim() || !password.trim()) {
+    if (!serverName.trim() || !email.trim() || !password.trim()) {
       toast.error("Please fill in all fields.");
       return;
     }
 
     setStep("connecting");
     try {
-      await authenticateTradeLocker(server.trim(), email.trim(), password.trim());
+      await authenticateTradeLocker(envHost, serverName.trim(), email.trim(), password.trim());
       // Immediately clear password from state
       setPassword("");
 
@@ -155,27 +155,29 @@ export function TradeLockerAuthModal({ open, onOpenChange, onComplete }: Props) 
         {step === "credentials" && (
           <div className="space-y-4 mt-2">
             <div className="space-y-2">
-              <label className="text-xs text-muted-foreground font-medium">Server</label>
-              <Select value={serverType} onValueChange={setServerType}>
+              <label className="text-xs text-muted-foreground font-medium">Environment</label>
+              <Select value={environment} onValueChange={setEnvironment}>
                 <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SERVER_OPTIONS.map((opt) => (
+                  {ENVIRONMENT_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label} {opt.value !== "custom" && <span className="text-muted-foreground ml-1">({opt.value})</span>}
+                      {opt.label} <span className="text-muted-foreground ml-1">({opt.host})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {serverType === "custom" && (
-                <Input
-                  value={customServer}
-                  onChange={(e) => setCustomServer(e.target.value)}
-                  placeholder="your-broker.tradelocker.com"
-                  className="bg-white/[0.04] border-white/[0.08] text-foreground mt-2"
-                />
-              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground font-medium">Server Name</label>
+              <Input
+                value={serverName}
+                onChange={(e) => setServerName(e.target.value)}
+                placeholder="e.g. BLBRY, FTMO, MyFundedFX"
+                className="bg-white/[0.04] border-white/[0.08] text-foreground"
+              />
+              <p className="text-[10px] text-muted-foreground">The server name from your TradeLocker login credentials.</p>
             </div>
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground font-medium">Email</label>

@@ -36,10 +36,10 @@ export interface TLSyncResult {
   job_id: string;
 }
 
-export async function authenticateTradeLocker(server: string, email: string, password: string) {
+export async function authenticateTradeLocker(environment: string, serverName: string, email: string, password: string) {
   return invokeTradeLocker<{ success: boolean; integration_id: string; connection_id: string }>(
     "authenticate",
-    { server, email, password }
+    { environment, server_name: serverName, email, password }
   );
 }
 
