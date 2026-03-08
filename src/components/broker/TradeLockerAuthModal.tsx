@@ -27,10 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const SERVER_OPTIONS = [
-  { value: "demo.tradelocker.com", label: "Demo" },
-  { value: "live.tradelocker.com", label: "Live" },
-  { value: "custom", label: "Custom" },
+const ENVIRONMENT_OPTIONS = [
+  { value: "demo", label: "Demo", host: "demo.tradelocker.com" },
+  { value: "live", label: "Live", host: "live.tradelocker.com" },
 ] as const;
 
 type Step = "credentials" | "connecting" | "accounts" | "importing" | "complete";
