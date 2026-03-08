@@ -143,9 +143,22 @@ export function useAccountLedger(
       // ── Compute breakdown ──
       const totalDeposits = txns.filter(t => t.type === "deposit").reduce((s, t) => s + (Number(t.amount) || 0), 0);
       const totalWithdrawals = txns.filter(t => t.type === "withdrawal").reduce((s, t) => s + (Number(t.amount) || 0), 0);
+      // NOTE: pnl field is already NET of commissions — do NOT subtract commissions again
       const totalRealizedPnl = closedTrades.reduce((s, t) => s + (Number(t.pnl) || 0), 0);
-      const totalCommissions = closedTrades.reduce((s, t) => s + (Number(t.commissions) || 0), 0);
-      const currentBalance = initialBalance + totalDeposits - totalWithdrawals + totalRealizedPnl - totalCommissions;
+      const totalCommissions = closedTrades.reduce((s, t) => s + Math.abs(Number(t.commissions) || 0), 0);
+      // Canonical formula: balance = starting + deposits - withdrawals + net_realized_pnl
+      const currentBalance = parseFloat((initialBalance + totalDeposits - totalWithdrawals + totalRealizedPnl).toFixed(2));
+
+      // ── Reconciliation check (dev/debug) ──
+      console.log("[useAccountLedger] Reconciliation:", {
+        initialBalance,
+        totalDeposits,
+        totalWithdrawals,
+        totalRealizedPnl,
+        totalCommissions,
+        currentBalance,
+        formula: `${initialBalance} + ${totalDeposits} - ${totalWithdrawals} + ${totalRealizedPnl} = ${currentBalance}`,
+      });
 
       setBreakdown({ initialBalance, totalDeposits, totalWithdrawals, totalRealizedPnl, totalCommissions, currentBalance });
       setLedgerEvents(events);
