@@ -567,12 +567,18 @@ Deno.serve(async (req) => {
     let result: unknown;
 
     switch (action) {
-      case "authenticate":
+      case "authenticate": {
         if (!body.server || !body.email || !body.password) {
           throw new Error("Server, email, and password are required");
         }
-        result = await authenticate(userId, body.server, body.email, body.password, supabaseAdmin);
+        // Validate server looks like a hostname (must contain a dot)
+        const serverHost = body.server.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+        if (!serverHost.includes(".")) {
+          throw new Error(`Invalid server hostname "${serverHost}". Please enter the full TradeLocker server address (e.g. live.tradelocker.com).`);
+        }
+        result = await authenticate(userId, serverHost, body.email, body.password, supabaseAdmin);
         break;
+      }
       case "list_accounts":
         result = await listAccounts(userId, supabaseAdmin);
         break;
