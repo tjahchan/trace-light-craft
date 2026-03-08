@@ -172,7 +172,7 @@ export default function Overview() {
     <div className="flex gap-4 sm:gap-6 flex-col xl:flex-row">
       {/* Left Panel — Stats */}
       <div className="w-full xl:w-80 shrink-0 space-y-4 grid grid-cols-2 xl:grid-cols-1 gap-4 xl:gap-0 xl:space-y-4" data-tour="overview-stats">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-black/60 border border-white/[0.1] rounded-2xl p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Today's PnL</p>
           <div className="flex items-center gap-2">
             {todayPnlPositive ? <ArrowUpRight className="h-4 w-4 text-profit" /> : <ArrowDownRight className="h-4 w-4 text-loss" />}
@@ -182,16 +182,16 @@ export default function Overview() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="bg-black/60 border border-white/[0.1] rounded-2xl p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Balance</p>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-mono font-medium text-foreground">
-              ${breakdown.currentBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              ${breakdown.currentBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-black/60 border border-white/[0.1] rounded-2xl p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Overall PnL</p>
           <div className="flex items-center gap-2">
             <span className={`text-2xl font-mono font-medium ${totalPnlPositive ? "text-profit" : "text-loss"}`}>
@@ -200,7 +200,7 @@ export default function Overview() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4 space-y-3">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-black/60 border border-white/[0.1] rounded-2xl p-4 space-y-3">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Statistics</p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div><p className="text-muted-foreground text-xs">Avg Win</p><p className="font-mono text-profit">${stats.avgWin.toFixed(2)}</p></div>
@@ -212,7 +212,7 @@ export default function Overview() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-black/60 border border-white/[0.1] rounded-2xl p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Win Rate</p>
           <div className="h-28">
             <ResponsiveContainer width="100%" height="100%">
@@ -227,7 +227,7 @@ export default function Overview() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4 space-y-2">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-black/60 border border-white/[0.1] rounded-2xl p-4 space-y-2">
           {[
             ["Best Trade", `+$${stats.bestTrade.toFixed(2)}`, "text-profit"],
             ["Worst Trade", `-$${Math.abs(stats.worstTrade).toFixed(2)}`, "text-loss"],
@@ -244,7 +244,7 @@ export default function Overview() {
 
         {/* Session Performance */}
         {Object.keys(sessionStats).length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4 space-y-2">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="bg-black/60 border border-white/[0.1] rounded-2xl p-4 space-y-2">
             <p className="text-xs text-muted-foreground uppercase tracking-widest">Session Performance</p>
             {Object.entries(sessionStats).map(([session, data]) => (
               <div key={session} className="flex justify-between text-sm">
