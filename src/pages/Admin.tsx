@@ -56,6 +56,7 @@ export default function Admin() {
   const [planFilter, setPlanFilter] = useState("all");
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [referralStats, setReferralStats] = useState<{ user_id: string; display_name: string; referral_count: number }[]>([]);
 
   useEffect(() => {
     if (!isAdmin) return;
