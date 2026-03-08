@@ -249,7 +249,7 @@ export default function Dashboard() {
         {/* Streak Tracker Card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4"
+          className="bg-black/60 border border-white/[0.1] rounded-2xl p-4"
           data-tour="streak-card"
         >
           <div className="flex items-center gap-2 mb-2">
@@ -272,7 +272,7 @@ export default function Dashboard() {
         {/* Combined Account + Actions Card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
-          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4 space-y-2"
+          className="bg-black/60 border border-white/[0.1] rounded-2xl p-4 space-y-2"
         >
           <div className="flex items-center gap-2">
             {accountsLoaded && accounts.length > 0 ? (
@@ -309,7 +309,7 @@ export default function Dashboard() {
         {/* Balance Card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
-          className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-4"
+          className="bg-black/60 border border-white/[0.1] rounded-2xl p-4"
           data-tour="balance-card"
         >
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Total Balance</p>
