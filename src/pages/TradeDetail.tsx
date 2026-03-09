@@ -58,13 +58,38 @@ import { ShareTradeCard } from "@/components/ShareTradeCard";
 const timeframes = ["1m", "30m", "1h"];
 
 const triggerCelebration = () => {
-  console.log("🎉 Confetti triggered");
+  console.log("🎉 Confetti triggered — closed trade celebration");
+  // First burst from top-left
   confetti({
-    particleCount: 80,
-    spread: 70,
-    origin: { y: 0.75 },
-    colors: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ffffff'],
+    particleCount: 60,
+    spread: 80,
+    origin: { x: 0.2, y: 0 },
+    colors: ['#3b82f6', '#60a5fa', '#93c5fd', '#ffffff', '#e0e7ff'],
+    gravity: 0.8,
+    ticks: 150,
   });
+  // Second burst from top-right
+  setTimeout(() => {
+    confetti({
+      particleCount: 60,
+      spread: 80,
+      origin: { x: 0.8, y: 0 },
+      colors: ['#3b82f6', '#60a5fa', '#93c5fd', '#ffffff', '#e0e7ff'],
+      gravity: 0.8,
+      ticks: 150,
+    });
+  }, 150);
+  // Center burst
+  setTimeout(() => {
+    confetti({
+      particleCount: 40,
+      spread: 120,
+      origin: { x: 0.5, y: 0 },
+      colors: ['#3b82f6', '#93c5fd', '#ffffff'],
+      gravity: 0.7,
+      ticks: 200,
+    });
+  }, 300);
 };
 
 export default function TradeDetail() {
