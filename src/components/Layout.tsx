@@ -6,9 +6,19 @@ import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { MomentraAI } from "@/components/MomentraAI";
 import { PlatformTour } from "@/components/PlatformTour";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
+import { usePlan } from "@/contexts/PlanContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { theme, customBackgroundUrl } = useBackground();
+  const { theme, setTheme, customBackgroundUrl } = useBackground();
+  const { isPro } = usePlan();
+
+  // Revert custom background if user is no longer Pro
+  useEffect(() => {
+    if (theme === "custom" && !isPro) {
+      setTheme("forest");
+    }
+  }, [theme, isPro, setTheme]);
+
   const isCustom = theme === "custom";
   const bg = isCustom ? { label: "Custom", image: customBackgroundUrl, desc: "" } : backgrounds[theme];
 
