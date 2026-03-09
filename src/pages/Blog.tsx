@@ -114,7 +114,7 @@ export default function Blog() {
       <div className="border-t border-white/[0.06] py-8 px-6 md:px-12 max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2">
           <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-primary to-primary/40" />
-          <span className="text-foreground text-sm tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          <span className="text-foreground text-sm tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             Momentra
           </span>
         </Link>
