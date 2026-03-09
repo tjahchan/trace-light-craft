@@ -350,7 +350,9 @@ async function syncAccount(
         server,
         "GET",
         `/trade/accounts/${tlAcctId}/ordersHistory`,
-        token
+        token,
+        undefined,
+        tlAcctId
       );
       const orders = ordersResult.d?.ordersHistory || ordersResult.orders || ordersResult || [];
 
