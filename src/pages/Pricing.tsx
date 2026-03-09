@@ -85,7 +85,7 @@ export default function Pricing() {
             transition={{ duration: 0.8, ease }}
           >
             <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Pricing</span>
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-foreground tracking-tight">
               Simple, Transparent Pricing
             </h1>
             <p className="mt-5 text-muted-foreground text-base md:text-lg max-w-lg mx-auto">
