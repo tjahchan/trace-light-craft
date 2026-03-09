@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type BackgroundTheme = "forest" | "beach" | "mountains" | "nightcity" | "minimal" | "custom";
