@@ -1,0 +1,2 @@
+DELETE FROM trades WHERE user_id = '7d36b793-ebf6-4de9-bc27-8ecd0c6c4aac' AND tags::text LIKE '%tradelocker%' AND symbol = 'UNKNOWN';
+DELETE FROM broker_activities_raw WHERE user_id = '7d36b793-ebf6-4de9-bc27-8ecd0c6c4aac' AND source_provider = 'tradelocker';

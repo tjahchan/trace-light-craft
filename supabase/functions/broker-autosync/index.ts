@@ -118,13 +118,33 @@ function rowToObject(row: any[], columns: string[]): Record<string, any> {
   return obj;
 }
 
+// Known TradeLocker ordersHistory columns as fallback
+const FALLBACK_ORDERS_COLUMNS = [
+  "id", "tradableInstrumentId", "accountId", "qty", "side", "type", "status",
+  "filledQty", "avgFilledPrice", "limitPrice", "stopPrice", "validity",
+  "expireAt", "createdAt", "lastModifiedAt", "isFromHistory", "parentId",
+  "stopLoss", "takeProfit", "trailingOffset", "commission", "pnl"
+];
+
 async function fetchConfig(server: string, token: string, accNum: string): Promise<Record<string, string[]>> {
-  const config = await tlRequest(server, "GET", "/trade/config", token, undefined, accNum);
   const result: Record<string, string[]> = {};
-  const d = config.d || config;
-  for (const key of ["ordersHistory", "positions"]) {
-    if (d[key]?.columns) result[key] = d[key].columns;
+  try {
+    const config = await tlRequest(server, "GET", "/trade/config", token, undefined, accNum);
+    const d = config.d || config;
+    for (const key of ["ordersHistory", "positions"]) {
+      if (d[key]?.columns && Array.isArray(d[key].columns) && d[key].columns.length > 0) {
+        result[key] = d[key].columns;
+      } else if (d.s?.[key]?.columns) {
+        result[key] = d.s[key].columns;
+      }
+    }
+  } catch (e: any) {
+    console.warn("[AutoSync] Config fetch failed:", e.message);
   }
+  if (!result.ordersHistory || result.ordersHistory.length === 0) {
+    result.ordersHistory = FALLBACK_ORDERS_COLUMNS;
+  }
+  console.log(`[AutoSync] ordersHistory columns: ${result.ordersHistory.length}`);
   return result;
 }
 
