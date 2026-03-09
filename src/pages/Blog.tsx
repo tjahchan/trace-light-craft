@@ -53,7 +53,7 @@ export default function Blog() {
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-6 pt-12 pb-32">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-20 sm:pb-32">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
