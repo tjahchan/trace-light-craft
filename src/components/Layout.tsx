@@ -8,8 +8,9 @@ import { PlatformTour } from "@/components/PlatformTour";
 import { useBackground, backgrounds } from "@/contexts/BackgroundContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { theme } = useBackground();
-  const bg = backgrounds[theme];
+  const { theme, customBackgroundUrl } = useBackground();
+  const isCustom = theme === "custom";
+  const bg = isCustom ? { label: "Custom", image: customBackgroundUrl, desc: "" } : backgrounds[theme];
 
   const [prevImage, setPrevImage] = useState<string | null>(bg.image);
   const [transitioning, setTransitioning] = useState(false);

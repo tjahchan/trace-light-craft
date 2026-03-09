@@ -9,7 +9,8 @@ import { Slider } from "@/components/ui/slider";
 import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
 import { usePlan } from "@/contexts/PlanContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBackground, backgrounds, BackgroundTheme } from "@/contexts/BackgroundContext";
+import { useBackground } from "@/contexts/BackgroundContext";
+import { BackgroundThemeSection } from "@/components/settings/BackgroundThemeSection";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
@@ -257,33 +258,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Display Theme */}
-      <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-5 sm:p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Background Theme</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {(Object.keys(backgrounds) as BackgroundTheme[]).map((key) => {
-            const bg = backgrounds[key];
-            return (
-              <button
-                key={key}
-                onClick={() => setTheme(key)}
-                className={`rounded-2xl p-4 text-left transition-all border ${
-                  theme === key
-                    ? "border-primary bg-white/[0.06] ring-1 ring-primary"
-                    : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"
-                }`}
-              >
-                {bg.image ? (
-                  <div className="h-16 w-full rounded-lg mb-2 bg-cover bg-center" style={{ backgroundImage: `url(${bg.image})` }} />
-                ) : (
-                  <div className="h-16 w-full rounded-lg mb-2 bg-background border border-white/[0.1]" />
-                )}
-                <p className="text-sm font-medium text-foreground">{bg.label}</p>
-                <p className="text-[10px] text-muted-foreground">{bg.desc}</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <BackgroundThemeSection />
 
       {/* Notifications */}
       <div className="backdrop-blur-xl bg-black/40 border border-white/[0.1] rounded-2xl p-5 sm:p-6 space-y-4">

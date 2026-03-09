@@ -9,7 +9,7 @@ interface BackgroundSwitcherProps {
 }
 
 export function BackgroundSwitcher({ externalOpen, onExternalClose }: BackgroundSwitcherProps) {
-  const { theme, setTheme } = useBackground();
+  const { theme, setTheme, customBackgroundUrl } = useBackground();
 
   // Close on escape
   useEffect(() => {
@@ -18,6 +18,8 @@ export function BackgroundSwitcher({ externalOpen, onExternalClose }: Background
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [externalOpen, onExternalClose]);
+
+  const themeKeys = Object.keys(backgrounds) as Exclude<BackgroundTheme, "custom">[];
 
   return (
     <AnimatePresence>
@@ -34,7 +36,7 @@ export function BackgroundSwitcher({ externalOpen, onExternalClose }: Background
               <X className="h-4 w-4" />
             </button>
           </div>
-          {(Object.keys(backgrounds) as BackgroundTheme[]).map((key) => (
+          {themeKeys.map((key) => (
             <button
               key={key}
               onClick={() => { setTheme(key); onExternalClose?.(); }}
@@ -55,6 +57,22 @@ export function BackgroundSwitcher({ externalOpen, onExternalClose }: Background
               <p className="text-xs font-medium">{backgrounds[key].label}</p>
             </button>
           ))}
+          {customBackgroundUrl && (
+            <button
+              onClick={() => { setTheme("custom"); onExternalClose?.(); }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-sm transition-all ${
+                theme === "custom"
+                  ? "bg-white/[0.1] text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05]"
+              }`}
+            >
+              <div
+                className="h-6 w-6 rounded-md bg-cover bg-center shrink-0"
+                style={{ backgroundImage: `url(${customBackgroundUrl})` }}
+              />
+              <p className="text-xs font-medium">Custom</p>
+            </button>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
