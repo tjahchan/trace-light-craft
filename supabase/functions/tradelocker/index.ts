@@ -385,6 +385,80 @@ function extractStoredAccNum(accountNumberMasked: string | null): string | null 
   return match ? match[1] : null;
 }
 
+// Fetch config to get column names for ordersHistory / positions
+async function fetchConfig(
+  server: string,
+  token: string,
+  accNum: string
+): Promise<Record<string, string[]>> {
+  const config = await tlRequest(server, "GET", "/trade/config", token, undefined, accNum);
+  const result: Record<string, string[]> = {};
+  // config.d contains e.g. { ordersHistory: { columns: [...] }, positions: { columns: [...] } }
+  const d = config.d || config;
+  for (const key of ["ordersHistory", "positions", "orders", "filledOrders"]) {
+    if (d[key]?.columns) {
+      result[key] = d[key].columns;
+    }
+  }
+  console.log("[TradeLocker] Config columns loaded:", Object.keys(result).join(", "));
+  return result;
+}
+
+// Convert a row array to an object using column names
+function rowToObject(row: any[], columns: string[]): Record<string, any> {
+  const obj: Record<string, any> = {};
+  for (let i = 0; i < columns.length && i < row.length; i++) {
+    obj[columns[i]] = row[i];
+  }
+  return obj;
+}
+
+// Resolve instrument ID to symbol name via instruments endpoint
+async function resolveInstruments(
+  server: string,
+  token: string,
+  accNum: string,
+  instrumentIds: number[]
+): Promise<Map<number, string>> {
+  const map = new Map<number, string>();
+  if (instrumentIds.length === 0) return map;
+
+  try {
+    const result = await tlRequest(
+      server, "POST",
+      "/trade/instruments",
+      token,
+      { tradableInstrumentIds: instrumentIds },
+      accNum
+    );
+    const instruments = result.d?.instruments || result.instruments || [];
+    // instruments can be columnar too
+    if (Array.isArray(instruments) && instruments.length > 0) {
+      const cols = result.d?.columns || [];
+      const nameIdx = cols.indexOf("name");
+      const idIdx = cols.indexOf("tradableInstrumentId");
+      if (nameIdx >= 0 && idIdx >= 0) {
+        for (const row of instruments) {
+          if (Array.isArray(row)) {
+            map.set(Number(row[idIdx]), String(row[nameIdx]));
+          }
+        }
+      } else {
+        // Maybe it's objects
+        for (const inst of instruments) {
+          if (inst && typeof inst === "object" && !Array.isArray(inst)) {
+            map.set(Number(inst.tradableInstrumentId || inst.id), String(inst.name || inst.symbol || ""));
+          }
+        }
+      }
+    }
+  } catch (e: any) {
+    console.warn("[TradeLocker] Instruments fetch failed:", e.message);
+  }
+  console.log(`[TradeLocker] Resolved ${map.size} instrument names`);
+  return map;
+}
+
 async function syncAccount(
   userId: string,
   accountId: string,
@@ -413,12 +487,11 @@ async function syncAccount(
   const server = integration.tradelocker_server;
   const tlAcctId = brokerAccount.tradelocker_account_id;
 
-  // Resolve accNum - first try stored value, then fetch from API
+  // Resolve accNum
   let accNum = extractStoredAccNum(brokerAccount.account_number_masked);
   if (!accNum) {
     console.log("[TradeLocker] No stored accNum, fetching from API...");
     accNum = await resolveAccNum(server, token, tlAcctId!);
-    // Store it for future use
     const masked = brokerAccount.account_number_masked || "";
     await supabaseAdmin
       .from("broker_accounts")
@@ -427,6 +500,13 @@ async function syncAccount(
   }
 
   console.log(`[TradeLocker] Sync: accountId=${tlAcctId} accNum=${accNum} jobType=${jobType}`);
+
+  // Fetch config for column mappings
+  const configColumns = await fetchConfig(server, token, accNum);
+  const ordersCols = configColumns.ordersHistory || [];
+  const positionsCols = configColumns.positions || [];
+  console.log(`[TradeLocker] ordersHistory columns (${ordersCols.length}):`, JSON.stringify(ordersCols));
+  console.log(`[TradeLocker] positions columns (${positionsCols.length}):`, JSON.stringify(positionsCols));
 
   // Create sync job
   const { data: job } = await supabaseAdmin
@@ -455,19 +535,45 @@ async function syncAccount(
 
     try {
       const ordersResult = await tlRequest(
-        server,
-        "GET",
+        server, "GET",
         `/trade/accounts/${tlAcctId}/ordersHistory`,
-        token,
-        undefined,
-        accNum
+        token, undefined, accNum
       );
 
-      const rawOrders = ordersResult.d?.ordersHistory || ordersResult.d?.orders || ordersResult.orders || ordersResult;
+      const rawOrders = ordersResult.d?.ordersHistory || ordersResult.d?.orders || ordersResult.orders || [];
       const orders = Array.isArray(rawOrders) ? rawOrders : [];
       console.log(`[TradeLocker] Orders history: ${orders.length} records fetched`);
 
+      // Log first raw row for debugging
+      if (orders.length > 0) {
+        console.log(`[TradeLocker] First raw row type: ${typeof orders[0]}, isArray: ${Array.isArray(orders[0])}`);
+        console.log(`[TradeLocker] First raw row: ${JSON.stringify(orders[0]).slice(0, 300)}`);
+      }
+
       await supabaseAdmin.from("sync_jobs").update({ meta: { phase: "importing_trades", orders_found: orders.length } }).eq("id", job?.id);
+
+      // Convert rows: if columnar (array of arrays), map to objects
+      let orderObjects: Record<string, any>[] = [];
+      if (orders.length > 0 && Array.isArray(orders[0]) && ordersCols.length > 0) {
+        orderObjects = orders.map((row: any[]) => rowToObject(row, ordersCols));
+        console.log(`[TradeLocker] Converted ${orderObjects.length} columnar rows to objects`);
+        if (orderObjects.length > 0) {
+          console.log(`[TradeLocker] First mapped object keys: ${Object.keys(orderObjects[0]).join(", ")}`);
+          console.log(`[TradeLocker] First mapped object: ${JSON.stringify(orderObjects[0]).slice(0, 400)}`);
+        }
+      } else if (orders.length > 0 && typeof orders[0] === "object" && !Array.isArray(orders[0])) {
+        orderObjects = orders;
+      } else {
+        console.warn("[TradeLocker] Unknown order format, skipping");
+      }
+
+      // Collect unique instrument IDs to resolve symbols
+      const instrumentIds = new Set<number>();
+      for (const o of orderObjects) {
+        const instId = Number(o.tradableInstrumentId || o.instrumentId || 0);
+        if (instId > 0) instrumentIds.add(instId);
+      }
+      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instrumentIds));
 
       // Get user's Momentra account
       const { data: momentraAccounts } = await supabaseAdmin
@@ -477,8 +583,8 @@ async function syncAccount(
         .limit(1);
       const momentraAccountId = momentraAccounts?.[0]?.id;
 
-      for (const order of orders) {
-        const sourceId = String(order.id || order.orderId || order.order_id || "");
+      for (const order of orderObjects) {
+        const sourceId = String(order.id || order.orderId || "");
 
         // Dedupe
         if (sourceId) {
@@ -496,41 +602,61 @@ async function syncAccount(
           }
         }
 
-        // Insert raw
+        // Insert raw activity
         await supabaseAdmin.from("broker_activities_raw").insert({
           user_id: userId,
           account_id: accountId,
           source_provider: "tradelocker",
           source_activity_id: sourceId,
-          activity_date: order.filledAt || order.createdAt || order.created_at || null,
-          symbol: order.tradableInstrument?.symbol || order.symbol || null,
+          activity_date: order.filledAt ? new Date(Number(order.filledAt)).toISOString() : (order.createdAt ? new Date(Number(order.createdAt)).toISOString() : null),
+          symbol: null,
           raw_payload: order,
           import_batch_id: batchId,
         });
 
         if (!momentraAccountId) continue;
 
-        // Normalize into trade
-        const symbol = order.tradableInstrument?.symbol || order.symbol || order.instrument || "UNKNOWN";
-        const side = (order.side || order.type || "").toLowerCase().includes("buy") ? "Long" : "Short";
-        const quantity = Math.abs(Number(order.filledQty || order.qty || order.quantity || 0));
-        const price = Number(order.avgFilledPrice || order.price || 0);
+        // Resolve symbol from instrument map
+        const instId = Number(order.tradableInstrumentId || order.instrumentId || 0);
+        const symbol = instrumentMap.get(instId) || order.symbol || order.instrument || `INST_${instId}`;
+        const side = String(order.side || "").toLowerCase().includes("buy") ? "Long" : "Short";
+        const filledQty = Math.abs(Number(order.filledQty || order.qty || 0));
+        const avgPrice = Number(order.avgFilledPrice || order.price || 0);
         const pnl = Number(order.pnl || order.profit || 0);
         const fees = Math.abs(Number(order.commission || order.fee || 0));
-        const tradeDate = order.filledAt || order.createdAt || null;
+        // TradeLocker timestamps are in milliseconds
+        const createdMs = Number(order.createdAt || 0);
+        const filledMs = Number(order.filledAt || 0);
+        const openTime = createdMs > 1000000000 ? new Date(createdMs).toISOString() : null;
+        const closeTime = filledMs > 1000000000 ? new Date(filledMs).toISOString() : null;
+        const status = String(order.status || "").toLowerCase();
+
+        // Only import filled/closed orders, skip cancelled/rejected
+        if (status === "cancelled" || status === "rejected" || status === "expired") {
+          console.log(`[TradeLocker] Skipping order ${sourceId} with status: ${status}`);
+          skippedDupes++;
+          continue;
+        }
+
+        // Only import if qty > 0 (actually filled)
+        if (filledQty <= 0) {
+          console.log(`[TradeLocker] Skipping order ${sourceId} with zero filled qty`);
+          skippedDupes++;
+          continue;
+        }
 
         await supabaseAdmin.from("trades").insert({
           user_id: userId,
           account_id: momentraAccountId,
           symbol,
           side,
-          quantity,
-          entry_price: price,
+          quantity: filledQty,
+          entry_price: avgPrice,
           exit_price: null,
           pnl: pnl - fees,
           commissions: fees,
-          open_time: tradeDate,
-          close_time: tradeDate,
+          open_time: openTime,
+          close_time: closeTime || openTime,
           status: "closed",
           tags: ["broker-import", "tradelocker"],
           note: `Imported from TradeLocker`,
@@ -549,16 +675,31 @@ async function syncAccount(
     let positionsImported = 0;
     try {
       const posResult = await tlRequest(
-        server,
-        "GET",
+        server, "GET",
         `/trade/accounts/${tlAcctId}/positions`,
-        token,
-        undefined,
-        accNum
+        token, undefined, accNum
       );
-      const rawPositions = posResult.d?.positions || posResult.positions || posResult;
+      const rawPositions = posResult.d?.positions || posResult.positions || [];
       const positions = Array.isArray(rawPositions) ? rawPositions : [];
       console.log(`[TradeLocker] Positions: ${positions.length} open positions found`);
+
+      // Convert columnar positions to objects
+      let posObjects: Record<string, any>[] = [];
+      if (positions.length > 0 && Array.isArray(positions[0]) && positionsCols.length > 0) {
+        posObjects = positions.map((row: any[]) => rowToObject(row, positionsCols));
+      } else if (positions.length > 0 && typeof positions[0] === "object" && !Array.isArray(positions[0])) {
+        posObjects = positions;
+      }
+
+      // Resolve instrument names for positions
+      const posInstIds = new Set<number>();
+      for (const p of posObjects) {
+        const instId = Number(p.tradableInstrumentId || p.instrumentId || 0);
+        if (instId > 0) posInstIds.add(instId);
+      }
+      const posInstrumentMap = posInstIds.size > 0
+        ? await resolveInstruments(server, token, accNum, Array.from(posInstIds))
+        : new Map<number, string>();
 
       const { data: momentraAccounts } = await supabaseAdmin
         .from("accounts")
@@ -567,7 +708,7 @@ async function syncAccount(
         .limit(1);
       const momentraAccountId = momentraAccounts?.[0]?.id;
 
-      for (const pos of positions) {
+      for (const pos of posObjects) {
         const sourceId = `pos_${pos.id || pos.positionId || ""}`;
 
         const { data: existing } = await supabaseAdmin
@@ -588,19 +729,22 @@ async function syncAccount(
           account_id: accountId,
           source_provider: "tradelocker",
           source_activity_id: sourceId,
-          activity_date: pos.openedAt || pos.created_at || null,
-          symbol: pos.tradableInstrument?.symbol || pos.symbol || null,
+          activity_date: pos.openedAt ? new Date(Number(pos.openedAt)).toISOString() : null,
+          symbol: null,
           raw_payload: pos,
           import_batch_id: batchId,
         });
 
         if (!momentraAccountId) continue;
 
-        const symbol = pos.tradableInstrument?.symbol || pos.symbol || "UNKNOWN";
-        const side = (pos.side || "").toLowerCase().includes("buy") ? "Long" : "Short";
+        const instId = Number(pos.tradableInstrumentId || pos.instrumentId || 0);
+        const symbol = posInstrumentMap.get(instId) || pos.symbol || `INST_${instId}`;
+        const side = String(pos.side || "").toLowerCase().includes("buy") ? "Long" : "Short";
         const quantity = Math.abs(Number(pos.qty || pos.quantity || 0));
         const entryPrice = Number(pos.avgPrice || pos.openPrice || pos.price || 0);
         const unrealizedPnl = Number(pos.unrealizedPnl || pos.pnl || 0);
+        const openedMs = Number(pos.openedAt || 0);
+        const openTime = openedMs > 1000000000 ? new Date(openedMs).toISOString() : null;
 
         await supabaseAdmin.from("trades").insert({
           user_id: userId,
@@ -610,7 +754,7 @@ async function syncAccount(
           quantity,
           entry_price: entryPrice,
           pnl: unrealizedPnl,
-          open_time: pos.openedAt || pos.created_at || null,
+          open_time: openTime,
           status: "open",
           tags: ["broker-import", "tradelocker", "open-position"],
           note: `Open position imported from TradeLocker`,
@@ -642,7 +786,6 @@ async function syncAccount(
       })
       .eq("id", job?.id);
 
-    // Update last_synced_at
     await supabaseAdmin
       .from("broker_connections")
       .update({ last_synced_at: new Date().toISOString() })
