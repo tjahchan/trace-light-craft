@@ -76,8 +76,19 @@ export async function selectAccounts(accountIds: string[]) {
   return invokeSnapTrade<{ selected: number }>("select_accounts", { account_ids: accountIds });
 }
 
-// Trigger a sync/import for an account
+// Trigger a sync/import for an account (auto-routes TradeLocker accounts)
 export async function syncAccount(accountId: string, jobType = "manual_sync") {
+  // Check if this is a TradeLocker account by looking at cached accounts or querying
+  const { data: acct } = await supabase
+    .from("broker_accounts")
+    .select("provider")
+    .eq("id", accountId)
+    .single();
+
+  if (acct?.provider === "tradelocker") {
+    return syncTradeLockerAccount(accountId, jobType);
+  }
+
   return invokeSnapTrade<SyncResult>("sync", { account_id: accountId, job_type: jobType });
 }
 
