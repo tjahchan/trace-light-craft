@@ -109,6 +109,53 @@ async function resolveAccNum(server: string, token: string, targetAccountId: str
   return targetAccountId;
 }
 
+// Convert a row array to an object using column names
+function rowToObject(row: any[], columns: string[]): Record<string, any> {
+  const obj: Record<string, any> = {};
+  for (let i = 0; i < columns.length && i < row.length; i++) {
+    obj[columns[i]] = row[i];
+  }
+  return obj;
+}
+
+async function fetchConfig(server: string, token: string, accNum: string): Promise<Record<string, string[]>> {
+  const config = await tlRequest(server, "GET", "/trade/config", token, undefined, accNum);
+  const result: Record<string, string[]> = {};
+  const d = config.d || config;
+  for (const key of ["ordersHistory", "positions"]) {
+    if (d[key]?.columns) result[key] = d[key].columns;
+  }
+  return result;
+}
+
+async function resolveInstruments(
+  server: string, token: string, accNum: string, instrumentIds: number[]
+): Promise<Map<number, string>> {
+  const map = new Map<number, string>();
+  if (instrumentIds.length === 0) return map;
+  try {
+    const result = await tlRequest(server, "POST", "/trade/instruments", token, { tradableInstrumentIds: instrumentIds }, accNum);
+    const instruments = result.d?.instruments || result.instruments || [];
+    const cols = result.d?.columns || [];
+    const nameIdx = cols.indexOf("name");
+    const idIdx = cols.indexOf("tradableInstrumentId");
+    if (nameIdx >= 0 && idIdx >= 0) {
+      for (const row of instruments) {
+        if (Array.isArray(row)) map.set(Number(row[idIdx]), String(row[nameIdx]));
+      }
+    } else {
+      for (const inst of instruments) {
+        if (inst && typeof inst === "object" && !Array.isArray(inst)) {
+          map.set(Number(inst.tradableInstrumentId || inst.id), String(inst.name || inst.symbol || ""));
+        }
+      }
+    }
+  } catch (e: any) {
+    console.warn("[AutoSync] Instruments fetch failed:", e.message);
+  }
+  return map;
+}
+
 async function syncTradeLockerAccount(
   userId: string,
   integration: any,
@@ -119,12 +166,10 @@ async function syncTradeLockerAccount(
   const server = integration.tradelocker_server;
   const tlAcctId = brokerAccount.tradelocker_account_id;
 
-  // Resolve accNum
   let accNum = extractStoredAccNum(brokerAccount.account_number_masked);
   if (!accNum) {
     console.log(`[AutoSync] No stored accNum for ${tlAcctId}, fetching from API...`);
     accNum = await resolveAccNum(server, token, tlAcctId);
-    // Store for future use
     await supabaseAdmin
       .from("broker_accounts")
       .update({ account_number_masked: `accnum:${accNum}|${brokerAccount.account_number_masked || ""}` })
@@ -132,9 +177,13 @@ async function syncTradeLockerAccount(
   }
 
   console.log(`[AutoSync] Syncing accountId=${tlAcctId} accNum=${accNum}`);
+
+  // Fetch config for column mappings
+  const configColumns = await fetchConfig(server, token, accNum);
+  const ordersCols = configColumns.ordersHistory || [];
+
   let imported = 0;
 
-  // Create sync job
   const { data: job } = await supabaseAdmin
     .from("sync_jobs")
     .insert({
@@ -151,15 +200,34 @@ async function syncTradeLockerAccount(
   const batchId = job?.id || crypto.randomUUID();
 
   try {
-    // Fetch order history
     const ordersResult = await tlRequest(
       server, "GET", `/trade/accounts/${tlAcctId}/ordersHistory`, token, undefined, accNum
     );
-    const rawOrders = ordersResult.d?.ordersHistory || ordersResult.d?.orders || ordersResult.orders || ordersResult;
+    const rawOrders = ordersResult.d?.ordersHistory || ordersResult.d?.orders || [];
     const orders = Array.isArray(rawOrders) ? rawOrders : [];
     console.log(`[AutoSync] Fetched ${orders.length} historical orders`);
 
-    for (const order of orders) {
+    // Convert columnar to objects
+    let orderObjects: Record<string, any>[] = [];
+    if (orders.length > 0 && Array.isArray(orders[0]) && ordersCols.length > 0) {
+      orderObjects = orders.map((row: any[]) => rowToObject(row, ordersCols));
+    } else if (orders.length > 0 && typeof orders[0] === "object" && !Array.isArray(orders[0])) {
+      orderObjects = orders;
+    }
+
+    // Resolve instruments
+    const instrumentIds = new Set<number>();
+    for (const o of orderObjects) {
+      const instId = Number(o.tradableInstrumentId || o.instrumentId || 0);
+      if (instId > 0) instrumentIds.add(instId);
+    }
+    const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instrumentIds));
+
+    const { data: momentraAccounts } = await supabaseAdmin
+      .from("accounts").select("id").eq("user_id", userId).limit(1);
+    const momentraAccountId = momentraAccounts?.[0]?.id;
+
+    for (const order of orderObjects) {
       const sourceId = String(order.id || order.orderId || "");
 
       if (sourceId) {
@@ -170,50 +238,51 @@ async function syncTradeLockerAccount(
           .eq("account_id", brokerAccount.id)
           .eq("source_provider", "tradelocker")
           .maybeSingle();
-
         if (existing) continue;
       }
+
+      const status = String(order.status || "").toLowerCase();
+      if (status === "cancelled" || status === "rejected" || status === "expired") continue;
+
+      const filledQty = Math.abs(Number(order.filledQty || order.qty || 0));
+      if (filledQty <= 0) continue;
 
       await supabaseAdmin.from("broker_activities_raw").insert({
         user_id: userId,
         account_id: brokerAccount.id,
         source_provider: "tradelocker",
         source_activity_id: sourceId,
-        activity_date: order.filledAt || order.createdAt || null,
-        symbol: order.tradableInstrument?.symbol || order.symbol || null,
+        activity_date: order.filledAt ? new Date(Number(order.filledAt)).toISOString() : null,
+        symbol: null,
         raw_payload: order,
         import_batch_id: batchId,
       });
 
-      const symbol = order.tradableInstrument?.symbol || order.symbol || order.instrument || "UNKNOWN";
-      const side = (order.side || order.type || "").toLowerCase().includes("buy") ? "Long" : "Short";
-      const quantity = Math.abs(Number(order.filledQty || order.qty || order.quantity || 0));
-      const price = Number(order.avgFilledPrice || order.price || 0);
+      if (!momentraAccountId) continue;
+
+      const instId = Number(order.tradableInstrumentId || order.instrumentId || 0);
+      const symbol = instrumentMap.get(instId) || order.symbol || `INST_${instId}`;
+      const side = String(order.side || "").toLowerCase().includes("buy") ? "Long" : "Short";
+      const avgPrice = Number(order.avgFilledPrice || order.price || 0);
       const pnl = Number(order.pnl || order.profit || 0);
       const fees = Math.abs(Number(order.commission || order.fee || 0));
-      const tradeDate = order.filledAt || order.createdAt || null;
-
-      const { data: momentraAccounts } = await supabaseAdmin
-        .from("accounts")
-        .select("id")
-        .eq("user_id", userId)
-        .limit(1);
-
-      const momentraAccountId = momentraAccounts?.[0]?.id;
-      if (!momentraAccountId) continue;
+      const createdMs = Number(order.createdAt || 0);
+      const filledMs = Number(order.filledAt || 0);
+      const openTime = createdMs > 1000000000 ? new Date(createdMs).toISOString() : null;
+      const closeTime = filledMs > 1000000000 ? new Date(filledMs).toISOString() : null;
 
       await supabaseAdmin.from("trades").insert({
         user_id: userId,
         account_id: momentraAccountId,
         symbol,
         side,
-        quantity,
-        entry_price: price,
+        quantity: filledQty,
+        entry_price: avgPrice,
         exit_price: null,
         pnl: pnl - fees,
         commissions: fees,
-        open_time: tradeDate,
-        close_time: tradeDate,
+        open_time: openTime,
+        close_time: closeTime || openTime,
         status: "closed",
         tags: ["broker-import", "tradelocker", "auto-sync"],
         note: "Auto-synced from TradeLocker",
@@ -222,7 +291,6 @@ async function syncTradeLockerAccount(
       imported++;
     }
 
-    // Complete sync job
     await supabaseAdmin
       .from("sync_jobs")
       .update({
@@ -232,7 +300,6 @@ async function syncTradeLockerAccount(
       })
       .eq("id", job?.id);
 
-    // Update last_synced_at
     await supabaseAdmin
       .from("broker_connections")
       .update({ last_synced_at: new Date().toISOString() })
