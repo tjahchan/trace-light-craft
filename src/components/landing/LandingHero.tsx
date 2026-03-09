@@ -224,7 +224,7 @@ export function LandingHero() {
           transition={{ duration: 0.8, delay: 0.25, ease }}
           className="mt-5 sm:mt-6 text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed px-2"
         >
-          Track trades, analyze decisions, and refine your strategy with the most advanced trading performance system.
+          Track trades, analyze past decisions, and understand exactly where your trading goes right or wrong — without getting lost in complicated dashboards.
         </motion.p>
 
         <motion.div
