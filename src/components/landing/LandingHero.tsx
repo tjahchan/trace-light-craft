@@ -212,9 +212,9 @@ export function LandingHero() {
           transition={{ duration: 1, delay: 0.1, ease }}
           className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-foreground max-w-4xl leading-[1.08]"
         >
-          Build Your{" "}
+          Master Your Trading{" "}
           <span className="bg-gradient-to-r from-primary via-blue-400 to-primary bg-clip-text text-transparent">
-            Trading Edge
+            With Clarity
           </span>
         </motion.h1>
 
