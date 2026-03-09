@@ -7,7 +7,7 @@ const ease: Easing = [0.22, 1, 0.36, 1];
 
 export function LandingCTA() {
   return (
-    <section className="relative py-32 px-6 md:px-12">
+    <section className="relative py-20 sm:py-32 px-4 sm:px-6 md:px-12">
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary/10 blur-[150px] rounded-full pointer-events-none" />
 
       <div className="max-w-3xl mx-auto relative text-center">
