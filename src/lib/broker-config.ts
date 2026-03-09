@@ -38,8 +38,8 @@ export const brokers: BrokerEntry[] = [
   { id: "aj-bell", name: "AJ Bell", logo: "/brokers/aj-bell.webp", provider: "snaptrade", priority: 20 },
   { id: "commsec", name: "CommSec", logo: "/brokers/commsec.png", provider: "snaptrade", priority: 21 },
   { id: "bux", name: "BUX", logo: "/brokers/bux.png", provider: "snaptrade", priority: 22 },
-  { id: "zerodha", name: "Zerodha", logo: "/brokers/zerodha.webp", provider: "snaptrade", priority: 23 },
-  { id: "upstox", name: "Upstox", logo: "/brokers/upstox.webp", provider: "snaptrade", priority: 24 },
+  { id: "zerodha", name: "Zerodha", logo: "/brokers/zerodha.webp", provider: "snaptrade", priority: 23, hiddenFromStrip: true },
+  { id: "upstox", name: "Upstox", logo: "/brokers/upstox.webp", provider: "snaptrade", priority: 24, hiddenFromStrip: true },
   // TradeLocker broker
   { id: "tradelocker", name: "TradeLocker", logo: "/brokers/tradelocker.webp", provider: "tradelocker", priority: 25 },
 ];
