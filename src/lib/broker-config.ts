@@ -34,7 +34,7 @@ export const brokers: BrokerEntry[] = [
   { id: "tastytrade", name: "tastytrade", logo: "/brokers/tastytrade.webp", provider: "snaptrade", priority: 12, hiddenFromStrip: true, needsLightBg: true },
   { id: "questrade", name: "Questrade", logo: "/brokers/questrade.webp", provider: "snaptrade", priority: 13 },
   { id: "trading212", name: "Trading 212", logo: "/brokers/trading212.png", provider: "snaptrade", priority: 14 },
-  { id: "degiro", name: "DEGIRO", logo: "/brokers/degiro.webp", provider: "snaptrade", priority: 15, hiddenFromStrip: true },
+  { id: "degiro", name: "DEGIRO", logo: "/brokers/degiro.webp", provider: "snaptrade", priority: 15, hiddenFromStrip: true, needsLightBg: true },
   { id: "moomoo", name: "Moomoo", logo: "/brokers/moomoo.webp", provider: "snaptrade", priority: 16, hiddenFromStrip: true },
   { id: "alpaca", name: "Alpaca", logo: "/brokers/alpaca.jpg", provider: "snaptrade", priority: 17 },
   { id: "stake", name: "Stake", logo: "/brokers/stake.png", provider: "snaptrade", priority: 18 },
