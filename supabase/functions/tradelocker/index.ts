@@ -38,7 +38,7 @@ async function tlRequest(
     headers["accNum"] = accNum;
   }
 
-  console.log(`[TradeLocker] ${method} ${path}`);
+  console.log(`[TradeLocker] ${method} ${path} (accNum: ${accNum || "none"})`);
 
   const res = await fetch(url, {
     method,
@@ -55,6 +55,57 @@ async function tlRequest(
   return res.json();
 }
 
+// Helper: resolve accNum for a given accountId from the all-accounts endpoint
+async function resolveAccNum(
+  server: string,
+  token: string,
+  targetAccountId: string
+): Promise<string> {
+  const accountsResult = await tlRequest(server, "GET", "/auth/jwt/all-accounts", token);
+  console.log("[TradeLocker] all-accounts raw keys:", Object.keys(accountsResult));
+
+  // Parse accounts - could be flat array or nested { demo: [...], live: [...] }
+  let allAccounts: any[] = [];
+  const raw = accountsResult.accounts || accountsResult;
+
+  if (Array.isArray(raw)) {
+    allAccounts = raw;
+  } else if (typeof raw === "object" && raw !== null) {
+    // Nested by environment (demo/live)
+    for (const env of Object.keys(raw)) {
+      const envAccounts = raw[env];
+      if (Array.isArray(envAccounts)) {
+        allAccounts.push(...envAccounts);
+      }
+    }
+  }
+
+  console.log(`[TradeLocker] Found ${allAccounts.length} accounts from API`);
+
+  for (const acct of allAccounts) {
+    const acctId = String(acct.id || acct.accountId || "");
+    const accNum = String(acct.accNum ?? acct.acc_num ?? "");
+    console.log(`[TradeLocker] Account id=${acctId} accNum=${accNum} name=${acct.name || acct.accountName || ""}`);
+
+    if (acctId === targetAccountId) {
+      if (accNum) return accNum;
+      // If accNum not present, try the id itself
+      return acctId;
+    }
+  }
+
+  // Fallback: if only one account, use its accNum
+  if (allAccounts.length === 1) {
+    const only = allAccounts[0];
+    const accNum = String(only.accNum ?? only.acc_num ?? only.id ?? "");
+    console.log(`[TradeLocker] Single account fallback, using accNum=${accNum}`);
+    return accNum;
+  }
+
+  console.warn(`[TradeLocker] Could not find accNum for accountId=${targetAccountId}, falling back to accountId`);
+  return targetAccountId;
+}
+
 // ---- Action Handlers ----
 
 async function authenticate(
@@ -65,8 +116,6 @@ async function authenticate(
   password: string,
   supabaseAdmin: ReturnType<typeof getSupabaseAdmin>
 ) {
-  // environment = API base URL host (e.g. demo.tradelocker.com)
-  // serverName = broker server name for auth body (e.g. BLBRY, FTMO)
   const authResult = await tlRequest(environment, "POST", "/auth/jwt/token", undefined, {
     email,
     password,
@@ -158,6 +207,14 @@ async function authenticate(
     connectionId = newConn!.id;
   }
 
+  // Immediately discover accounts after authentication
+  console.log("[TradeLocker] Post-auth: discovering accounts...");
+  try {
+    await listAccounts(userId, supabaseAdmin);
+  } catch (e: any) {
+    console.warn("[TradeLocker] Post-auth account discovery failed:", e.message);
+  }
+
   return { success: true, integration_id: integrationId, connection_id: connectionId };
 }
 
@@ -197,7 +254,6 @@ async function getValidToken(
     ? new Date(integration.tradelocker_token_expires_at)
     : null;
 
-  // Refresh if expired or expiring within 60 seconds
   if (!expiresAt || expiresAt.getTime() - Date.now() < 60000) {
     return await refreshAccessToken(integration, supabaseAdmin);
   }
@@ -223,7 +279,24 @@ async function listAccounts(
 
   // Fetch accounts
   const accountsResult = await tlRequest(server, "GET", "/auth/jwt/all-accounts", token);
-  const accounts = accountsResult.accounts || accountsResult || [];
+  console.log("[TradeLocker] all-accounts response keys:", Object.keys(accountsResult));
+
+  // Parse accounts - handle both flat array and nested object
+  let accounts: any[] = [];
+  const raw = accountsResult.accounts || accountsResult;
+
+  if (Array.isArray(raw)) {
+    accounts = raw;
+  } else if (typeof raw === "object" && raw !== null) {
+    for (const env of Object.keys(raw)) {
+      const envAccounts = raw[env];
+      if (Array.isArray(envAccounts)) {
+        accounts.push(...envAccounts);
+      }
+    }
+  }
+
+  console.log(`[TradeLocker] Parsed ${accounts.length} accounts`);
 
   // Get connection
   const { data: conn } = await supabaseAdmin
@@ -237,11 +310,14 @@ async function listAccounts(
 
   // Sync accounts to DB
   for (const acct of accounts) {
-    const tlAccountId = String(acct.id || acct.accountId || acct.account_id);
+    const tlAccountId = String(acct.id || acct.accountId || acct.account_id || "");
+    const tlAccNum = String(acct.accNum ?? acct.acc_num ?? "");
     const accountName = acct.name || acct.accountName || `Account ${tlAccountId}`;
     const accountNumber = acct.accountNumber || acct.number || tlAccountId;
     const accountType = acct.type || acct.accountType || null;
     const currency = acct.currency || "USD";
+
+    console.log(`[TradeLocker] Account: id=${tlAccountId} accNum=${tlAccNum} name=${accountName}`);
 
     const { data: existing } = await supabaseAdmin
       .from("broker_accounts")
@@ -250,11 +326,16 @@ async function listAccounts(
       .eq("user_id", userId)
       .maybeSingle();
 
+    // Store accNum in account_number_masked as "accnum:X" prefix for retrieval during sync
+    const maskedNumber = tlAccNum
+      ? `accnum:${tlAccNum}|${accountNumber.length > 4 ? `***${accountNumber.slice(-4)}` : accountNumber}`
+      : (accountNumber.length > 4 ? `***${accountNumber.slice(-4)}` : accountNumber);
+
     const accountData = {
       broker_name: "TradeLocker",
       account_name: accountName,
       account_type: accountType,
-      account_number_masked: accountNumber.length > 4 ? `***${accountNumber.slice(-4)}` : accountNumber,
+      account_number_masked: maskedNumber,
       currency,
       provider: "tradelocker",
     };
@@ -297,6 +378,13 @@ async function selectAccounts(
   return { selected: accountIds.length };
 }
 
+// Extract stored accNum from account_number_masked field
+function extractStoredAccNum(accountNumberMasked: string | null): string | null {
+  if (!accountNumberMasked) return null;
+  const match = accountNumberMasked.match(/^accnum:(\d+)\|/);
+  return match ? match[1] : null;
+}
+
 async function syncAccount(
   userId: string,
   accountId: string,
@@ -325,6 +413,21 @@ async function syncAccount(
   const server = integration.tradelocker_server;
   const tlAcctId = brokerAccount.tradelocker_account_id;
 
+  // Resolve accNum - first try stored value, then fetch from API
+  let accNum = extractStoredAccNum(brokerAccount.account_number_masked);
+  if (!accNum) {
+    console.log("[TradeLocker] No stored accNum, fetching from API...");
+    accNum = await resolveAccNum(server, token, tlAcctId!);
+    // Store it for future use
+    const masked = brokerAccount.account_number_masked || "";
+    await supabaseAdmin
+      .from("broker_accounts")
+      .update({ account_number_masked: `accnum:${accNum}|${masked}` })
+      .eq("id", accountId);
+  }
+
+  console.log(`[TradeLocker] Sync: accountId=${tlAcctId} accNum=${accNum} jobType=${jobType}`);
+
   // Create sync job
   const { data: job } = await supabaseAdmin
     .from("sync_jobs")
@@ -335,6 +438,7 @@ async function syncAccount(
       job_type: jobType,
       status: "running",
       started_at: new Date().toISOString(),
+      meta: { phase: "fetching_history" },
     })
     .select()
     .single();
@@ -343,8 +447,12 @@ async function syncAccount(
 
   try {
     let imported = 0;
+    let skippedDupes = 0;
 
-    // Fetch order history
+    // ---- PHASE 1: Fetch closed order history ----
+    console.log("[TradeLocker] Phase 1: Fetching order history...");
+    await supabaseAdmin.from("sync_jobs").update({ meta: { phase: "fetching_history" } }).eq("id", job?.id);
+
     try {
       const ordersResult = await tlRequest(
         server,
@@ -352,12 +460,25 @@ async function syncAccount(
         `/trade/accounts/${tlAcctId}/ordersHistory`,
         token,
         undefined,
-        tlAcctId
+        accNum
       );
-      const orders = ordersResult.d?.ordersHistory || ordersResult.orders || ordersResult || [];
 
-      for (const order of (Array.isArray(orders) ? orders : [])) {
-        const sourceId = String(order.id || order.orderId || "");
+      const rawOrders = ordersResult.d?.ordersHistory || ordersResult.d?.orders || ordersResult.orders || ordersResult;
+      const orders = Array.isArray(rawOrders) ? rawOrders : [];
+      console.log(`[TradeLocker] Orders history: ${orders.length} records fetched`);
+
+      await supabaseAdmin.from("sync_jobs").update({ meta: { phase: "importing_trades", orders_found: orders.length } }).eq("id", job?.id);
+
+      // Get user's Momentra account
+      const { data: momentraAccounts } = await supabaseAdmin
+        .from("accounts")
+        .select("id")
+        .eq("user_id", userId)
+        .limit(1);
+      const momentraAccountId = momentraAccounts?.[0]?.id;
+
+      for (const order of orders) {
+        const sourceId = String(order.id || order.orderId || order.order_id || "");
 
         // Dedupe
         if (sourceId) {
@@ -369,7 +490,10 @@ async function syncAccount(
             .eq("source_provider", "tradelocker")
             .maybeSingle();
 
-          if (existing) continue;
+          if (existing) {
+            skippedDupes++;
+            continue;
+          }
         }
 
         // Insert raw
@@ -384,6 +508,8 @@ async function syncAccount(
           import_batch_id: batchId,
         });
 
+        if (!momentraAccountId) continue;
+
         // Normalize into trade
         const symbol = order.tradableInstrument?.symbol || order.symbol || order.instrument || "UNKNOWN";
         const side = (order.side || order.type || "").toLowerCase().includes("buy") ? "Long" : "Short";
@@ -392,15 +518,6 @@ async function syncAccount(
         const pnl = Number(order.pnl || order.profit || 0);
         const fees = Math.abs(Number(order.commission || order.fee || 0));
         const tradeDate = order.filledAt || order.createdAt || null;
-
-        const { data: momentraAccounts } = await supabaseAdmin
-          .from("accounts")
-          .select("id")
-          .eq("user_id", userId)
-          .limit(1);
-
-        const momentraAccountId = momentraAccounts?.[0]?.id;
-        if (!momentraAccountId) continue;
 
         await supabaseAdmin.from("trades").insert({
           user_id: userId,
@@ -422,10 +539,14 @@ async function syncAccount(
         imported++;
       }
     } catch (e: any) {
-      console.warn("[TradeLocker] Orders history fetch failed:", e.message);
+      console.error("[TradeLocker] Orders history fetch failed:", e.message);
     }
 
-    // Fetch open positions
+    // ---- PHASE 2: Fetch open positions ----
+    console.log("[TradeLocker] Phase 2: Fetching open positions...");
+    await supabaseAdmin.from("sync_jobs").update({ meta: { phase: "importing_positions" } }).eq("id", job?.id);
+
+    let positionsImported = 0;
     try {
       const posResult = await tlRequest(
         server,
@@ -433,11 +554,20 @@ async function syncAccount(
         `/trade/accounts/${tlAcctId}/positions`,
         token,
         undefined,
-        tlAcctId
+        accNum
       );
-      const positions = posResult.d?.positions || posResult.positions || posResult || [];
+      const rawPositions = posResult.d?.positions || posResult.positions || posResult;
+      const positions = Array.isArray(rawPositions) ? rawPositions : [];
+      console.log(`[TradeLocker] Positions: ${positions.length} open positions found`);
 
-      for (const pos of (Array.isArray(positions) ? positions : [])) {
+      const { data: momentraAccounts } = await supabaseAdmin
+        .from("accounts")
+        .select("id")
+        .eq("user_id", userId)
+        .limit(1);
+      const momentraAccountId = momentraAccounts?.[0]?.id;
+
+      for (const pos of positions) {
         const sourceId = `pos_${pos.id || pos.positionId || ""}`;
 
         const { data: existing } = await supabaseAdmin
@@ -448,7 +578,10 @@ async function syncAccount(
           .eq("source_provider", "tradelocker")
           .maybeSingle();
 
-        if (existing) continue;
+        if (existing) {
+          skippedDupes++;
+          continue;
+        }
 
         await supabaseAdmin.from("broker_activities_raw").insert({
           user_id: userId,
@@ -461,20 +594,13 @@ async function syncAccount(
           import_batch_id: batchId,
         });
 
+        if (!momentraAccountId) continue;
+
         const symbol = pos.tradableInstrument?.symbol || pos.symbol || "UNKNOWN";
         const side = (pos.side || "").toLowerCase().includes("buy") ? "Long" : "Short";
         const quantity = Math.abs(Number(pos.qty || pos.quantity || 0));
         const entryPrice = Number(pos.avgPrice || pos.openPrice || pos.price || 0);
         const unrealizedPnl = Number(pos.unrealizedPnl || pos.pnl || 0);
-
-        const { data: momentraAccounts } = await supabaseAdmin
-          .from("accounts")
-          .select("id")
-          .eq("user_id", userId)
-          .limit(1);
-
-        const momentraAccountId = momentraAccounts?.[0]?.id;
-        if (!momentraAccountId) continue;
 
         await supabaseAdmin.from("trades").insert({
           user_id: userId,
@@ -490,19 +616,29 @@ async function syncAccount(
           note: `Open position imported from TradeLocker`,
         });
 
+        positionsImported++;
         imported++;
       }
     } catch (e: any) {
-      console.warn("[TradeLocker] Positions fetch failed:", e.message);
+      console.error("[TradeLocker] Positions fetch failed:", e.message);
     }
 
-    // Complete sync job
+    // ---- Sync complete ----
+    const syncStatus = imported > 0 ? "completed" : "completed_no_data";
+    console.log(`[TradeLocker] Sync complete: ${imported} imported, ${skippedDupes} duplicates skipped, ${positionsImported} positions`);
+
     await supabaseAdmin
       .from("sync_jobs")
       .update({
-        status: "completed",
+        status: syncStatus,
         completed_at: new Date().toISOString(),
         activities_imported: imported,
+        meta: {
+          phase: "complete",
+          closed_trades: imported - positionsImported,
+          open_positions: positionsImported,
+          duplicates_skipped: skippedDupes,
+        },
       })
       .eq("id", job?.id);
 
@@ -514,12 +650,14 @@ async function syncAccount(
 
     return { success: true, imported, job_id: job?.id };
   } catch (err: any) {
+    console.error("[TradeLocker] Sync failed:", err.message);
     await supabaseAdmin
       .from("sync_jobs")
       .update({
         status: "failed",
         completed_at: new Date().toISOString(),
         error_message: err.message,
+        meta: { phase: "failed" },
       })
       .eq("id", job?.id);
     throw err;
@@ -581,13 +719,11 @@ Deno.serve(async (req) => {
         if (!body.email || !body.password) {
           throw new Error("Email and password are required");
         }
-        // Support both old format (body.server) and new format (body.environment + body.server_name)
         const environment = body.environment || "demo.tradelocker.com";
         const serverName = body.server_name || body.server || "";
         if (!serverName) {
           throw new Error("Server name is required (e.g. BLBRY, FTMO)");
         }
-        // Ensure environment is a valid host
         const envHost = environment.includes(".") ? environment : `${environment}.tradelocker.com`;
         result = await authenticate(userId, envHost, serverName, body.email, body.password, supabaseAdmin);
         break;
