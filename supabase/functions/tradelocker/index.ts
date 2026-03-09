@@ -431,7 +431,9 @@ async function syncAccount(
         server,
         "GET",
         `/trade/accounts/${tlAcctId}/positions`,
-        token
+        token,
+        undefined,
+        tlAcctId
       );
       const positions = posResult.d?.positions || posResult.positions || posResult || [];
 
