@@ -12,7 +12,7 @@ const steps = [
 
 export function LandingLoop() {
   return (
-    <section className="relative py-32 px-6 md:px-12">
+    <section className="relative py-20 sm:py-32 px-4 sm:px-6 md:px-12">
       <div className="max-w-4xl mx-auto text-center">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -21,7 +21,7 @@ export function LandingLoop() {
           transition={{ duration: 0.7, ease }}
         >
           <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">The System</span>
-          <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
             How Traders Improve
           </h2>
           <p className="mt-4 text-muted-foreground max-w-lg mx-auto text-base">

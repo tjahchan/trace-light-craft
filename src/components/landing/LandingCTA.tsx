@@ -7,7 +7,7 @@ const ease: Easing = [0.22, 1, 0.36, 1];
 
 export function LandingCTA() {
   return (
-    <section className="relative py-32 px-6 md:px-12">
+    <section className="relative py-20 sm:py-32 px-4 sm:px-6 md:px-12">
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary/10 blur-[150px] rounded-full pointer-events-none" />
 
       <div className="max-w-3xl mx-auto relative text-center">
@@ -18,7 +18,7 @@ export function LandingCTA() {
           transition={{ duration: 0.8, ease }}
           className="space-y-6"
         >
-          <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
             Your Edge Is Built<br />
             <span className="bg-gradient-to-r from-primary via-blue-400 to-primary bg-clip-text text-transparent">
               One Trade at a Time
@@ -41,10 +41,10 @@ export function LandingCTA() {
       </div>
 
       {/* Footer */}
-      <div className="mt-32 border-t border-white/[0.06] pt-8 max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="mt-20 sm:mt-32 border-t border-white/[0.06] pt-8 max-w-5xl mx-auto flex flex-col items-center justify-between gap-4 md:flex-row">
         <div className="flex items-center gap-2">
           <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-primary to-primary/40" />
-          <span className="text-foreground text-sm tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          <span className="text-foreground text-sm tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             Momentra
           </span>
         </div>

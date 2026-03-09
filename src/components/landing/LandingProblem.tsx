@@ -29,11 +29,11 @@ const problems = [
 
 export function LandingProblem() {
   return (
-    <section className="relative py-32 px-6 md:px-12">
+    <section className="relative py-20 sm:py-32 px-4 sm:px-6 md:px-12">
       <div className="max-w-5xl mx-auto">
         <motion.div {...fadeUp} className="text-center mb-16">
           <span className="text-[11px] font-medium text-loss uppercase tracking-[0.2em] mb-4 block">The Reality</span>
-          <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
             Most Traders Never Improve
           </h2>
           <p className="mt-4 text-muted-foreground max-w-lg mx-auto text-base md:text-lg">
@@ -41,7 +41,7 @@ export function LandingProblem() {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {problems.map((p, i) => (
             <motion.div
               key={p.title}

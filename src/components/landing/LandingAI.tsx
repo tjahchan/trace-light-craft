@@ -107,7 +107,7 @@ function CyclingQuestions() {
 
 export function LandingAI() {
   return (
-    <section id="ai-coach" className="relative py-32 px-6 md:px-12">
+    <section id="ai-coach" className="relative py-20 sm:py-32 px-4 sm:px-6 md:px-12">
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/8 blur-[180px] rounded-full pointer-events-none" />
 
       <div className="max-w-6xl mx-auto relative flex flex-col md:flex-row items-center gap-12 md:gap-20">
@@ -119,7 +119,7 @@ export function LandingAI() {
             transition={{ duration: 0.7, ease }}
           >
             <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Key Differentiator</span>
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
               Your AI Trading<br />Coach & Analyst
             </h2>
             <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed max-w-md">

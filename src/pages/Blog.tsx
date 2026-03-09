@@ -31,10 +31,10 @@ export default function Blog() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5">
+      <nav className="relative z-50 flex items-center justify-between px-4 sm:px-6 md:px-12 py-5">
         <Link to="/" className="flex items-center gap-2">
           <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/40" />
-          <span className="text-foreground text-lg tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          <span className="text-foreground text-lg tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             Momentra
           </span>
         </Link>
@@ -45,7 +45,7 @@ export default function Blog() {
         </div>
         <div className="flex items-center gap-3">
           <Link to="/auth">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Sign In</Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hidden sm:inline-flex">Sign In</Button>
           </Link>
           <Link to="/auth">
             <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">Get Started</Button>
@@ -53,7 +53,7 @@ export default function Blog() {
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-6 pt-12 pb-32">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-20 sm:pb-32">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -63,7 +63,7 @@ export default function Blog() {
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
 
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight mb-4">Blog</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight mb-4">Blog</h1>
           <p className="text-muted-foreground mb-16">Product updates, trading insights, and announcements.</p>
         </motion.div>
 
@@ -72,7 +72,7 @@ export default function Blog() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease }}
-          className="glass-card p-8 space-y-6"
+          className="glass-card p-5 sm:p-8 space-y-5 sm:space-y-6"
         >
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-medium text-primary uppercase tracking-wider px-2.5 py-1 rounded-full border border-primary/20 bg-primary/5">Featured</span>
@@ -114,7 +114,7 @@ export default function Blog() {
       <div className="border-t border-white/[0.06] py-8 px-6 md:px-12 max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2">
           <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-primary to-primary/40" />
-          <span className="text-foreground text-sm tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          <span className="text-foreground text-sm tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             Momentra
           </span>
         </Link>

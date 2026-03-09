@@ -52,10 +52,10 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       {/* Nav */}
-      <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5">
+      <nav className="relative z-50 flex items-center justify-between px-4 sm:px-6 md:px-12 py-5">
         <Link to="/" className="flex items-center gap-2">
           <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/40" />
-          <span className="text-foreground text-lg tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          <span className="text-foreground text-lg tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             Momentra
           </span>
         </Link>
@@ -66,7 +66,7 @@ export default function Pricing() {
         </div>
         <div className="flex items-center gap-3">
           <Link to="/auth">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Sign In</Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hidden sm:inline-flex">Sign In</Button>
           </Link>
           <Link to="/auth">
             <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">Get Started</Button>
@@ -85,7 +85,7 @@ export default function Pricing() {
             transition={{ duration: 0.8, ease }}
           >
             <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Pricing</span>
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-foreground tracking-tight">
               Simple, Transparent Pricing
             </h1>
             <p className="mt-5 text-muted-foreground text-base md:text-lg max-w-lg mx-auto">
@@ -95,7 +95,7 @@ export default function Pricing() {
         </div>
 
         {/* Cards */}
-        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 px-2 sm:px-0">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
@@ -164,7 +164,7 @@ export default function Pricing() {
       <div className="border-t border-white/[0.06] py-8 px-6 md:px-12 max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2">
           <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-primary to-primary/40" />
-          <span className="text-foreground text-sm tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          <span className="text-foreground text-sm tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             Momentra
           </span>
         </Link>
