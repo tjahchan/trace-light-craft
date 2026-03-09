@@ -75,6 +75,40 @@ async function getValidToken(integration: any, supabaseAdmin: any): Promise<stri
   return integration.tradelocker_access_token_encrypted;
 }
 
+// Resolve accNum from stored value or API
+function extractStoredAccNum(accountNumberMasked: string | null): string | null {
+  if (!accountNumberMasked) return null;
+  const match = accountNumberMasked.match(/^accnum:(\d+)\|/);
+  return match ? match[1] : null;
+}
+
+async function resolveAccNum(server: string, token: string, targetAccountId: string): Promise<string> {
+  const accountsResult = await tlRequest(server, "GET", "/auth/jwt/all-accounts", token);
+  let allAccounts: any[] = [];
+  const raw = accountsResult.accounts || accountsResult;
+
+  if (Array.isArray(raw)) {
+    allAccounts = raw;
+  } else if (typeof raw === "object" && raw !== null) {
+    for (const env of Object.keys(raw)) {
+      const envAccounts = raw[env];
+      if (Array.isArray(envAccounts)) allAccounts.push(...envAccounts);
+    }
+  }
+
+  for (const acct of allAccounts) {
+    if (String(acct.id || acct.accountId || "") === targetAccountId) {
+      return String(acct.accNum ?? acct.acc_num ?? acct.id ?? "");
+    }
+  }
+
+  if (allAccounts.length === 1) {
+    return String(allAccounts[0].accNum ?? allAccounts[0].acc_num ?? allAccounts[0].id ?? "");
+  }
+
+  return targetAccountId;
+}
+
 async function syncTradeLockerAccount(
   userId: string,
   integration: any,
@@ -84,6 +118,20 @@ async function syncTradeLockerAccount(
   const token = await getValidToken(integration, supabaseAdmin);
   const server = integration.tradelocker_server;
   const tlAcctId = brokerAccount.tradelocker_account_id;
+
+  // Resolve accNum
+  let accNum = extractStoredAccNum(brokerAccount.account_number_masked);
+  if (!accNum) {
+    console.log(`[AutoSync] No stored accNum for ${tlAcctId}, fetching from API...`);
+    accNum = await resolveAccNum(server, token, tlAcctId);
+    // Store for future use
+    await supabaseAdmin
+      .from("broker_accounts")
+      .update({ account_number_masked: `accnum:${accNum}|${brokerAccount.account_number_masked || ""}` })
+      .eq("id", brokerAccount.id);
+  }
+
+  console.log(`[AutoSync] Syncing accountId=${tlAcctId} accNum=${accNum}`);
   let imported = 0;
 
   // Create sync job
@@ -103,16 +151,17 @@ async function syncTradeLockerAccount(
   const batchId = job?.id || crypto.randomUUID();
 
   try {
-    // Fetch order history (pass accNum header)
+    // Fetch order history
     const ordersResult = await tlRequest(
-      server, "GET", `/trade/accounts/${tlAcctId}/ordersHistory`, token, undefined, tlAcctId
+      server, "GET", `/trade/accounts/${tlAcctId}/ordersHistory`, token, undefined, accNum
     );
-    const orders = ordersResult.d?.ordersHistory || ordersResult.orders || ordersResult || [];
+    const rawOrders = ordersResult.d?.ordersHistory || ordersResult.d?.orders || ordersResult.orders || ordersResult;
+    const orders = Array.isArray(rawOrders) ? rawOrders : [];
+    console.log(`[AutoSync] Fetched ${orders.length} historical orders`);
 
-    for (const order of (Array.isArray(orders) ? orders : [])) {
+    for (const order of orders) {
       const sourceId = String(order.id || order.orderId || "");
 
-      // Dedupe check
       if (sourceId) {
         const { data: existing } = await supabaseAdmin
           .from("broker_activities_raw")
@@ -125,7 +174,6 @@ async function syncTradeLockerAccount(
         if (existing) continue;
       }
 
-      // Insert raw activity
       await supabaseAdmin.from("broker_activities_raw").insert({
         user_id: userId,
         account_id: brokerAccount.id,
@@ -137,7 +185,6 @@ async function syncTradeLockerAccount(
         import_batch_id: batchId,
       });
 
-      // Normalize into trade
       const symbol = order.tradableInstrument?.symbol || order.symbol || order.instrument || "UNKNOWN";
       const side = (order.side || order.type || "").toLowerCase().includes("buy") ? "Long" : "Short";
       const quantity = Math.abs(Number(order.filledQty || order.qty || order.quantity || 0));
@@ -179,7 +226,7 @@ async function syncTradeLockerAccount(
     await supabaseAdmin
       .from("sync_jobs")
       .update({
-        status: "completed",
+        status: imported > 0 ? "completed" : "completed_no_data",
         completed_at: new Date().toISOString(),
         activities_imported: imported,
       })
@@ -191,6 +238,7 @@ async function syncTradeLockerAccount(
       .update({ last_synced_at: new Date().toISOString() })
       .eq("id", brokerAccount.connection_id);
 
+    console.log(`[AutoSync] Complete for user ${userId}: ${imported} imported`);
     return imported;
   } catch (err: any) {
     await supabaseAdmin
@@ -231,7 +279,6 @@ Deno.serve(async (req) => {
     let synced = 0;
 
     for (const integration of integrations) {
-      // Get selected broker accounts for this integration
       const { data: brokerAccounts } = await supabaseAdmin
         .from("broker_accounts")
         .select("*")

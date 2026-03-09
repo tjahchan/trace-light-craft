@@ -328,10 +328,10 @@ export default function TradeDetail() {
     // Update local trade state so subsequent edits diff correctly
     setTrade({ ...trade, ...updatedFields, tags: newTags });
 
-    // Confetti for journal note save on closed trades
-    if (isDirty && updatedFields.status === "closed") {
+    // Confetti celebration for closed trades
+    if (updatedFields.status === "closed") {
       triggerCelebration();
-      toast({ title: "Journal entry saved 🎉", description: "Keep reflecting on your trades!" });
+      toast({ title: "Trade saved 🎉", description: "Keep reflecting on your trades!" });
     } else {
       toast({ title: "Trade saved" });
     }
