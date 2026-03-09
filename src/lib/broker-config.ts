@@ -15,6 +15,8 @@ export interface BrokerEntry {
   priority: number;
   /** Hide from the marketing website logo strip */
   hiddenFromStrip?: boolean;
+  /** Logo is dark and needs a light background container for visibility */
+  needsLightBg?: boolean;
 }
 
 export const brokers: BrokerEntry[] = [
