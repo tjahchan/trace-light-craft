@@ -63,7 +63,7 @@ export function BrokerSelectionModal({ open, onOpenChange, onSelectSnapTrade, on
                 onClick={() => handleSelect(broker)}
                 className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06] transition-all group cursor-pointer text-left"
               >
-                <div className="h-11 w-11 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
+                <div className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${broker.needsLightBg ? 'bg-white' : 'bg-white/[0.08]'}`}>
                   {broker.logo ? (
                     <img
                       src={broker.logo}

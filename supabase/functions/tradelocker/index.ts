@@ -22,7 +22,8 @@ async function tlRequest(
   method: string,
   path: string,
   accessToken?: string,
-  body?: Record<string, unknown>
+  body?: Record<string, unknown>,
+  accNum?: string
 ) {
   const baseUrl = server.startsWith("https://") ? server : `https://${server}`;
   const url = `${baseUrl}/backend-api${path}`;
@@ -32,6 +33,9 @@ async function tlRequest(
   };
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+  if (accNum) {
+    headers["accNum"] = accNum;
   }
 
   console.log(`[TradeLocker] ${method} ${path}`);
@@ -346,7 +350,9 @@ async function syncAccount(
         server,
         "GET",
         `/trade/accounts/${tlAcctId}/ordersHistory`,
-        token
+        token,
+        undefined,
+        tlAcctId
       );
       const orders = ordersResult.d?.ordersHistory || ordersResult.orders || ordersResult || [];
 
@@ -425,7 +431,9 @@ async function syncAccount(
         server,
         "GET",
         `/trade/accounts/${tlAcctId}/positions`,
-        token
+        token,
+        undefined,
+        tlAcctId
       );
       const positions = posResult.d?.positions || posResult.positions || posResult || [];
 

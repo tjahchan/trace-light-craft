@@ -20,12 +20,14 @@ async function tlRequest(
   method: string,
   path: string,
   accessToken?: string,
-  body?: Record<string, unknown>
+  body?: Record<string, unknown>,
+  accNum?: string
 ) {
   const baseUrl = server.startsWith("https://") ? server : `https://${server}`;
   const url = `${baseUrl}/backend-api${path}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+  if (accNum) headers["accNum"] = accNum;
 
   const res = await fetch(url, {
     method,
@@ -101,9 +103,9 @@ async function syncTradeLockerAccount(
   const batchId = job?.id || crypto.randomUUID();
 
   try {
-    // Fetch order history
+    // Fetch order history (pass accNum header)
     const ordersResult = await tlRequest(
-      server, "GET", `/trade/accounts/${tlAcctId}/ordersHistory`, token
+      server, "GET", `/trade/accounts/${tlAcctId}/ordersHistory`, token, undefined, tlAcctId
     );
     const orders = ordersResult.d?.ordersHistory || ordersResult.orders || ordersResult || [];
 
