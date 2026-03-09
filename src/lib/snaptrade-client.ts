@@ -1,6 +1,7 @@
-// Client-side service layer for SnapTrade operations
-// All sensitive API calls are proxied through the edge function
+// Client-side service layer for broker operations
+// All sensitive API calls are proxied through edge functions
 import { supabase } from "@/integrations/supabase/client";
+import { syncTradeLockerAccount } from "@/lib/tradelocker-client";
 
 async function invokeSnapTrade<T = unknown>(action: string, body?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke("snaptrade", {
