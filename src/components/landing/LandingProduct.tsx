@@ -197,7 +197,7 @@ const features = [
 
 export function LandingProduct() {
   return (
-    <section id="features" className="relative py-32 px-6 md:px-12">
+    <section id="features" className="relative py-20 sm:py-32 px-4 sm:px-6 md:px-12">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 blur-[200px] rounded-full pointer-events-none" />
 
       <div className="max-w-6xl mx-auto relative">
