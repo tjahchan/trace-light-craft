@@ -1,15 +1,12 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BrokerLogoStrip } from "@/components/landing/BrokerLogoStrip";
 import type { Easing } from "framer-motion";
 
 const ease: Easing = [0.22, 1, 0.36, 1];
-
-const brokers = [
-  "Interactive Brokers", "TD Ameritrade", "Schwab", "Robinhood",
-  "Fidelity", "Coinbase", "Kraken", "Wealthsimple",
-];
 
 function MockDashboard() {
   return (
@@ -63,7 +60,7 @@ function MockDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Performance</p>
-                <p className="text-2xl font-mono font-bold text-foreground mt-0.5">Trading Dashboard</p>
+                <p className="text-xl sm:text-2xl font-mono font-bold text-foreground mt-0.5">Trading Dashboard</p>
               </div>
               <span className="text-xs font-mono text-profit bg-profit/10 px-2 py-1 rounded-md">Live</span>
             </div>
@@ -137,13 +134,15 @@ function MockDashboard() {
 }
 
 export function LandingHero() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <section className="relative min-h-screen flex flex-col">
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background pointer-events-none" />
 
       {/* Nav */}
-      <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5 max-w-7xl mx-auto w-full">
+      <nav className="relative z-50 flex items-center justify-between px-4 sm:px-6 md:px-12 py-5 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2">
           <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/40" />
           <span className="text-foreground text-lg tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
@@ -155,7 +154,7 @@ export function LandingHero() {
           <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
           <Link to="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3">
           <Link to="/auth">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
               Sign In
@@ -167,16 +166,45 @@ export function LandingHero() {
             </Button>
           </Link>
         </div>
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition-colors"
+        >
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </nav>
 
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-x-0 top-[60px] z-[60] backdrop-blur-2xl bg-black/90 border-b border-white/[0.08] shadow-2xl md:hidden"
+          >
+            <div className="p-4 space-y-1">
+              <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-white/[0.06] transition-colors">Features</a>
+              <Link to="/pricing" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-white/[0.06] transition-colors">Pricing</Link>
+              <Link to="/blog" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-white/[0.06] transition-colors">Blog</Link>
+              <div className="h-px bg-white/[0.08] my-2" />
+              <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-white/[0.06] transition-colors">Sign In</Link>
+              <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl text-sm font-semibold text-primary hover:bg-primary/10 transition-colors">Get Started</Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Hero content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 -mt-10">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 -mt-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease }}
         >
-          <span className="inline-block text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-6 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5">
+          <span className="inline-block text-[10px] sm:text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-6 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5">
             The Trading Performance System
           </span>
         </motion.div>
@@ -185,7 +213,7 @@ export function LandingHero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.1, ease }}
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground max-w-4xl leading-[1.08]"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-foreground max-w-4xl leading-[1.08]"
         >
           Build Your{" "}
           <span className="bg-gradient-to-r from-primary via-blue-400 to-primary bg-clip-text text-transparent">
@@ -197,7 +225,7 @@ export function LandingHero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25, ease }}
-          className="mt-6 text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed"
+          className="mt-5 sm:mt-6 text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed px-2"
         >
           Track trades, analyze decisions, and refine your strategy with the most advanced trading performance system.
         </motion.p>
@@ -206,15 +234,15 @@ export function LandingHero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4, ease }}
-          className="mt-8 flex items-center gap-4"
+          className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center gap-3 sm:gap-4"
         >
           <Link to="/auth">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-8 h-12 text-base">
+            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base w-full sm:w-auto">
               Start Journaling — Free <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
           <Link to="/auth">
-            <Button variant="outline" size="lg" className="h-12 text-base border-white/[0.1] hover:bg-white/[0.05]">
+            <Button variant="outline" size="lg" className="h-11 sm:h-12 text-sm sm:text-base border-white/[0.1] hover:bg-white/[0.05] w-full sm:w-auto">
               See How It Works
             </Button>
           </Link>
@@ -225,19 +253,9 @@ export function LandingHero() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 0.6, ease }}
-          className="mt-10 flex flex-col items-center gap-3"
+          className="mt-10 w-full max-w-3xl"
         >
-          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">Auto-sync with your broker</p>
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            {brokers.map((b) => (
-              <span
-                key={b}
-                className="text-[11px] font-medium text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors cursor-default"
-              >
-                {b}
-              </span>
-            ))}
-          </div>
+          <BrokerLogoStrip />
         </motion.div>
 
         <MockDashboard />
