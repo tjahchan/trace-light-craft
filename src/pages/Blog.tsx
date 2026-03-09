@@ -45,7 +45,7 @@ export default function Blog() {
         </div>
         <div className="flex items-center gap-3">
           <Link to="/auth">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Sign In</Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hidden sm:inline-flex">Sign In</Button>
           </Link>
           <Link to="/auth">
             <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">Get Started</Button>
