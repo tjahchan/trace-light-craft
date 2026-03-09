@@ -29,7 +29,7 @@ const problems = [
 
 export function LandingProblem() {
   return (
-    <section className="relative py-32 px-6 md:px-12">
+    <section className="relative py-20 sm:py-32 px-4 sm:px-6 md:px-12">
       <div className="max-w-5xl mx-auto">
         <motion.div {...fadeUp} className="text-center mb-16">
           <span className="text-[11px] font-medium text-loss uppercase tracking-[0.2em] mb-4 block">The Reality</span>
