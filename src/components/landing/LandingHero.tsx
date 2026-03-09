@@ -198,16 +198,9 @@ export function LandingHero() {
       </AnimatePresence>
 
       {/* Hero content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 -mt-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease }}
-        >
-          <span className="inline-block text-[10px] sm:text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-6 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5">
-            The Trading Performance System
-          </span>
-        </motion.div>
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 mt-4 sm:mt-8">
+
+
 
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
@@ -215,9 +208,9 @@ export function LandingHero() {
           transition={{ duration: 1, delay: 0.1, ease }}
           className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-foreground max-w-4xl leading-[1.08]"
         >
-          Build Your{" "}
+          Master Your Trading{" "}
           <span className="bg-gradient-to-r from-primary via-blue-400 to-primary bg-clip-text text-transparent">
-            Trading Edge
+            With Clarity
           </span>
         </motion.h1>
 
@@ -227,7 +220,7 @@ export function LandingHero() {
           transition={{ duration: 0.8, delay: 0.25, ease }}
           className="mt-5 sm:mt-6 text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed px-2"
         >
-          Track trades, analyze decisions, and refine your strategy with the most advanced trading performance system.
+          Track trades, analyze past decisions, and understand exactly where your trading goes right or wrong — without getting lost in complicated dashboards.
         </motion.p>
 
         <motion.div
@@ -238,7 +231,7 @@ export function LandingHero() {
         >
           <Link to="/auth">
             <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base w-full sm:w-auto">
-              Start Journaling — Free <ArrowRight className="h-4 w-4" />
+              Start Journaling <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
           <Link to="/auth">
