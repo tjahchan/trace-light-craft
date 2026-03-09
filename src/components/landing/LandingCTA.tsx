@@ -44,7 +44,7 @@ export function LandingCTA() {
       <div className="mt-32 border-t border-white/[0.06] pt-8 max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-primary to-primary/40" />
-          <span className="text-foreground text-sm tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          <span className="text-foreground text-sm tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             Momentra
           </span>
         </div>
