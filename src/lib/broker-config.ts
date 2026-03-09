@@ -13,6 +13,8 @@ export interface BrokerEntry {
   provider: BrokerProvider;
   /** Priority for display order — lower number = shown first */
   priority: number;
+  /** Hide from the marketing website logo strip */
+  hiddenFromStrip?: boolean;
 }
 
 export const brokers: BrokerEntry[] = [
