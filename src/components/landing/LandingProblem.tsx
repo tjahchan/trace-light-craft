@@ -41,7 +41,7 @@ export function LandingProblem() {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {problems.map((p, i) => (
             <motion.div
               key={p.title}

@@ -119,7 +119,7 @@ export function LandingAI() {
             transition={{ duration: 0.7, ease }}
           >
             <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Key Differentiator</span>
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
               Your AI Trading<br />Coach & Analyst
             </h2>
             <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed max-w-md">

@@ -209,7 +209,7 @@ export function LandingProduct() {
           className="text-center mb-20"
         >
           <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Product</span>
-          <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
             Your Entire Trading System<br className="hidden md:block" /> in One Place
           </h2>
         </motion.div>
