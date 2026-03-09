@@ -358,6 +358,19 @@ async function syncActivities(
   jobType: string,
   supabaseAdmin: ReturnType<typeof getSupabaseAdmin>
 ) {
+  // Check which provider this account belongs to
+  const { data: brokerAccountCheck } = await supabaseAdmin
+    .from("broker_accounts")
+    .select("provider")
+    .eq("id", accountId)
+    .eq("user_id", userId)
+    .single();
+
+  if (brokerAccountCheck?.provider === "tradelocker") {
+    // Route to TradeLocker sync via its own edge function
+    throw new Error("ROUTE_TO_TRADELOCKER");
+  }
+
   const { data: integration } = await supabaseAdmin
     .from("broker_integrations")
     .select("snaptrade_user_id, snaptrade_user_secret_encrypted")
