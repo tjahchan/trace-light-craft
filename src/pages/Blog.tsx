@@ -72,7 +72,7 @@ export default function Blog() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease }}
-          className="glass-card p-8 space-y-6"
+          className="glass-card p-5 sm:p-8 space-y-5 sm:space-y-6"
         >
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-medium text-primary uppercase tracking-wider px-2.5 py-1 rounded-full border border-primary/20 bg-primary/5">Featured</span>
