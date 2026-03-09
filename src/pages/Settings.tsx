@@ -9,7 +9,8 @@ import { Slider } from "@/components/ui/slider";
 import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
 import { usePlan } from "@/contexts/PlanContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBackground, backgrounds, BackgroundTheme } from "@/contexts/BackgroundContext";
+import { useBackground } from "@/contexts/BackgroundContext";
+import { BackgroundThemeSection } from "@/components/settings/BackgroundThemeSection";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
