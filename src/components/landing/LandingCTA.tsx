@@ -18,7 +18,7 @@ export function LandingCTA() {
           transition={{ duration: 0.8, ease }}
           className="space-y-6"
         >
-          <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
             Your Edge Is Built<br />
             <span className="bg-gradient-to-r from-primary via-blue-400 to-primary bg-clip-text text-transparent">
               One Trade at a Time
