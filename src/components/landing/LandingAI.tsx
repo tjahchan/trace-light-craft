@@ -107,7 +107,7 @@ function CyclingQuestions() {
 
 export function LandingAI() {
   return (
-    <section id="ai-coach" className="relative py-32 px-6 md:px-12">
+    <section id="ai-coach" className="relative py-20 sm:py-32 px-4 sm:px-6 md:px-12">
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/8 blur-[180px] rounded-full pointer-events-none" />
 
       <div className="max-w-6xl mx-auto relative flex flex-col md:flex-row items-center gap-12 md:gap-20">
