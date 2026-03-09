@@ -514,7 +514,7 @@ export default function Journal() {
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
           className={cn(
-            "w-72 shrink-0 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl flex flex-col overflow-hidden",
+            "w-72 shrink-0 backdrop-blur-xl bg-black/40 border border-white/[0.08] rounded-2xl flex flex-col overflow-hidden max-h-[calc(100vh-10rem)]",
             isMobile && mobilePanel !== "list" && "hidden"
           )}
           data-tour="notebook-sidebar"

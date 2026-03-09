@@ -227,18 +227,35 @@ export function LandingHero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4, ease }}
-          className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center gap-3 sm:gap-4"
+          className="mt-6 sm:mt-8 flex flex-col items-center gap-3 sm:gap-4"
         >
-          <Link to="/auth">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base w-full sm:w-auto">
-              Start Journaling <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link to="/auth">
-            <Button variant="outline" size="lg" className="h-11 sm:h-12 text-sm sm:text-base border-white/[0.1] hover:bg-white/[0.05] w-full sm:w-auto">
-              See How It Works
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+            <Link to="/auth">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base w-full sm:w-auto">
+                Start Journaling <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link to="/auth">
+              <Button variant="outline" size="lg" className="h-11 sm:h-12 text-sm sm:text-base border-white/[0.1] hover:bg-white/[0.05] w-full sm:w-auto">
+                See How It Works
+              </Button>
+            </Link>
+          </div>
+
+          {/* Glowing badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.7, ease }}
+            className="relative mt-2"
+          >
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse pointer-events-none" />
+            <div className="relative px-5 py-1.5 rounded-full border border-primary/30 bg-primary/[0.08] backdrop-blur-sm">
+              <span className="text-xs text-primary/90 font-medium tracking-wide">
+                Free to use <span className="text-primary/40 mx-1.5">|</span> No credit card required
+              </span>
+            </div>
+          </motion.div>
         </motion.div>
 
         {/* Broker logo strip */}
