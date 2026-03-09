@@ -103,9 +103,9 @@ async function syncTradeLockerAccount(
   const batchId = job?.id || crypto.randomUUID();
 
   try {
-    // Fetch order history
+    // Fetch order history (pass accNum header)
     const ordersResult = await tlRequest(
-      server, "GET", `/trade/accounts/${tlAcctId}/ordersHistory`, token
+      server, "GET", `/trade/accounts/${tlAcctId}/ordersHistory`, token, undefined, tlAcctId
     );
     const orders = ordersResult.d?.ordersHistory || ordersResult.orders || ordersResult || [];
 
