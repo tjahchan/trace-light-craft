@@ -52,10 +52,10 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       {/* Nav */}
-      <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5">
+      <nav className="relative z-50 flex items-center justify-between px-4 sm:px-6 md:px-12 py-5">
         <Link to="/" className="flex items-center gap-2">
           <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/40" />
-          <span className="text-foreground text-lg tracking-[0.15em]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}>
+          <span className="text-foreground text-lg tracking-[0.08em] font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             Momentra
           </span>
         </Link>
@@ -66,7 +66,7 @@ export default function Pricing() {
         </div>
         <div className="flex items-center gap-3">
           <Link to="/auth">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Sign In</Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hidden sm:inline-flex">Sign In</Button>
           </Link>
           <Link to="/auth">
             <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">Get Started</Button>
