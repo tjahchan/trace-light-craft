@@ -83,7 +83,7 @@ export function LandingAnalytics() {
           className="text-center mb-16"
         >
           <span className="text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-4 block">Performance</span>
-          <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
             Compete. Track. Stay Disciplined.
           </h2>
           <p className="mt-4 text-muted-foreground max-w-lg mx-auto text-base">
