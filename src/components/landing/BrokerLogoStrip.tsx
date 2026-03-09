@@ -18,16 +18,16 @@ export function BrokerLogoStrip() {
         <div className="absolute left-0 top-0 bottom-0 w-20 z-10 bg-gradient-to-r from-background to-transparent pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-20 z-10 bg-gradient-to-l from-background to-transparent pointer-events-none" />
 
-        <div className="flex animate-marquee gap-8 w-max hover:[animation-play-state:paused]">
+        <div className="flex animate-marquee gap-10 w-max hover:[animation-play-state:paused]">
           {logos.map((broker, i) => (
             <div
               key={`${broker.id}-${i}`}
-              className="flex items-center justify-center h-16 w-16 shrink-0 rounded-2xl bg-white/[0.08] border border-white/[0.10] hover:bg-white/[0.14] hover:scale-105 transition-all duration-500"
+              className="flex items-center justify-center h-14 w-14 shrink-0 hover:scale-110 transition-transform duration-500"
             >
               <img
                 src={broker.logo}
                 alt={broker.name}
-                className="h-10 w-10 object-contain rounded-lg"
+                className="h-12 w-12 object-contain rounded-xl"
                 loading="lazy"
               />
             </div>

@@ -235,7 +235,7 @@ export function LandingHero() {
         >
           <Link to="/auth">
             <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base w-full sm:w-auto">
-              Start Journaling — Free <ArrowRight className="h-4 w-4" />
+              Start Journaling <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
           <Link to="/auth">

@@ -49,8 +49,8 @@ export const brokers: BrokerEntry[] = [
 /** Sorted by priority for display */
 export const sortedBrokers = [...brokers].sort((a, b) => a.priority - b.priority);
 
-/** Only brokers that have logos (for the website strip) */
-export const brokersWithLogos = sortedBrokers.filter((b) => b.logo);
+/** Only brokers that have logos and are not hidden (for the website strip) */
+export const brokersWithLogos = sortedBrokers.filter((b) => b.logo && !b.hiddenFromStrip);
 
 /** Get the provider for a given broker id */
 export function getProviderForBroker(brokerId: string): BrokerProvider {
