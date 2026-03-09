@@ -63,7 +63,7 @@ export default function Blog() {
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
 
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight mb-4">Blog</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight mb-4">Blog</h1>
           <p className="text-muted-foreground mb-16">Product updates, trading insights, and announcements.</p>
         </motion.div>
 
