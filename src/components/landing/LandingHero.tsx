@@ -204,9 +204,6 @@ export function LandingHero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease }}
         >
-          <span className="inline-block text-[10px] sm:text-[11px] font-medium text-primary uppercase tracking-[0.2em] mb-6 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5">
-            The Trading Performance System
-          </span>
         </motion.div>
 
         <motion.h1
