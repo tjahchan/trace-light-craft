@@ -790,17 +790,20 @@ async function syncAccount(
         }
         const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId!);
 
-        // Group orders by parentId
+        // Group orders by positionId (primary) or parentId (fallback)
         const positionGroups = new Map<string, Record<string, any>[]>();
         const standaloneOrders: Record<string, any>[] = [];
 
         for (const order of orderObjects) {
-          const status = String(order.status || "").toLowerCase();
-          if (status === "cancelled" || status === "rejected") continue;
+          // Use positionId as the primary grouping key
+          const posId = order.positionId ? String(order.positionId) : null;
           const parentId = order.parentId ? String(order.parentId) : null;
-          if (parentId && parentId !== "0" && parentId !== "null") {
-            if (!positionGroups.has(parentId)) positionGroups.set(parentId, []);
-            positionGroups.get(parentId)!.push(order);
+          const groupKey = posId && posId !== "0" && posId !== "null" ? posId
+            : (parentId && parentId !== "0" && parentId !== "null" ? parentId : null);
+
+          if (groupKey) {
+            if (!positionGroups.has(groupKey)) positionGroups.set(groupKey, []);
+            positionGroups.get(groupKey)!.push(order);
           } else {
             standaloneOrders.push(order);
           }
@@ -808,15 +811,34 @@ async function syncAccount(
 
         console.log(`[TL] Grouping: ${positionGroups.size} position groups, ${standaloneOrders.length} standalone`);
 
-        // Process grouped orders
-        for (const [parentId, groupOrders] of positionGroups) {
-          groupOrders.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
-          const entry = groupOrders[0];
-          const exit = groupOrders.length > 1 ? groupOrders[groupOrders.length - 1] : null;
+        // Process grouped orders (each group = one position with entry + exit + SL/TP orders)
+        for (const [groupId, groupOrders] of positionGroups) {
+          // Separate filled orders from cancelled (SL/TP) orders
+          const filledOrders = groupOrders.filter(o => {
+            const s = String(o.status || "").toLowerCase();
+            const fq = Number(o.filledQty || 0);
+            return s !== "cancelled" && s !== "rejected" && s !== "expired" && fq > 0;
+          });
+
+          if (filledOrders.length === 0) continue;
+
+          // Sort filled orders by time to identify entry vs exit
+          filledOrders.sort((a, b) =>
+            Number(a.createdAt || a.createdDate || 0) - Number(b.createdAt || b.createdDate || 0)
+          );
+
+          const entry = filledOrders[0];
+          const exit = filledOrders.length > 1 ? filledOrders[filledOrders.length - 1] : null;
+
+          // Pass ALL orders (including cancelled) so SL/TP can be extracted
           const normalized = normalizeGroupedOrders(entry, exit, groupOrders, instrumentMap);
           if (!normalized) continue;
 
-          const sourceId = `grp_${parentId}`;
+          // Enhanced debug logging
+          console.log(`[TL] Position ${groupId}: ${groupOrders.length} orders (${filledOrders.length} filled)`);
+          console.log(`[TL]   → ${normalized.symbol} ${normalized.side} qty=${normalized.quantity} entry=${normalized.entry_price} exit=${normalized.exit_price} sl=${normalized.sl} tp=${normalized.tp} pnl=${normalized.pnl} fees=${normalized.commissions}`);
+
+          const sourceId = `pos_${groupId}`;
           const result = await importNormalizedTrade(
             normalized, sourceId, userId, accountId, momentraAccountId, batchId, forceResync, supabaseAdmin
           );
@@ -825,7 +847,7 @@ async function syncAccount(
           else validationFails++;
         }
 
-        // Process standalone orders
+        // Process standalone orders (orders with no positionId or parentId)
         for (const order of standaloneOrders) {
           const normalized = normalizeStandaloneOrder(order, instrumentMap);
           if (!normalized) continue;
