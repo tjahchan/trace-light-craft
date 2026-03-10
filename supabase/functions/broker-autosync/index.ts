@@ -265,7 +265,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
 
       const instIds = new Set<number>();
       for (const p of posObjects) { const id = Number(p.tradableInstrumentId || 0); if (id > 0) instIds.add(id); }
-      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds));
+      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId);
 
       for (const pos of posObjects) {
         const instId = Number(pos.tradableInstrumentId || 0);
