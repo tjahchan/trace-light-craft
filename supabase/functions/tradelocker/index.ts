@@ -258,12 +258,27 @@ function normalizeGroupedOrders(
   const quantity = Math.abs(Number(entry.filledQty || entry.qty || 0));
   if (quantity <= 0) return null;
 
-  // Handle both avgFilledPrice and avgPrice field names
   const entryPrice = Number(entry.avgFilledPrice || entry.avgPrice || entry.price || 0);
   const exitPrice = exit ? (Number(exit.avgFilledPrice || exit.avgPrice || exit.price || 0) || null) : null;
-  const sl = Number(entry.stopLoss || 0) || null;
-  const tp = Number(entry.takeProfit || 0) || null;
-  // Handle both createdAt and createdDate field names
+
+  // Extract SL/TP from cancelled stop/limit orders in the group
+  let sl: number | null = Number(entry.stopLoss || 0) || null;
+  let tp: number | null = Number(entry.takeProfit || 0) || null;
+  for (const leg of allLegs) {
+    const legStatus = String(leg.status || "").toLowerCase();
+    const legType = String(leg.type || "").toLowerCase();
+    if (legStatus === "cancelled" || legStatus === "filled") {
+      if (!sl && (legType === "stop" || legType === "stop_loss" || legType.includes("stop"))) {
+        const stopPrice = Number(leg.price || leg.stopPrice || 0);
+        if (stopPrice > 0) sl = stopPrice;
+      }
+      if (!tp && (legType === "limit" || legType === "take_profit" || legType.includes("profit"))) {
+        const limitPrice = Number(leg.price || leg.limitPrice || 0);
+        if (limitPrice > 0) tp = limitPrice;
+      }
+    }
+  }
+
   const openTime = msToIso(Number(entry.createdAt || entry.createdDate || 0));
   const closedMs = exit
     ? Number(exit.lastModifiedAt || exit.lastModified || exit.createdAt || exit.createdDate || 0)
@@ -274,6 +289,12 @@ function normalizeGroupedOrders(
   for (const l of allLegs) {
     totalPnl += Number(l.pnl || 0);
     totalCommission += Math.abs(Number(l.commission || 0));
+  }
+
+  // If no PnL from legs, calculate from entry/exit prices
+  if (totalPnl === 0 && exitPrice && entryPrice > 0) {
+    const priceDiff = side === "Long" ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
+    totalPnl = priceDiff * quantity;
   }
 
   return {
@@ -769,17 +790,20 @@ async function syncAccount(
         }
         const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId!);
 
-        // Group orders by parentId
+        // Group orders by positionId (primary) or parentId (fallback)
         const positionGroups = new Map<string, Record<string, any>[]>();
         const standaloneOrders: Record<string, any>[] = [];
 
         for (const order of orderObjects) {
-          const status = String(order.status || "").toLowerCase();
-          if (status === "cancelled" || status === "rejected") continue;
+          // Use positionId as the primary grouping key
+          const posId = order.positionId ? String(order.positionId) : null;
           const parentId = order.parentId ? String(order.parentId) : null;
-          if (parentId && parentId !== "0" && parentId !== "null") {
-            if (!positionGroups.has(parentId)) positionGroups.set(parentId, []);
-            positionGroups.get(parentId)!.push(order);
+          const groupKey = posId && posId !== "0" && posId !== "null" ? posId
+            : (parentId && parentId !== "0" && parentId !== "null" ? parentId : null);
+
+          if (groupKey) {
+            if (!positionGroups.has(groupKey)) positionGroups.set(groupKey, []);
+            positionGroups.get(groupKey)!.push(order);
           } else {
             standaloneOrders.push(order);
           }
@@ -787,15 +811,34 @@ async function syncAccount(
 
         console.log(`[TL] Grouping: ${positionGroups.size} position groups, ${standaloneOrders.length} standalone`);
 
-        // Process grouped orders
-        for (const [parentId, groupOrders] of positionGroups) {
-          groupOrders.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
-          const entry = groupOrders[0];
-          const exit = groupOrders.length > 1 ? groupOrders[groupOrders.length - 1] : null;
+        // Process grouped orders (each group = one position with entry + exit + SL/TP orders)
+        for (const [groupId, groupOrders] of positionGroups) {
+          // Separate filled orders from cancelled (SL/TP) orders
+          const filledOrders = groupOrders.filter(o => {
+            const s = String(o.status || "").toLowerCase();
+            const fq = Number(o.filledQty || 0);
+            return s !== "cancelled" && s !== "rejected" && s !== "expired" && fq > 0;
+          });
+
+          if (filledOrders.length === 0) continue;
+
+          // Sort filled orders by time to identify entry vs exit
+          filledOrders.sort((a, b) =>
+            Number(a.createdAt || a.createdDate || 0) - Number(b.createdAt || b.createdDate || 0)
+          );
+
+          const entry = filledOrders[0];
+          const exit = filledOrders.length > 1 ? filledOrders[filledOrders.length - 1] : null;
+
+          // Pass ALL orders (including cancelled) so SL/TP can be extracted
           const normalized = normalizeGroupedOrders(entry, exit, groupOrders, instrumentMap);
           if (!normalized) continue;
 
-          const sourceId = `grp_${parentId}`;
+          // Enhanced debug logging
+          console.log(`[TL] Position ${groupId}: ${groupOrders.length} orders (${filledOrders.length} filled)`);
+          console.log(`[TL]   → ${normalized.symbol} ${normalized.side} qty=${normalized.quantity} entry=${normalized.entry_price} exit=${normalized.exit_price} sl=${normalized.sl} tp=${normalized.tp} pnl=${normalized.pnl} fees=${normalized.commissions}`);
+
+          const sourceId = `pos_${groupId}`;
           const result = await importNormalizedTrade(
             normalized, sourceId, userId, accountId, momentraAccountId, batchId, forceResync, supabaseAdmin
           );
@@ -804,7 +847,7 @@ async function syncAccount(
           else validationFails++;
         }
 
-        // Process standalone orders
+        // Process standalone orders (orders with no positionId or parentId)
         for (const order of standaloneOrders) {
           const normalized = normalizeStandaloneOrder(order, instrumentMap);
           if (!normalized) continue;
