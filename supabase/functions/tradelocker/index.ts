@@ -842,7 +842,7 @@ async function syncAccount(
         if (id > 0) posInstIds.add(id);
       }
       const posInstrumentMap = posInstIds.size > 0
-        ? await resolveInstruments(server, token, accNum, Array.from(posInstIds))
+        ? await resolveInstruments(server, token, accNum, Array.from(posInstIds), tlAcctId!)
         : new Map<number, string>();
 
       for (const pos of posObjects) {
