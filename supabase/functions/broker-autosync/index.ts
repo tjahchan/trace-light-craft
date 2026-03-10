@@ -284,8 +284,8 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const quantity = Math.abs(Number(pos.qty || pos.filledQty || 0));
         const entryPrice = Number(pos.avgPrice || pos.avgFilledPrice || 0);
         const exitPrice = Number(pos.closePrice || pos.exitPrice || 0) || null;
-        const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || 0));
-        const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || 0));
+        const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || pos.createdDate || 0));
+        const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || pos.lastModified || 0));
         const grossPnl = Number(pos.pnl || 0);
         const commission = Math.abs(Number(pos.commission || 0));
         const swap = Number(pos.swap || 0);
