@@ -322,7 +322,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
 
       const instIds = new Set<number>();
       for (const o of orderObjects) { const id = Number(o.tradableInstrumentId || 0); if (id > 0) instIds.add(id); }
-      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds));
+      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId);
 
       // Group by parentId
       const groups = new Map<string, Record<string, any>[]>();
