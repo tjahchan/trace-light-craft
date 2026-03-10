@@ -218,12 +218,13 @@ function normalizePositionHistory(
   const quantity = Math.abs(Number(pos.qty || pos.quantity || pos.filledQty || 0));
   if (quantity <= 0) return null;
 
-  const entryPrice = Number(pos.avgPrice || pos.avgFilledPrice || pos.entryPrice || pos.openPrice || 0);
+  // Handle both field name variants: avgPrice/avgFilledPrice, createdDate/createdAt, etc.
+  const entryPrice = Number(pos.avgPrice || pos.avgFilledPrice || pos.entryPrice || pos.openPrice || pos.price || 0);
   const exitPrice = Number(pos.closePrice || pos.exitPrice || pos.avgClosePrice || 0) || null;
   const sl = Number(pos.stopLoss || pos.sl || 0) || null;
   const tp = Number(pos.takeProfit || pos.tp || 0) || null;
-  const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || 0));
-  const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || 0));
+  const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || pos.createdDate || 0));
+  const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || pos.lastModified || 0));
   const grossPnl = Number(pos.pnl || pos.profit || 0);
   const commission = Math.abs(Number(pos.commission || pos.fee || 0));
   const swap = Number(pos.swap || 0);
@@ -234,8 +235,8 @@ function normalizePositionHistory(
     pnl: grossPnl - commission + swap,
     commissions: commission, swap,
     close_type: pos.closeType || pos.type ? String(pos.closeType || pos.type) : null,
-    broker_order_id: pos.orderId ? String(pos.orderId) : null,
-    broker_position_id: pos.id ? String(pos.id) : (pos.positionId ? String(pos.positionId) : null),
+    broker_order_id: pos.orderId ? String(pos.orderId) : (pos.id ? String(pos.id) : null),
+    broker_position_id: pos.positionId ? String(pos.positionId) : (pos.id ? String(pos.id) : null),
     status: closeTime ? "closed" : "open",
     raw: pos,
   };
