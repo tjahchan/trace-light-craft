@@ -301,9 +301,11 @@ function normalizeStandaloneOrder(
   const symbol = instrumentMap.get(instId) || order.symbol || (instId > 0 ? `INST_${instId}` : "UNKNOWN");
   const sideRaw = String(order.side || "").toLowerCase();
   const side: "Long" | "Short" = sideRaw.includes("buy") || sideRaw === "long" ? "Long" : "Short";
-  const entryPrice = Number(order.avgFilledPrice || order.price || 0);
-  const openTime = msToIso(Number(order.createdAt || 0));
-  const closeTime = msToIso(Number(order.lastModifiedAt || order.filledAt || 0));
+  // Handle both avgFilledPrice and avgPrice
+  const entryPrice = Number(order.avgFilledPrice || order.avgPrice || order.price || 0);
+  // Handle both createdAt and createdDate
+  const openTime = msToIso(Number(order.createdAt || order.createdDate || 0));
+  const closeTime = msToIso(Number(order.lastModifiedAt || order.lastModified || order.filledAt || 0));
   const grossPnl = Number(order.pnl || 0);
   const commission = Math.abs(Number(order.commission || 0));
 
@@ -314,7 +316,7 @@ function normalizeStandaloneOrder(
     pnl: grossPnl - commission, commissions: commission, swap: 0,
     close_type: order.type ? String(order.type) : null,
     broker_order_id: order.id ? String(order.id) : null,
-    broker_position_id: order.parentId ? String(order.parentId) : null,
+    broker_position_id: order.positionId ? String(order.positionId) : (order.parentId ? String(order.parentId) : null),
     status: "closed",
     raw: order,
   };
