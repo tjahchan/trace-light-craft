@@ -324,31 +324,41 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
       for (const o of orderObjects) { const id = Number(o.tradableInstrumentId || 0); if (id > 0) instIds.add(id); }
       const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId);
 
-      // Group by parentId
+      // Group by positionId (primary) or parentId (fallback)
       const groups = new Map<string, Record<string, any>[]>();
       const standalone: Record<string, any>[] = [];
       for (const order of orderObjects) {
-        const status = String(order.status || "").toLowerCase();
-        if (status === "cancelled" || status === "rejected") continue;
+        const posId = order.positionId ? String(order.positionId) : null;
         const parentId = order.parentId ? String(order.parentId) : null;
-        if (parentId && parentId !== "0" && parentId !== "null") {
-          if (!groups.has(parentId)) groups.set(parentId, []);
-          groups.get(parentId)!.push(order);
+        const groupKey = posId && posId !== "0" && posId !== "null" ? posId
+          : (parentId && parentId !== "0" && parentId !== "null" ? parentId : null);
+
+        if (groupKey) {
+          if (!groups.has(groupKey)) groups.set(groupKey, []);
+          groups.get(groupKey)!.push(order);
         } else {
           standalone.push(order);
         }
       }
 
-      for (const [parentId, legs] of groups) {
-        const sourceId = `grp_${parentId}`;
+      for (const [groupId, allLegs] of groups) {
+        const sourceId = `pos_${groupId}`;
         const { data: existing } = await supabaseAdmin.from("broker_activities_raw").select("id")
           .eq("source_activity_id", sourceId).eq("account_id", brokerAccount.id)
           .eq("source_provider", "tradelocker").maybeSingle();
         if (existing) continue;
 
-        legs.sort((a, b) => Number(a.createdAt || a.createdDate || 0) - Number(b.createdAt || b.createdDate || 0));
-        const entry = legs[0];
-        const exit = legs.length > 1 ? legs[legs.length - 1] : null;
+        // Separate filled from cancelled orders
+        const filledLegs = allLegs.filter(o => {
+          const s = String(o.status || "").toLowerCase();
+          const fq = Number(o.filledQty || 0);
+          return s !== "cancelled" && s !== "rejected" && s !== "expired" && fq > 0;
+        });
+        if (filledLegs.length === 0) continue;
+
+        filledLegs.sort((a, b) => Number(a.createdAt || a.createdDate || 0) - Number(b.createdAt || b.createdDate || 0));
+        const entry = filledLegs[0];
+        const exit = filledLegs.length > 1 ? filledLegs[filledLegs.length - 1] : null;
         const instId = Number(entry.tradableInstrumentId || 0);
         const symbol = instrumentMap.get(instId) || (instId > 0 ? `INST_${instId}` : "UNKNOWN");
         const sideRaw = String(entry.side || "").toLowerCase();
@@ -356,8 +366,34 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const quantity = Math.abs(Number(entry.filledQty || entry.qty || 0));
         const entryPrice = Number(entry.avgFilledPrice || entry.avgPrice || entry.price || 0);
         const exitPrice = exit ? Number(exit.avgFilledPrice || exit.avgPrice || exit.price || 0) || null : null;
+
+        // Extract SL/TP from cancelled orders in the group
+        let sl: number | null = Number(entry.stopLoss || 0) || null;
+        let tp: number | null = Number(entry.takeProfit || 0) || null;
+        for (const leg of allLegs) {
+          const legStatus = String(leg.status || "").toLowerCase();
+          const legType = String(leg.type || "").toLowerCase();
+          if (legStatus === "cancelled" || legStatus === "filled") {
+            if (!sl && (legType === "stop" || legType.includes("stop"))) {
+              const stopPrice = Number(leg.price || leg.stopPrice || 0);
+              if (stopPrice > 0) sl = stopPrice;
+            }
+            if (!tp && (legType === "limit" || legType.includes("profit"))) {
+              const limitPrice = Number(leg.price || leg.limitPrice || 0);
+              if (limitPrice > 0) tp = limitPrice;
+            }
+          }
+        }
+
         let totalPnl = 0, totalFees = 0;
-        for (const l of legs) { totalPnl += Number(l.pnl || 0); totalFees += Math.abs(Number(l.commission || 0)); }
+        for (const l of filledLegs) { totalPnl += Number(l.pnl || 0); totalFees += Math.abs(Number(l.commission || 0)); }
+
+        // Calculate PnL from prices if not available from legs
+        if (totalPnl === 0 && exitPrice && entryPrice > 0) {
+          const priceDiff = side === "Long" ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
+          totalPnl = priceDiff * quantity;
+        }
+
         const openTime = msToIso(Number(entry.createdAt || entry.createdDate || 0));
         const closedMs = exit ? Number(exit.lastModifiedAt || exit.lastModified || exit.createdAt || exit.createdDate || 0) : Number(entry.lastModifiedAt || entry.lastModified || 0);
         const closeTime = msToIso(closedMs);
@@ -365,7 +401,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         await supabaseAdmin.from("broker_activities_raw").insert({
           user_id: userId, account_id: brokerAccount.id, source_provider: "tradelocker",
           source_activity_id: sourceId, activity_date: closeTime || openTime,
-          symbol, raw_payload: { entry, exit, legs }, import_batch_id: batchId,
+          symbol, raw_payload: { entry, exit, allLegs }, import_batch_id: batchId,
         });
 
         if (quantity <= 0 || entryPrice <= 0) continue;
@@ -373,6 +409,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         await supabaseAdmin.from("trades").insert({
           user_id: userId, account_id: momentraAccountId, symbol, side, quantity,
           entry_price: entryPrice, exit_price: exitPrice,
+          sl, tp,
           pnl: totalPnl - totalFees, commissions: totalFees,
           open_time: openTime, close_time: closeTime || openTime,
           status: exitPrice ? "closed" : "open",
@@ -382,7 +419,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         imported++;
       }
 
-      // Standalone orders
+      // Standalone orders (no positionId or parentId)
       for (const order of standalone) {
         const status = String(order.status || "").toLowerCase();
         if (status === "cancelled" || status === "rejected" || status === "expired") continue;
@@ -424,7 +461,6 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         });
         imported++;
       }
-    }
 
     await supabaseAdmin.from("sync_jobs").update({
       status: imported > 0 ? "completed" : "completed_no_data",
