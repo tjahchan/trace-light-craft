@@ -121,43 +121,55 @@ const FALLBACK_ORDERS_COLUMNS = [
 ];
 
 async function resolveInstruments(
-  server: string, token: string, accNum: string, instrumentIds: number[]
+  server: string, token: string, accNum: string, instrumentIds: number[],
+  accountId?: string
 ): Promise<Map<number, string>> {
   const map = new Map<number, string>();
   if (instrumentIds.length === 0) return map;
 
-  for (const ep of [
-    { method: "POST", path: "/trade/instruments", body: { tradableInstrumentIds: instrumentIds } },
-    { method: "POST", path: "/trade/accounts/instruments", body: { tradableInstrumentIds: instrumentIds } },
-  ]) {
-    const result = await tlRequestSafe(server, ep.method as string, ep.path, token, ep.body as any, accNum);
-    if (!result) continue;
-    const instruments = result.d?.instruments || result.instruments || [];
-    if (!Array.isArray(instruments) || instruments.length === 0) continue;
-    const cols = extractColumnNames(result.d?.columns || result.columns || []);
-    if (Array.isArray(instruments[0]) && cols.length > 0) {
-      const nameIdx = cols.indexOf("name");
-      const symIdx = cols.indexOf("symbol");
-      const idIdx = cols.indexOf("tradableInstrumentId");
-      const ni = nameIdx >= 0 ? nameIdx : symIdx;
-      if (ni >= 0 && idIdx >= 0) {
-        for (const row of instruments) { if (Array.isArray(row)) map.set(Number(row[idIdx]), String(row[ni])); }
-      }
-    } else {
-      for (const inst of instruments) {
-        if (inst && typeof inst === "object") map.set(Number(inst.tradableInstrumentId || inst.id), String(inst.name || inst.symbol || ""));
+  const acctIdForPath = accountId || accNum;
+
+  // Fetch all instruments for the account
+  const allResult = await tlRequestSafe(server, "GET", `/trade/accounts/${acctIdForPath}/instruments`, token, undefined, accNum);
+  if (allResult) {
+    const instruments = allResult.d?.instruments || allResult.instruments || [];
+    const cols = extractColumnNames(allResult.d?.columns || allResult.columns || []);
+    if (Array.isArray(instruments) && instruments.length > 0) {
+      const idSet = new Set(instrumentIds);
+      if (Array.isArray(instruments[0]) && cols.length > 0) {
+        const nameIdx = cols.indexOf("name");
+        const symIdx = cols.indexOf("symbol");
+        const idIdx = cols.indexOf("tradableInstrumentId");
+        const ni = nameIdx >= 0 ? nameIdx : symIdx;
+        if (ni >= 0 && idIdx >= 0) {
+          for (const row of instruments) {
+            if (Array.isArray(row) && idSet.has(Number(row[idIdx]))) map.set(Number(row[idIdx]), String(row[ni]));
+          }
+        }
+      } else {
+        for (const inst of instruments) {
+          if (inst && typeof inst === "object") {
+            const instId = Number(inst.tradableInstrumentId || inst.id);
+            if (idSet.has(instId)) map.set(instId, String(inst.name || inst.symbol || ""));
+          }
+        }
       }
     }
-    if (map.size > 0) break;
   }
 
   // Individual lookups fallback
   if (map.size < instrumentIds.length) {
     const missing = instrumentIds.filter(id => !map.has(id));
     for (const instId of missing.slice(0, 20)) {
-      const r = await tlRequestSafe(server, "GET", `/trade/accounts/${accNum}/instruments/${instId}`, token, undefined, accNum);
+      const r = await tlRequestSafe(server, "GET", `/trade/instruments/${instId}`, token, undefined, accNum);
       if (r) {
         const d = r.d || r;
+        const name = d?.name || d?.symbol || null;
+        if (name) { map.set(instId, String(name)); continue; }
+      }
+      const r2 = await tlRequestSafe(server, "GET", `/trade/accounts/${acctIdForPath}/instruments/${instId}`, token, undefined, accNum);
+      if (r2) {
+        const d = r2.d || r2;
         const name = d?.name || d?.symbol || null;
         if (name) map.set(instId, String(name));
       }
