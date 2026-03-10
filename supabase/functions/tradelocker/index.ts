@@ -258,12 +258,27 @@ function normalizeGroupedOrders(
   const quantity = Math.abs(Number(entry.filledQty || entry.qty || 0));
   if (quantity <= 0) return null;
 
-  // Handle both avgFilledPrice and avgPrice field names
   const entryPrice = Number(entry.avgFilledPrice || entry.avgPrice || entry.price || 0);
   const exitPrice = exit ? (Number(exit.avgFilledPrice || exit.avgPrice || exit.price || 0) || null) : null;
-  const sl = Number(entry.stopLoss || 0) || null;
-  const tp = Number(entry.takeProfit || 0) || null;
-  // Handle both createdAt and createdDate field names
+
+  // Extract SL/TP from cancelled stop/limit orders in the group
+  let sl: number | null = Number(entry.stopLoss || 0) || null;
+  let tp: number | null = Number(entry.takeProfit || 0) || null;
+  for (const leg of allLegs) {
+    const legStatus = String(leg.status || "").toLowerCase();
+    const legType = String(leg.type || "").toLowerCase();
+    if (legStatus === "cancelled" || legStatus === "filled") {
+      if (!sl && (legType === "stop" || legType === "stop_loss" || legType.includes("stop"))) {
+        const stopPrice = Number(leg.price || leg.stopPrice || 0);
+        if (stopPrice > 0) sl = stopPrice;
+      }
+      if (!tp && (legType === "limit" || legType === "take_profit" || legType.includes("profit"))) {
+        const limitPrice = Number(leg.price || leg.limitPrice || 0);
+        if (limitPrice > 0) tp = limitPrice;
+      }
+    }
+  }
+
   const openTime = msToIso(Number(entry.createdAt || entry.createdDate || 0));
   const closedMs = exit
     ? Number(exit.lastModifiedAt || exit.lastModified || exit.createdAt || exit.createdDate || 0)
@@ -274,6 +289,12 @@ function normalizeGroupedOrders(
   for (const l of allLegs) {
     totalPnl += Number(l.pnl || 0);
     totalCommission += Math.abs(Number(l.commission || 0));
+  }
+
+  // If no PnL from legs, calculate from entry/exit prices
+  if (totalPnl === 0 && exitPrice && entryPrice > 0) {
+    const priceDiff = side === "Long" ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
+    totalPnl = priceDiff * quantity;
   }
 
   return {
