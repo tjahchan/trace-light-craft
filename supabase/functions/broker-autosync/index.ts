@@ -401,9 +401,9 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const symbol = instrumentMap.get(instId) || (instId > 0 ? `INST_${instId}` : "UNKNOWN");
         const sideRaw = String(order.side || "").toLowerCase();
         const side = sideRaw.includes("buy") || sideRaw === "long" ? "Long" : "Short";
-        const entryPrice = Number(order.avgFilledPrice || 0);
-        const openTime = msToIso(Number(order.createdAt || 0));
-        const closeTime = msToIso(Number(order.lastModifiedAt || 0));
+        const entryPrice = Number(order.avgFilledPrice || order.avgPrice || order.price || 0);
+        const openTime = msToIso(Number(order.createdAt || order.createdDate || 0));
+        const closeTime = msToIso(Number(order.lastModifiedAt || order.lastModified || 0));
         const pnl = Number(order.pnl || 0);
         const commission = Math.abs(Number(order.commission || 0));
 
