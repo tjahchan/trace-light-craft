@@ -53,7 +53,6 @@ async function refreshAccessToken(integration: any, supabaseAdmin: any) {
     tradelocker_refresh_token_encrypted: newRefreshToken,
     tradelocker_token_expires_at: expiresAt,
   }).eq("id", integration.id);
-
   return newAccessToken;
 }
 
@@ -91,14 +90,24 @@ async function resolveAccNum(server: string, token: string, targetAccountId: str
   return targetAccountId;
 }
 
+// CRITICAL: TradeLocker config columns can be objects like {name:"id",type:"string"}
+function extractColumnNames(columns: any[]): string[] {
+  return columns.map((col: any) => {
+    if (typeof col === "string") return col;
+    if (typeof col === "object" && col !== null) return String(col.name || col.id || col.key || "");
+    return String(col);
+  });
+}
+
 function rowToObject(row: any[], columns: string[]): Record<string, any> {
   const obj: Record<string, any> = {};
   for (let i = 0; i < columns.length && i < row.length; i++) obj[columns[i]] = row[i];
   return obj;
 }
 
-function parseColumnarData(data: any[], columns: string[]): Record<string, any>[] {
+function parseColumnarData(data: any[], rawColumns: any[]): Record<string, any>[] {
   if (data.length === 0) return [];
+  const columns = extractColumnNames(rawColumns);
   if (Array.isArray(data[0]) && columns.length > 0) return data.map((r: any[]) => rowToObject(r, columns));
   if (typeof data[0] === "object" && !Array.isArray(data[0])) return data;
   return [];
@@ -125,7 +134,7 @@ async function resolveInstruments(
     if (!result) continue;
     const instruments = result.d?.instruments || result.instruments || [];
     if (!Array.isArray(instruments) || instruments.length === 0) continue;
-    const cols = result.d?.columns || result.columns || [];
+    const cols = extractColumnNames(result.d?.columns || result.columns || []);
     if (Array.isArray(instruments[0]) && cols.length > 0) {
       const nameIdx = cols.indexOf("name");
       const symIdx = cols.indexOf("symbol");
@@ -141,7 +150,27 @@ async function resolveInstruments(
     }
     if (map.size > 0) break;
   }
+
+  // Individual lookups fallback
+  if (map.size < instrumentIds.length) {
+    const missing = instrumentIds.filter(id => !map.has(id));
+    for (const instId of missing.slice(0, 20)) {
+      const r = await tlRequestSafe(server, "GET", `/trade/accounts/${accNum}/instruments/${instId}`, token, undefined, accNum);
+      if (r) {
+        const d = r.d || r;
+        const name = d?.name || d?.symbol || null;
+        if (name) map.set(instId, String(name));
+      }
+    }
+  }
+
   return map;
+}
+
+function msToIso(ms: number): string | null {
+  if (ms > 1e12) return new Date(ms).toISOString();
+  if (ms > 1e9) return new Date(ms * 1000).toISOString();
+  return null;
 }
 
 async function syncTradeLockerAccount(userId: string, integration: any, brokerAccount: any, supabaseAdmin: any) {
@@ -157,6 +186,20 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
       .eq("id", brokerAccount.id);
   }
 
+  // Rate limit: skip if synced less than 15 minutes ago
+  if (brokerAccount.connection_id) {
+    const { data: conn } = await supabaseAdmin.from("broker_connections")
+      .select("last_synced_at").eq("id", brokerAccount.connection_id).maybeSingle();
+    if (conn?.last_synced_at) {
+      const lastSync = new Date(conn.last_synced_at).getTime();
+      const fifteenMinAgo = Date.now() - 15 * 60 * 1000;
+      if (lastSync > fifteenMinAgo) {
+        console.log(`[AutoSync] Skipping ${tlAcctId} — synced ${Math.round((Date.now() - lastSync) / 60000)}m ago`);
+        return 0;
+      }
+    }
+  }
+
   console.log(`[AutoSync] Syncing accountId=${tlAcctId} accNum=${accNum}`);
 
   const { data: job } = await supabaseAdmin.from("sync_jobs").insert({
@@ -170,9 +213,26 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
   const { data: momentraAccounts } = await supabaseAdmin
     .from("accounts").select("id").eq("user_id", userId).limit(1);
   const momentraAccountId = momentraAccounts?.[0]?.id;
+  if (!momentraAccountId) {
+    console.log("[AutoSync] No Momentra account found, skipping");
+    return 0;
+  }
 
   try {
     let imported = 0;
+
+    // Fetch config with column extraction fix
+    let ordersCols = FALLBACK_ORDERS_COLUMNS;
+    try {
+      const config = await tlRequest(server, "GET", "/trade/config", token, undefined, accNum);
+      const d = config.d || config;
+      for (const key of ["ordersHistory", "ordersHistoryConfig"]) {
+        if (d[key]?.columns?.length > 0) {
+          ordersCols = extractColumnNames(d[key].columns);
+          break;
+        }
+      }
+    } catch {}
 
     // Try positionsHistory first
     let usedPositionsHistory = false;
@@ -212,10 +272,8 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const quantity = Math.abs(Number(pos.qty || pos.filledQty || 0));
         const entryPrice = Number(pos.avgPrice || pos.avgFilledPrice || 0);
         const exitPrice = Number(pos.closePrice || pos.exitPrice || 0) || null;
-        const openMs = Number(pos.openTimestamp || pos.openedAt || pos.createdAt || 0);
-        const closeMs = Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || 0);
-        const openTime = openMs > 1e10 ? new Date(openMs).toISOString() : null;
-        const closeTime = closeMs > 1e10 ? new Date(closeMs).toISOString() : null;
+        const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || 0));
+        const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || 0));
         const grossPnl = Number(pos.pnl || 0);
         const commission = Math.abs(Number(pos.commission || 0));
         const swap = Number(pos.swap || 0);
@@ -226,7 +284,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
           symbol, raw_payload: pos, import_batch_id: batchId,
         });
 
-        if (!momentraAccountId || quantity <= 0) continue;
+        if (quantity <= 0) continue;
 
         await supabaseAdmin.from("trades").insert({
           user_id: userId, account_id: momentraAccountId, symbol, side, quantity,
@@ -248,7 +306,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
       const ordersResult = await tlRequest(server, "GET", `/trade/accounts/${tlAcctId}/ordersHistory`, token, undefined, accNum);
       const rawOrders = ordersResult.d?.ordersHistory || ordersResult.d?.orders || [];
       const orders = Array.isArray(rawOrders) ? rawOrders : [];
-      const orderObjects = parseColumnarData(orders, FALLBACK_ORDERS_COLUMNS);
+      const orderObjects = parseColumnarData(orders, ordersCols);
 
       const instIds = new Set<number>();
       for (const o of orderObjects) { const id = Number(o.tradableInstrumentId || 0); if (id > 0) instIds.add(id); }
@@ -256,12 +314,17 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
 
       // Group by parentId
       const groups = new Map<string, Record<string, any>[]>();
+      const standalone: Record<string, any>[] = [];
       for (const order of orderObjects) {
         const status = String(order.status || "").toLowerCase();
         if (status === "cancelled" || status === "rejected") continue;
-        const parentId = order.parentId ? String(order.parentId) : String(order.id || "");
-        if (!groups.has(parentId)) groups.set(parentId, []);
-        groups.get(parentId)!.push(order);
+        const parentId = order.parentId ? String(order.parentId) : null;
+        if (parentId && parentId !== "0" && parentId !== "null") {
+          if (!groups.has(parentId)) groups.set(parentId, []);
+          groups.get(parentId)!.push(order);
+        } else {
+          standalone.push(order);
+        }
       }
 
       for (const [parentId, legs] of groups) {
@@ -283,10 +346,9 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const exitPrice = exit ? Number(exit.avgFilledPrice || 0) || null : null;
         let totalPnl = 0, totalFees = 0;
         for (const l of legs) { totalPnl += Number(l.pnl || 0); totalFees += Math.abs(Number(l.commission || 0)); }
-        const openMs = Number(entry.createdAt || 0);
-        const closeMs = exit ? Number(exit.lastModifiedAt || exit.createdAt || 0) : Number(entry.lastModifiedAt || 0);
-        const openTime = openMs > 1e10 ? new Date(openMs).toISOString() : null;
-        const closeTime = closeMs > 1e10 ? new Date(closeMs).toISOString() : null;
+        const openTime = msToIso(Number(entry.createdAt || 0));
+        const closedMs = exit ? Number(exit.lastModifiedAt || exit.createdAt || 0) : Number(entry.lastModifiedAt || 0);
+        const closeTime = msToIso(closedMs);
 
         await supabaseAdmin.from("broker_activities_raw").insert({
           user_id: userId, account_id: brokerAccount.id, source_provider: "tradelocker",
@@ -294,7 +356,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
           symbol, raw_payload: { entry, exit, legs }, import_batch_id: batchId,
         });
 
-        if (!momentraAccountId || quantity <= 0 || entryPrice <= 0) continue;
+        if (quantity <= 0 || entryPrice <= 0) continue;
 
         await supabaseAdmin.from("trades").insert({
           user_id: userId, account_id: momentraAccountId, symbol, side, quantity,
@@ -302,6 +364,49 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
           pnl: totalPnl - totalFees, commissions: totalFees,
           open_time: openTime, close_time: closeTime || openTime,
           status: exitPrice ? "closed" : "open",
+          tags: ["broker-import", "tradelocker", "auto-sync"],
+          note: "Auto-synced from TradeLocker",
+        });
+        imported++;
+      }
+
+      // Standalone orders
+      for (const order of standalone) {
+        const status = String(order.status || "").toLowerCase();
+        if (status === "cancelled" || status === "rejected" || status === "expired") continue;
+        const filledQty = Math.abs(Number(order.filledQty || 0));
+        if (filledQty <= 0) continue;
+
+        const sourceId = `ord_${order.id || ""}`;
+        if (sourceId !== "ord_") {
+          const { data: existing } = await supabaseAdmin.from("broker_activities_raw").select("id")
+            .eq("source_activity_id", sourceId).eq("account_id", brokerAccount.id)
+            .eq("source_provider", "tradelocker").maybeSingle();
+          if (existing) continue;
+        }
+
+        const instId = Number(order.tradableInstrumentId || 0);
+        const symbol = instrumentMap.get(instId) || (instId > 0 ? `INST_${instId}` : "UNKNOWN");
+        const sideRaw = String(order.side || "").toLowerCase();
+        const side = sideRaw.includes("buy") || sideRaw === "long" ? "Long" : "Short";
+        const entryPrice = Number(order.avgFilledPrice || 0);
+        const openTime = msToIso(Number(order.createdAt || 0));
+        const closeTime = msToIso(Number(order.lastModifiedAt || 0));
+        const pnl = Number(order.pnl || 0);
+        const commission = Math.abs(Number(order.commission || 0));
+
+        await supabaseAdmin.from("broker_activities_raw").insert({
+          user_id: userId, account_id: brokerAccount.id, source_provider: "tradelocker",
+          source_activity_id: sourceId, activity_date: closeTime || openTime,
+          symbol, raw_payload: order, import_batch_id: batchId,
+        });
+
+        if (entryPrice <= 0) continue;
+
+        await supabaseAdmin.from("trades").insert({
+          user_id: userId, account_id: momentraAccountId, symbol, side, quantity: filledQty,
+          entry_price: entryPrice, pnl: pnl - commission, commissions: commission,
+          open_time: openTime, close_time: closeTime || openTime, status: "closed",
           tags: ["broker-import", "tradelocker", "auto-sync"],
           note: "Auto-synced from TradeLocker",
         });

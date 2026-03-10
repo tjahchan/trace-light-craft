@@ -55,6 +55,10 @@ export async function syncTradeLockerAccount(accountId: string, jobType = "manua
   return invokeTradeLocker<TLSyncResult>("sync", { account_id: accountId, job_type: jobType });
 }
 
+export async function forceResyncTradeLocker(accountId: string) {
+  return invokeTradeLocker<TLSyncResult>("force_resync", { account_id: accountId });
+}
+
 export async function disconnectTradeLocker(connectionId: string) {
   return invokeTradeLocker<{ success: boolean }>("disconnect", { connection_id: connectionId });
 }
