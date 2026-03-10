@@ -258,12 +258,16 @@ function normalizeGroupedOrders(
   const quantity = Math.abs(Number(entry.filledQty || entry.qty || 0));
   if (quantity <= 0) return null;
 
-  const entryPrice = Number(entry.avgFilledPrice || 0);
-  const exitPrice = exit ? (Number(exit.avgFilledPrice || 0) || null) : null;
+  // Handle both avgFilledPrice and avgPrice field names
+  const entryPrice = Number(entry.avgFilledPrice || entry.avgPrice || entry.price || 0);
+  const exitPrice = exit ? (Number(exit.avgFilledPrice || exit.avgPrice || exit.price || 0) || null) : null;
   const sl = Number(entry.stopLoss || 0) || null;
   const tp = Number(entry.takeProfit || 0) || null;
-  const openTime = msToIso(Number(entry.createdAt || 0));
-  const closedMs = exit ? Number(exit.lastModifiedAt || exit.createdAt || 0) : Number(entry.lastModifiedAt || 0);
+  // Handle both createdAt and createdDate field names
+  const openTime = msToIso(Number(entry.createdAt || entry.createdDate || 0));
+  const closedMs = exit
+    ? Number(exit.lastModifiedAt || exit.lastModified || exit.createdAt || exit.createdDate || 0)
+    : Number(entry.lastModifiedAt || entry.lastModified || 0);
   const closeTime = msToIso(closedMs);
 
   let totalPnl = 0, totalCommission = 0;
@@ -279,7 +283,7 @@ function normalizeGroupedOrders(
     commissions: totalCommission, swap: 0,
     close_type: exit ? String(exit.type || "") : null,
     broker_order_id: entry.id ? String(entry.id) : null,
-    broker_position_id: entry.parentId ? String(entry.parentId) : null,
+    broker_position_id: entry.positionId ? String(entry.positionId) : (entry.parentId ? String(entry.parentId) : null),
     status: exitPrice ? "closed" : "open",
     raw: { entry, exit, all_legs: allLegs },
   };
