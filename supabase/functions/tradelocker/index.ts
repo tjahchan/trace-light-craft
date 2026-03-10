@@ -724,7 +724,7 @@ async function syncAccount(
         const id = Number(p.tradableInstrumentId || p.instrumentId || 0);
         if (id > 0) instIds.add(id);
       }
-      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds));
+      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId!);
 
       for (const pos of posObjects) {
         const normalized = normalizePositionHistory(pos, instrumentMap);
