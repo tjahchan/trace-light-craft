@@ -767,7 +767,7 @@ async function syncAccount(
           const id = Number(o.tradableInstrumentId || o.instrumentId || 0);
           if (id > 0) instIds.add(id);
         }
-        const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds));
+        const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId!);
 
         // Group orders by parentId
         const positionGroups = new Map<string, Record<string, any>[]>();
