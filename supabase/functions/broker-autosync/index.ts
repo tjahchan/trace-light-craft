@@ -346,7 +346,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
           .eq("source_provider", "tradelocker").maybeSingle();
         if (existing) continue;
 
-        legs.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+        legs.sort((a, b) => Number(a.createdAt || a.createdDate || 0) - Number(b.createdAt || b.createdDate || 0));
         const entry = legs[0];
         const exit = legs.length > 1 ? legs[legs.length - 1] : null;
         const instId = Number(entry.tradableInstrumentId || 0);
@@ -354,12 +354,12 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const sideRaw = String(entry.side || "").toLowerCase();
         const side = sideRaw.includes("buy") || sideRaw === "long" ? "Long" : "Short";
         const quantity = Math.abs(Number(entry.filledQty || entry.qty || 0));
-        const entryPrice = Number(entry.avgFilledPrice || 0);
-        const exitPrice = exit ? Number(exit.avgFilledPrice || 0) || null : null;
+        const entryPrice = Number(entry.avgFilledPrice || entry.avgPrice || entry.price || 0);
+        const exitPrice = exit ? Number(exit.avgFilledPrice || exit.avgPrice || exit.price || 0) || null : null;
         let totalPnl = 0, totalFees = 0;
         for (const l of legs) { totalPnl += Number(l.pnl || 0); totalFees += Math.abs(Number(l.commission || 0)); }
-        const openTime = msToIso(Number(entry.createdAt || 0));
-        const closedMs = exit ? Number(exit.lastModifiedAt || exit.createdAt || 0) : Number(entry.lastModifiedAt || 0);
+        const openTime = msToIso(Number(entry.createdAt || entry.createdDate || 0));
+        const closedMs = exit ? Number(exit.lastModifiedAt || exit.lastModified || exit.createdAt || exit.createdDate || 0) : Number(entry.lastModifiedAt || entry.lastModified || 0);
         const closeTime = msToIso(closedMs);
 
         await supabaseAdmin.from("broker_activities_raw").insert({
