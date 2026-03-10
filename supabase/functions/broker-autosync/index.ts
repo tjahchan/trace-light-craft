@@ -461,6 +461,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         });
         imported++;
       }
+    }
 
     await supabaseAdmin.from("sync_jobs").update({
       status: imported > 0 ? "completed" : "completed_no_data",
