@@ -121,43 +121,55 @@ const FALLBACK_ORDERS_COLUMNS = [
 ];
 
 async function resolveInstruments(
-  server: string, token: string, accNum: string, instrumentIds: number[]
+  server: string, token: string, accNum: string, instrumentIds: number[],
+  accountId?: string
 ): Promise<Map<number, string>> {
   const map = new Map<number, string>();
   if (instrumentIds.length === 0) return map;
 
-  for (const ep of [
-    { method: "POST", path: "/trade/instruments", body: { tradableInstrumentIds: instrumentIds } },
-    { method: "POST", path: "/trade/accounts/instruments", body: { tradableInstrumentIds: instrumentIds } },
-  ]) {
-    const result = await tlRequestSafe(server, ep.method as string, ep.path, token, ep.body as any, accNum);
-    if (!result) continue;
-    const instruments = result.d?.instruments || result.instruments || [];
-    if (!Array.isArray(instruments) || instruments.length === 0) continue;
-    const cols = extractColumnNames(result.d?.columns || result.columns || []);
-    if (Array.isArray(instruments[0]) && cols.length > 0) {
-      const nameIdx = cols.indexOf("name");
-      const symIdx = cols.indexOf("symbol");
-      const idIdx = cols.indexOf("tradableInstrumentId");
-      const ni = nameIdx >= 0 ? nameIdx : symIdx;
-      if (ni >= 0 && idIdx >= 0) {
-        for (const row of instruments) { if (Array.isArray(row)) map.set(Number(row[idIdx]), String(row[ni])); }
-      }
-    } else {
-      for (const inst of instruments) {
-        if (inst && typeof inst === "object") map.set(Number(inst.tradableInstrumentId || inst.id), String(inst.name || inst.symbol || ""));
+  const acctIdForPath = accountId || accNum;
+
+  // Fetch all instruments for the account
+  const allResult = await tlRequestSafe(server, "GET", `/trade/accounts/${acctIdForPath}/instruments`, token, undefined, accNum);
+  if (allResult) {
+    const instruments = allResult.d?.instruments || allResult.instruments || [];
+    const cols = extractColumnNames(allResult.d?.columns || allResult.columns || []);
+    if (Array.isArray(instruments) && instruments.length > 0) {
+      const idSet = new Set(instrumentIds);
+      if (Array.isArray(instruments[0]) && cols.length > 0) {
+        const nameIdx = cols.indexOf("name");
+        const symIdx = cols.indexOf("symbol");
+        const idIdx = cols.indexOf("tradableInstrumentId");
+        const ni = nameIdx >= 0 ? nameIdx : symIdx;
+        if (ni >= 0 && idIdx >= 0) {
+          for (const row of instruments) {
+            if (Array.isArray(row) && idSet.has(Number(row[idIdx]))) map.set(Number(row[idIdx]), String(row[ni]));
+          }
+        }
+      } else {
+        for (const inst of instruments) {
+          if (inst && typeof inst === "object") {
+            const instId = Number(inst.tradableInstrumentId || inst.id);
+            if (idSet.has(instId)) map.set(instId, String(inst.name || inst.symbol || ""));
+          }
+        }
       }
     }
-    if (map.size > 0) break;
   }
 
   // Individual lookups fallback
   if (map.size < instrumentIds.length) {
     const missing = instrumentIds.filter(id => !map.has(id));
     for (const instId of missing.slice(0, 20)) {
-      const r = await tlRequestSafe(server, "GET", `/trade/accounts/${accNum}/instruments/${instId}`, token, undefined, accNum);
+      const r = await tlRequestSafe(server, "GET", `/trade/instruments/${instId}`, token, undefined, accNum);
       if (r) {
         const d = r.d || r;
+        const name = d?.name || d?.symbol || null;
+        if (name) { map.set(instId, String(name)); continue; }
+      }
+      const r2 = await tlRequestSafe(server, "GET", `/trade/accounts/${acctIdForPath}/instruments/${instId}`, token, undefined, accNum);
+      if (r2) {
+        const d = r2.d || r2;
         const name = d?.name || d?.symbol || null;
         if (name) map.set(instId, String(name));
       }
@@ -253,7 +265,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
 
       const instIds = new Set<number>();
       for (const p of posObjects) { const id = Number(p.tradableInstrumentId || 0); if (id > 0) instIds.add(id); }
-      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds));
+      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId);
 
       for (const pos of posObjects) {
         const instId = Number(pos.tradableInstrumentId || 0);
@@ -272,8 +284,8 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const quantity = Math.abs(Number(pos.qty || pos.filledQty || 0));
         const entryPrice = Number(pos.avgPrice || pos.avgFilledPrice || 0);
         const exitPrice = Number(pos.closePrice || pos.exitPrice || 0) || null;
-        const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || 0));
-        const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || 0));
+        const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || pos.createdDate || 0));
+        const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || pos.lastModified || 0));
         const grossPnl = Number(pos.pnl || 0);
         const commission = Math.abs(Number(pos.commission || 0));
         const swap = Number(pos.swap || 0);
@@ -310,7 +322,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
 
       const instIds = new Set<number>();
       for (const o of orderObjects) { const id = Number(o.tradableInstrumentId || 0); if (id > 0) instIds.add(id); }
-      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds));
+      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId);
 
       // Group by parentId
       const groups = new Map<string, Record<string, any>[]>();
@@ -334,7 +346,7 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
           .eq("source_provider", "tradelocker").maybeSingle();
         if (existing) continue;
 
-        legs.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+        legs.sort((a, b) => Number(a.createdAt || a.createdDate || 0) - Number(b.createdAt || b.createdDate || 0));
         const entry = legs[0];
         const exit = legs.length > 1 ? legs[legs.length - 1] : null;
         const instId = Number(entry.tradableInstrumentId || 0);
@@ -342,12 +354,12 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const sideRaw = String(entry.side || "").toLowerCase();
         const side = sideRaw.includes("buy") || sideRaw === "long" ? "Long" : "Short";
         const quantity = Math.abs(Number(entry.filledQty || entry.qty || 0));
-        const entryPrice = Number(entry.avgFilledPrice || 0);
-        const exitPrice = exit ? Number(exit.avgFilledPrice || 0) || null : null;
+        const entryPrice = Number(entry.avgFilledPrice || entry.avgPrice || entry.price || 0);
+        const exitPrice = exit ? Number(exit.avgFilledPrice || exit.avgPrice || exit.price || 0) || null : null;
         let totalPnl = 0, totalFees = 0;
         for (const l of legs) { totalPnl += Number(l.pnl || 0); totalFees += Math.abs(Number(l.commission || 0)); }
-        const openTime = msToIso(Number(entry.createdAt || 0));
-        const closedMs = exit ? Number(exit.lastModifiedAt || exit.createdAt || 0) : Number(entry.lastModifiedAt || 0);
+        const openTime = msToIso(Number(entry.createdAt || entry.createdDate || 0));
+        const closedMs = exit ? Number(exit.lastModifiedAt || exit.lastModified || exit.createdAt || exit.createdDate || 0) : Number(entry.lastModifiedAt || entry.lastModified || 0);
         const closeTime = msToIso(closedMs);
 
         await supabaseAdmin.from("broker_activities_raw").insert({
@@ -389,9 +401,9 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
         const symbol = instrumentMap.get(instId) || (instId > 0 ? `INST_${instId}` : "UNKNOWN");
         const sideRaw = String(order.side || "").toLowerCase();
         const side = sideRaw.includes("buy") || sideRaw === "long" ? "Long" : "Short";
-        const entryPrice = Number(order.avgFilledPrice || 0);
-        const openTime = msToIso(Number(order.createdAt || 0));
-        const closeTime = msToIso(Number(order.lastModifiedAt || 0));
+        const entryPrice = Number(order.avgFilledPrice || order.avgPrice || order.price || 0);
+        const openTime = msToIso(Number(order.createdAt || order.createdDate || 0));
+        const closeTime = msToIso(Number(order.lastModifiedAt || order.lastModified || 0));
         const pnl = Number(order.pnl || 0);
         const commission = Math.abs(Number(order.commission || 0));
 

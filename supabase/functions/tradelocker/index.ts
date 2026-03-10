@@ -112,50 +112,63 @@ function parseColumnarData(data: any[], rawColumns: any[]): Record<string, any>[
 // ---- Instrument resolution ----
 
 async function resolveInstruments(
-  server: string, token: string, accNum: string, instrumentIds: number[]
+  server: string, token: string, accNum: string, instrumentIds: number[],
+  accountId?: string
 ): Promise<Map<number, string>> {
   const map = new Map<number, string>();
   if (instrumentIds.length === 0) return map;
 
-  // Try bulk endpoint first
-  for (const ep of [
-    { method: "POST", path: "/trade/instruments", body: { tradableInstrumentIds: instrumentIds } },
-    { method: "POST", path: "/trade/accounts/instruments", body: { tradableInstrumentIds: instrumentIds } },
-  ]) {
-    const result = await tlRequestSafe(server, ep.method as string, ep.path, token, ep.body as any, accNum);
-    if (!result) continue;
-    const instruments = result.d?.instruments || result.instruments || [];
-    if (!Array.isArray(instruments) || instruments.length === 0) continue;
-    const cols = extractColumnNames(result.d?.columns || result.columns || []);
+  // The correct endpoint uses accountId in the path, accNum in the header
+  const acctIdForPath = accountId || accNum;
 
-    if (Array.isArray(instruments[0]) && cols.length > 0) {
-      const nameIdx = cols.indexOf("name");
-      const symIdx = cols.indexOf("symbol");
-      const idIdx = cols.indexOf("tradableInstrumentId");
-      const ni = nameIdx >= 0 ? nameIdx : symIdx;
-      if (ni >= 0 && idIdx >= 0) {
-        for (const row of instruments) {
-          if (Array.isArray(row)) map.set(Number(row[idIdx]), String(row[ni]));
+  // Try fetching all instruments for the account and filter
+  const allInstrumentsEndpoint = `/trade/accounts/${acctIdForPath}/instruments`;
+  const allResult = await tlRequestSafe(server, "GET", allInstrumentsEndpoint, token, undefined, accNum);
+  if (allResult) {
+    const instruments = allResult.d?.instruments || allResult.instruments || [];
+    const cols = extractColumnNames(allResult.d?.columns || allResult.columns || []);
+    
+    if (Array.isArray(instruments) && instruments.length > 0) {
+      if (Array.isArray(instruments[0]) && cols.length > 0) {
+        const nameIdx = cols.indexOf("name");
+        const symIdx = cols.indexOf("symbol");
+        const idIdx = cols.indexOf("tradableInstrumentId");
+        const ni = nameIdx >= 0 ? nameIdx : symIdx;
+        if (ni >= 0 && idIdx >= 0) {
+          const idSet = new Set(instrumentIds);
+          for (const row of instruments) {
+            if (Array.isArray(row) && idSet.has(Number(row[idIdx]))) {
+              map.set(Number(row[idIdx]), String(row[ni]));
+            }
+          }
         }
-      }
-    } else {
-      for (const inst of instruments) {
-        if (inst && typeof inst === "object" && !Array.isArray(inst)) {
-          map.set(Number(inst.tradableInstrumentId || inst.id), String(inst.name || inst.symbol || ""));
+      } else if (typeof instruments[0] === "object" && !Array.isArray(instruments[0])) {
+        const idSet = new Set(instrumentIds);
+        for (const inst of instruments) {
+          const instId = Number(inst.tradableInstrumentId || inst.id || 0);
+          if (idSet.has(instId)) {
+            map.set(instId, String(inst.name || inst.symbol || ""));
+          }
         }
       }
     }
-    if (map.size > 0) break;
   }
 
-  // Individual lookups fallback
+  // Individual lookups fallback using accountId in path
   if (map.size < instrumentIds.length) {
     const missing = instrumentIds.filter(id => !map.has(id));
     console.log(`[TL] Trying individual instrument lookups for ${missing.length} instruments...`);
     for (const instId of missing.slice(0, 20)) {
-      const r = await tlRequestSafe(server, "GET", `/trade/accounts/${accNum}/instruments/${instId}`, token, undefined, accNum);
+      const r = await tlRequestSafe(server, "GET", `/trade/instruments/${instId}`, token, undefined, accNum);
       if (r) {
         const d = r.d || r;
+        const name = d?.name || d?.symbol || null;
+        if (name) { map.set(instId, String(name)); continue; }
+      }
+      // Try with accountId path
+      const r2 = await tlRequestSafe(server, "GET", `/trade/accounts/${acctIdForPath}/instruments/${instId}`, token, undefined, accNum);
+      if (r2) {
+        const d = r2.d || r2;
         const name = d?.name || d?.symbol || null;
         if (name) map.set(instId, String(name));
       }
@@ -205,12 +218,13 @@ function normalizePositionHistory(
   const quantity = Math.abs(Number(pos.qty || pos.quantity || pos.filledQty || 0));
   if (quantity <= 0) return null;
 
-  const entryPrice = Number(pos.avgPrice || pos.avgFilledPrice || pos.entryPrice || pos.openPrice || 0);
+  // Handle both field name variants: avgPrice/avgFilledPrice, createdDate/createdAt, etc.
+  const entryPrice = Number(pos.avgPrice || pos.avgFilledPrice || pos.entryPrice || pos.openPrice || pos.price || 0);
   const exitPrice = Number(pos.closePrice || pos.exitPrice || pos.avgClosePrice || 0) || null;
   const sl = Number(pos.stopLoss || pos.sl || 0) || null;
   const tp = Number(pos.takeProfit || pos.tp || 0) || null;
-  const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || 0));
-  const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || 0));
+  const openTime = msToIso(Number(pos.openTimestamp || pos.openedAt || pos.createdAt || pos.createdDate || 0));
+  const closeTime = msToIso(Number(pos.closeTimestamp || pos.closedAt || pos.lastModifiedAt || pos.lastModified || 0));
   const grossPnl = Number(pos.pnl || pos.profit || 0);
   const commission = Math.abs(Number(pos.commission || pos.fee || 0));
   const swap = Number(pos.swap || 0);
@@ -221,8 +235,8 @@ function normalizePositionHistory(
     pnl: grossPnl - commission + swap,
     commissions: commission, swap,
     close_type: pos.closeType || pos.type ? String(pos.closeType || pos.type) : null,
-    broker_order_id: pos.orderId ? String(pos.orderId) : null,
-    broker_position_id: pos.id ? String(pos.id) : (pos.positionId ? String(pos.positionId) : null),
+    broker_order_id: pos.orderId ? String(pos.orderId) : (pos.id ? String(pos.id) : null),
+    broker_position_id: pos.positionId ? String(pos.positionId) : (pos.id ? String(pos.id) : null),
     status: closeTime ? "closed" : "open",
     raw: pos,
   };
@@ -244,12 +258,16 @@ function normalizeGroupedOrders(
   const quantity = Math.abs(Number(entry.filledQty || entry.qty || 0));
   if (quantity <= 0) return null;
 
-  const entryPrice = Number(entry.avgFilledPrice || 0);
-  const exitPrice = exit ? (Number(exit.avgFilledPrice || 0) || null) : null;
+  // Handle both avgFilledPrice and avgPrice field names
+  const entryPrice = Number(entry.avgFilledPrice || entry.avgPrice || entry.price || 0);
+  const exitPrice = exit ? (Number(exit.avgFilledPrice || exit.avgPrice || exit.price || 0) || null) : null;
   const sl = Number(entry.stopLoss || 0) || null;
   const tp = Number(entry.takeProfit || 0) || null;
-  const openTime = msToIso(Number(entry.createdAt || 0));
-  const closedMs = exit ? Number(exit.lastModifiedAt || exit.createdAt || 0) : Number(entry.lastModifiedAt || 0);
+  // Handle both createdAt and createdDate field names
+  const openTime = msToIso(Number(entry.createdAt || entry.createdDate || 0));
+  const closedMs = exit
+    ? Number(exit.lastModifiedAt || exit.lastModified || exit.createdAt || exit.createdDate || 0)
+    : Number(entry.lastModifiedAt || entry.lastModified || 0);
   const closeTime = msToIso(closedMs);
 
   let totalPnl = 0, totalCommission = 0;
@@ -265,7 +283,7 @@ function normalizeGroupedOrders(
     commissions: totalCommission, swap: 0,
     close_type: exit ? String(exit.type || "") : null,
     broker_order_id: entry.id ? String(entry.id) : null,
-    broker_position_id: entry.parentId ? String(entry.parentId) : null,
+    broker_position_id: entry.positionId ? String(entry.positionId) : (entry.parentId ? String(entry.parentId) : null),
     status: exitPrice ? "closed" : "open",
     raw: { entry, exit, all_legs: allLegs },
   };
@@ -283,9 +301,11 @@ function normalizeStandaloneOrder(
   const symbol = instrumentMap.get(instId) || order.symbol || (instId > 0 ? `INST_${instId}` : "UNKNOWN");
   const sideRaw = String(order.side || "").toLowerCase();
   const side: "Long" | "Short" = sideRaw.includes("buy") || sideRaw === "long" ? "Long" : "Short";
-  const entryPrice = Number(order.avgFilledPrice || order.price || 0);
-  const openTime = msToIso(Number(order.createdAt || 0));
-  const closeTime = msToIso(Number(order.lastModifiedAt || order.filledAt || 0));
+  // Handle both avgFilledPrice and avgPrice
+  const entryPrice = Number(order.avgFilledPrice || order.avgPrice || order.price || 0);
+  // Handle both createdAt and createdDate
+  const openTime = msToIso(Number(order.createdAt || order.createdDate || 0));
+  const closeTime = msToIso(Number(order.lastModifiedAt || order.lastModified || order.filledAt || 0));
   const grossPnl = Number(order.pnl || 0);
   const commission = Math.abs(Number(order.commission || 0));
 
@@ -296,7 +316,7 @@ function normalizeStandaloneOrder(
     pnl: grossPnl - commission, commissions: commission, swap: 0,
     close_type: order.type ? String(order.type) : null,
     broker_order_id: order.id ? String(order.id) : null,
-    broker_position_id: order.parentId ? String(order.parentId) : null,
+    broker_position_id: order.positionId ? String(order.positionId) : (order.parentId ? String(order.parentId) : null),
     status: "closed",
     raw: order,
   };
@@ -704,7 +724,7 @@ async function syncAccount(
         const id = Number(p.tradableInstrumentId || p.instrumentId || 0);
         if (id > 0) instIds.add(id);
       }
-      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds));
+      const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId!);
 
       for (const pos of posObjects) {
         const normalized = normalizePositionHistory(pos, instrumentMap);
@@ -747,7 +767,7 @@ async function syncAccount(
           const id = Number(o.tradableInstrumentId || o.instrumentId || 0);
           if (id > 0) instIds.add(id);
         }
-        const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds));
+        const instrumentMap = await resolveInstruments(server, token, accNum, Array.from(instIds), tlAcctId!);
 
         // Group orders by parentId
         const positionGroups = new Map<string, Record<string, any>[]>();
@@ -822,7 +842,7 @@ async function syncAccount(
         if (id > 0) posInstIds.add(id);
       }
       const posInstrumentMap = posInstIds.size > 0
-        ? await resolveInstruments(server, token, accNum, Array.from(posInstIds))
+        ? await resolveInstruments(server, token, accNum, Array.from(posInstIds), tlAcctId!)
         : new Map<number, string>();
 
       for (const pos of posObjects) {
