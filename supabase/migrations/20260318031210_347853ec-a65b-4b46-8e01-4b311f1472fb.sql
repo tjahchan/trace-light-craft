@@ -1,0 +1,1 @@
+UPDATE user_plans SET plan = 'pro', subscription_status = 'active', billing_cycle_end = '2099-12-31 23:59:59+00' WHERE user_id = '50e5b0bb-7640-4a9f-8c5b-055023587882'
