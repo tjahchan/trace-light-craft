@@ -45,6 +45,7 @@ export function parseRow(
   rowIndex: number,
   headers: string[],
   mappings: ColumnMapping[],
+  dateColumnAnalysis?: Record<string, ColumnDateAnalysis>,
 ): ParsedOptionsRow {
   const errors: string[] = [];
   const warnings: string[] = [];
