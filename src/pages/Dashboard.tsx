@@ -20,6 +20,7 @@ import {
 } from "recharts";
 import { TradeImportModal } from "@/components/TradeImportModal";
 import { CSVImportModal } from "@/components/CSVImportModal";
+import { OptionsCSVImportModal } from "@/components/options/OptionsCSVImportModal";
 import { ManageAccountsModal, type Account } from "@/components/ManageAccountsModal";
 import { DepositWithdrawModal } from "@/components/DepositWithdrawModal";
 import {
@@ -55,6 +56,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [importOpen, setImportOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [optionsCsvOpen, setOptionsCsvOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -595,6 +597,7 @@ export default function Dashboard() {
 
       <TradeImportModal open={importOpen} onOpenChange={setImportOpen} accountId={selectedAccountId} onTradeCreated={refreshAll} />
       <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
+      <OptionsCSVImportModal open={optionsCsvOpen} onOpenChange={setOptionsCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
       <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} userId={user?.id || ""} onBalanceRefresh={() => reconcile()} />
       <DepositWithdrawModal
         open={depositOpen} onOpenChange={setDepositOpen}
