@@ -3,11 +3,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { parseOptionSymbol } from "../options/csv-import/symbol-parser";
-import { normalizeAction } from "../options/csv-import/action-normalizer";
-import { normalizePremium } from "../options/csv-import/premium-normalizer";
-import { mapCsvHeaders } from "../options/csv-import/header-mapper";
-import { parseCSVText, runImportPipeline } from "../options/csv-import";
+import { parseOptionSymbol } from "@/lib/options/csv-import/symbol-parser";
+import { normalizeAction } from "@/lib/options/csv-import/action-normalizer";
+import { normalizePremium } from "@/lib/options/csv-import/premium-normalizer";
+import { mapCsvHeaders } from "@/lib/options/csv-import/header-mapper";
+import { parseCSVText, runImportPipeline } from "@/lib/options/csv-import";
 
 // ─── Symbol Parser ────────────────────────────────────────────
 
