@@ -81,6 +81,8 @@ export function OptionsCSVImportModal({
     setReport(null);
     setImporting(false);
     setSearchFilter("");
+    setDateFormatOverrides({});
+    setDateAnalysis({});
   };
 
   const handleFile = useCallback((file: File) => {
