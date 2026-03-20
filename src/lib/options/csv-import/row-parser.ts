@@ -149,7 +149,9 @@ export function parseRow(
   const dateRaw = getField(row, mappings, "date");
   const timeRaw = getField(row, mappings, "time");
   const dateTimeRaw = getField(row, mappings, "dateTime");
-  const dateTime = dateTimeRaw ? parseDate(dateTimeRaw) : parseDate(dateRaw, timeRaw);
+  const dateTime = dateTimeRaw
+    ? parseDateRobust(dateTimeRaw, null, dateColumnAnalysis?.dateTime || dateColumnAnalysis?.date)
+    : parseDateRobust(dateRaw, timeRaw, dateColumnAnalysis?.date);
 
   // ─── Greeks & IV
   const iv = parseOptionalNum(getField(row, mappings, "iv"));
