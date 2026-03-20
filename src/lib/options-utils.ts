@@ -123,7 +123,6 @@ export { getPositionLabel, getMoneynessBadge } from "./options/analytics";
  * Legacy validation — delegates to new engine.
  */
 export function validateOptionsInput(input: Partial<OptionsTradeInput>): string[] {
-  const { validateOptionLeg } = require("./options/validation");
   const mapped: any = {
     optionType: input.optionType,
     positionSide: input.positionDirection,
@@ -137,6 +136,6 @@ export function validateOptionsInput(input: Partial<OptionsTradeInput>): string[
     exitFees: input.exitFees,
     status: input.status ? mapStatus(input.status) : undefined,
   };
-  const result = validateOptionLeg(mapped);
+  const result = _validateOptionLeg(mapped);
   return result.errors;
 }
