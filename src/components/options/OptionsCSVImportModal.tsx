@@ -97,6 +97,7 @@ export function OptionsCSVImportModal({
       // Run initial pipeline with auto-mapping
       const result = runImportPipeline(headers, rows);
       setMappings(result.mappings);
+      setDateAnalysis(result.dateAnalysis);
       setStep("mapping");
     };
     reader.readAsText(file);
