@@ -255,10 +255,45 @@ export function OptionsTradeForm({ accountId, onTradeCreated, onClose }: Options
   const inputCls = "bg-white/[0.04] border-white/[0.08] font-mono";
   const labelCls = "text-[10px] text-muted-foreground uppercase tracking-wider";
 
+  // Compact inline P&L calculation
+  const inlinePnl = useMemo(() => {
+    const ep = parseFloat(entryPremium);
+    const cp = currentPremium ? parseFloat(currentPremium) : null;
+    const xp = exitPremium ? parseFloat(exitPremium) : null;
+    const mult = parseInt(contractMultiplier) || 100;
+    const contracts = parseInt(numContracts) || 0;
+    const eFees = parseFloat(entryFees) || 0;
+    const dir = positionDirection as PositionDirection;
+    if (!dir || !ep || !contracts) return null;
+
+    const markPrice = isClosed ? xp : cp;
+    if (markPrice == null) return null;
+
+    const pnl = dir === "long"
+      ? (markPrice - ep) * mult * contracts - eFees
+      : (ep - markPrice) * mult * contracts - eFees;
+    return pnl;
+  }, [entryPremium, exitPremium, currentPremium, contractMultiplier, numContracts, entryFees, positionDirection, isClosed]);
+
+  const breakEven = useMemo(() => {
+    const strike = parseFloat(strikePrice);
+    const ep = parseFloat(entryPremium);
+    const ot = optionType as OptionType;
+    if (!strike || !ep || !ot) return null;
+    return deriveBreakEven(ot, strike, ep);
+  }, [strikePrice, entryPremium, optionType]);
+
+  const positionSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (optionType) parts.push(optionType.toUpperCase());
+    if (positionDirection) parts.push(positionDirection.toUpperCase());
+    const c = parseInt(numContracts);
+    if (c) parts.push(`${c} CONTRACT${c > 1 ? "S" : ""}`);
+    return parts.join(" • ");
+  }, [optionType, positionDirection, numContracts]);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 max-h-[75vh] overflow-y-auto">
-      {/* Left: Form */}
-      <div className="space-y-5 pr-1">
+    <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
         {/* Status selector */}
         <div className="flex rounded-xl bg-white/[0.05] p-1 gap-0.5">
           {(["open", "closed", "expired"] as OptionStatus[]).map((s) => (
