@@ -19,24 +19,17 @@ function getField(row: string[], mappings: ColumnMapping[], field: OptionsField)
   return val?.trim() || null;
 }
 
-function parseDate(dateStr: string | null, timeStr?: string | null): string | null {
+function parseDateRobust(
+  dateStr: string | null,
+  timeStr?: string | null,
+  columnAnalysis?: ColumnDateAnalysis,
+): string | null {
   if (!dateStr) return null;
   let combined = dateStr;
   if (timeStr) combined = `${dateStr} ${timeStr}`;
 
-  // Try ISO format
-  const d = new Date(combined);
-  if (!isNaN(d.getTime())) return d.toISOString();
-
-  // Try MM/DD/YYYY
-  const parts = combined.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-  if (parts) {
-    const year = parts[3].length === 2 ? `20${parts[3]}` : parts[3];
-    const tryDate = new Date(`${year}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`);
-    if (!isNaN(tryDate.getTime())) return tryDate.toISOString();
-  }
-
-  return null;
+  const result = parseImportedDate(combined, columnAnalysis);
+  return result.normalizedValue;
 }
 
 function parseOptionType(value: string | null): OptionType | null {
