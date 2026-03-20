@@ -6,7 +6,9 @@
  */
 
 export type { Moneyness } from "./options/types";
-export type { OptionType, PositionSide as PositionDirection, OptionTradeStatus as OptionStatus } from "./options/types";
+export type OptionType = "call" | "put";
+export type PositionDirection = "long" | "short";
+export type OptionStatus = "open" | "closed" | "expired" | "assigned" | "exercised";
 
 // Legacy OptionsTradeInput shape mapped to new OptionLegInput
 export interface OptionsTradeInput {
