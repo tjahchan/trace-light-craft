@@ -14,11 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Upload, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/contexts/PlanContext";
 import { toast } from "sonner";
+import {
+  analyzeColumnDateFormat,
+  parseImportedDate,
+  validateDateRange,
+  describeFormat,
+  type ColumnDateAnalysis,
+  type DateFormatOverride,
+} from "@/lib/options/csv-import";
 
 interface CSVImportModalProps {
   open: boolean;
@@ -29,6 +37,8 @@ interface CSVImportModalProps {
 
 const REQUIRED_FIELDS = ["Symbol", "Side", "Qty", "Entry", "Exit"];
 const ALL_FIELDS = ["Symbol", "Side", "Qty", "Entry", "Exit", "TP", "SL", "Open Time", "Close Time", "PnL", "Tags", "Commissions", "—skip—"];
+
+type TradeDateField = "Open Time" | "Close Time";
 
 function parseCSV(text: string): { headers: string[]; rows: string[][] } {
   const lines = text.trim().split("\n");
@@ -72,6 +82,24 @@ function getVal(row: string[], mapping: Record<number, string>, field: string): 
   return row[parseInt(entry[0])] || undefined;
 }
 
+function cleanDateInput(value: string | undefined): string | null {
+  if (!value) return null;
+  const cleaned = value.trim().replace(/^#+/, "").replace(/^'+/, "").trim();
+  return cleaned.length ? cleaned : null;
+}
+
+function parseNumber(value: string | undefined): number | null {
+  if (!value) return null;
+  const cleaned = value
+    .trim()
+    .replace(/\$/g, "")
+    .replace(/,/g, "")
+    .replace(/%/g, "")
+    .replace(/^\((.*)\)$/, "-$1");
+  const num = Number.parseFloat(cleaned);
+  return Number.isFinite(num) ? num : null;
+}
+
 export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete }: CSVImportModalProps) {
   const { user } = useAuth();
   const { checkAndIncrementUsage, triggerUpgrade, csvImportsUsed, csvLimit, isPro } = usePlan();
@@ -80,6 +108,29 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
+  const [dateFormatOverrides, setDateFormatOverrides] = useState<Partial<Record<TradeDateField, DateFormatOverride>>>({});
+
+  const getMappedColumnIndex = useCallback((field: string): number | null => {
+    const entry = Object.entries(columnMapping).find(([, v]) => v === field);
+    return entry ? Number.parseInt(entry[0], 10) : null;
+  }, [columnMapping]);
+
+  const dateColumnAnalysis = useMemo(() => {
+    if (!csvData) return {} as Partial<Record<TradeDateField, ColumnDateAnalysis>>;
+
+    const analysis: Partial<Record<TradeDateField, ColumnDateAnalysis>> = {};
+    const fields: TradeDateField[] = ["Open Time", "Close Time"];
+
+    for (const field of fields) {
+      const index = getMappedColumnIndex(field);
+      if (index == null) continue;
+
+      const values = csvData.rows.map(row => cleanDateInput(row[index]));
+      analysis[field] = analyzeColumnDateFormat(values, dateFormatOverrides[field] || "auto");
+    }
+
+    return analysis;
+  }, [csvData, getMappedColumnIndex, dateFormatOverrides]);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,6 +142,7 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
       console.log("[CSV Import] Parsed CSV:", parsed.headers.length, "columns,", parsed.rows.length, "rows");
       setCsvData(parsed);
       setColumnMapping(autoMapHeaders(parsed.headers));
+      setDateFormatOverrides({});
       setStep("map");
     };
     reader.readAsText(file);
@@ -106,13 +158,13 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
       const parsed = parseCSV(text);
       setCsvData(parsed);
       setColumnMapping(autoMapHeaders(parsed.headers));
+      setDateFormatOverrides({});
       setStep("map");
     };
     reader.readAsText(file);
   }, []);
 
   const validateAndPreview = () => {
-    console.log("[CSV Import] Validating mappings:", columnMapping);
     const mappedFields = Object.values(columnMapping);
     const missingRequired = REQUIRED_FIELDS.filter(f => !mappedFields.includes(f));
     if (missingRequired.length > 0) {
@@ -121,12 +173,45 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
     }
 
     const rowErrors: string[] = [];
+
+    // Block preview if date format is ambiguous and user has not overridden
+    (Object.keys(dateColumnAnalysis) as TradeDateField[]).forEach((field) => {
+      const analysis = dateColumnAnalysis[field];
+      if (analysis?.requiresUserReview && !dateFormatOverrides[field]) {
+        rowErrors.push(`${field} format is ambiguous. Please choose Day-first or Month-first before importing.`);
+      }
+    });
+
     csvData?.rows.forEach((row, i) => {
       const symbol = getVal(row, columnMapping, "Symbol");
       if (!symbol) rowErrors.push(`Row ${i + 1}: Missing symbol`);
+
+      const openRaw = cleanDateInput(getVal(row, columnMapping, "Open Time"));
+      const closeRaw = cleanDateInput(getVal(row, columnMapping, "Close Time"));
+
+      const openParsed = openRaw
+        ? parseImportedDate(openRaw, dateColumnAnalysis["Open Time"])
+        : null;
+      const closeParsed = closeRaw
+        ? parseImportedDate(closeRaw, dateColumnAnalysis["Close Time"])
+        : null;
+
+      if (openRaw && (!openParsed || !openParsed.normalizedValue)) {
+        rowErrors.push(`Row ${i + 1}: Could not parse Open Time \"${openRaw}\"`);
+      }
+
+      if (closeRaw && (!closeParsed || !closeParsed.normalizedValue)) {
+        rowErrors.push(`Row ${i + 1}: Could not parse Close Time \"${closeRaw}\"`);
+      }
+
+      if (openParsed?.normalizedValue && closeParsed?.normalizedValue) {
+        const rangeCheck = validateDateRange(openParsed.normalizedValue, closeParsed.normalizedValue);
+        if (!rangeCheck.valid) {
+          rowErrors.push(`Row ${i + 1}: ${rangeCheck.warning || "Close Time parsed earlier than Open Time"}`);
+        }
+      }
     });
 
-    console.log("[CSV Import] Validation complete. Errors:", rowErrors.length);
     setErrors(rowErrors);
     setStep("preview");
   };
@@ -134,14 +219,12 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
   const handleImport = async () => {
     if (!user || !csvData) return;
 
-    // Check plan limits
     const usageResult = await checkAndIncrementUsage("csv");
     if (!usageResult.allowed) {
       triggerUpgrade("You've reached your monthly CSV import limit. Upgrade to Pro for unlimited imports.");
       return;
     }
 
-    // UUID validation
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(user.id)) {
       toast.error("Import error: could not resolve user ID. Please re-login and try again.");
@@ -154,34 +237,65 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
     }
 
     setImporting(true);
-    console.log("[CSV Import] Starting import of", csvData.rows.length, "trades");
-    console.log("[CSV Import] user_id:", user.id, "account_id:", accountId);
 
     try {
-      const trades = csvData.rows.map((row) => {
+      const trades: Record<string, unknown>[] = [];
+      let skippedRows = 0;
+
+      for (let i = 0; i < csvData.rows.length; i++) {
+        const row = csvData.rows[i];
+
         const side = getVal(row, columnMapping, "Side") || "Long";
         const normalizedSide = side.toLowerCase().includes("buy") || side.toLowerCase().includes("long") ? "Long" : "Short";
-        return {
+
+        const openRaw = cleanDateInput(getVal(row, columnMapping, "Open Time"));
+        const closeRaw = cleanDateInput(getVal(row, columnMapping, "Close Time"));
+
+        const openParsed = openRaw ? parseImportedDate(openRaw, dateColumnAnalysis["Open Time"]) : null;
+        const closeParsed = closeRaw ? parseImportedDate(closeRaw, dateColumnAnalysis["Close Time"]) : null;
+
+        // Skip rows with invalid parse instead of crashing batch
+        if ((openRaw && !openParsed?.normalizedValue) || (closeRaw && !closeParsed?.normalizedValue)) {
+          skippedRows++;
+          continue;
+        }
+
+        if (openParsed?.normalizedValue && closeParsed?.normalizedValue) {
+          const rangeCheck = validateDateRange(openParsed.normalizedValue, closeParsed.normalizedValue);
+          if (!rangeCheck.valid) {
+            skippedRows++;
+            continue;
+          }
+        }
+
+        const entryPrice = parseNumber(getVal(row, columnMapping, "Entry")) ?? 0;
+        const exitPrice = parseNumber(getVal(row, columnMapping, "Exit"));
+
+        trades.push({
           user_id: user.id,
           account_id: accountId,
           symbol: getVal(row, columnMapping, "Symbol") || "",
           side: normalizedSide,
-          quantity: parseFloat(getVal(row, columnMapping, "Qty") || "0") || 0,
-          entry_price: parseFloat(getVal(row, columnMapping, "Entry") || "0") || 0,
-          exit_price: parseFloat(getVal(row, columnMapping, "Exit") || "0") || null,
-          tp: parseFloat(getVal(row, columnMapping, "TP") || "") || null,
-          sl: parseFloat(getVal(row, columnMapping, "SL") || "") || null,
-          open_time: getVal(row, columnMapping, "Open Time") || null,
-          close_time: getVal(row, columnMapping, "Close Time") || null,
-          pnl: parseFloat(getVal(row, columnMapping, "PnL") || "0") || 0,
-          commissions: parseFloat(getVal(row, columnMapping, "Commissions") || "0") || 0,
+          quantity: parseNumber(getVal(row, columnMapping, "Qty")) ?? 0,
+          entry_price: entryPrice,
+          exit_price: exitPrice,
+          tp: parseNumber(getVal(row, columnMapping, "TP")),
+          sl: parseNumber(getVal(row, columnMapping, "SL")),
+          open_time: openParsed?.normalizedValue || null,
+          close_time: closeParsed?.normalizedValue || null,
+          pnl: parseNumber(getVal(row, columnMapping, "PnL")) ?? 0,
+          commissions: parseNumber(getVal(row, columnMapping, "Commissions")) ?? 0,
           tags: getVal(row, columnMapping, "Tags") ? [getVal(row, columnMapping, "Tags")!] : [],
-          status: "closed" as const,
-        };
-      });
+          status: closeParsed?.normalizedValue || exitPrice != null ? "closed" : "open",
+        });
+      }
 
-      console.log("[CSV Import] Inserting trades:", trades.length);
-      const { data: insertedTrades, error } = await supabase.from("trades" as any).insert(trades as any).select();
+      if (trades.length === 0) {
+        toast.error("Import failed: no valid rows to import after date validation.");
+        return;
+      }
+
+      const { error } = await supabase.from("trades" as any).insert(trades as any);
 
       if (error) {
         console.error("[CSV Import] Insert error:", error);
@@ -189,12 +303,12 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
         return;
       }
 
-      console.log("[CSV Import] Insert successful!");
-      toast.success(`✓ ${trades.length} trades imported successfully`);
+      toast.success(`✓ ${trades.length} trades imported successfully${skippedRows > 0 ? ` (${skippedRows} skipped due to invalid dates)` : ""}`);
       onOpenChange(false);
       setStep("upload");
       setCsvData(null);
       setColumnMapping({});
+      setDateFormatOverrides({});
       setErrors([]);
       onImportComplete?.();
     } catch (err: any) {
@@ -205,7 +319,6 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
     }
   };
 
-  // Mapped field names for preview table headers
   const mappedEntries = useMemo(() =>
     Object.entries(columnMapping).filter(([, v]) => v !== "—skip—" && v),
     [columnMapping]
@@ -216,6 +329,7 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
     setStep("upload");
     setCsvData(null);
     setColumnMapping({});
+    setDateFormatOverrides({});
     setErrors([]);
   };
 
@@ -268,8 +382,46 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
 
         {step === "map" && csvData && (
           <div className="flex-1 flex flex-col min-h-0">
+            {Object.keys(dateColumnAnalysis).length > 0 && (
+              <div className="mb-3 space-y-1.5">
+                {(Object.keys(dateColumnAnalysis) as TradeDateField[]).map((field) => {
+                  const analysis = dateColumnAnalysis[field];
+                  if (!analysis) return null;
+                  return (
+                    <div key={field} className="flex items-center justify-between gap-2 py-1.5 px-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                      <div className="flex items-center gap-2">
+                        {analysis.requiresUserReview ? (
+                          <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                        ) : (
+                          <CheckCircle2 className="h-3 w-3 text-profit shrink-0" />
+                        )}
+                        <span className="text-[10px] text-muted-foreground">
+                          <span className="font-medium text-foreground">{field}</span>
+                          {" — "}
+                          {describeFormat(analysis)}
+                        </span>
+                      </div>
+                      <Select
+                        value={dateFormatOverrides[field] || "auto"}
+                        onValueChange={(v) => setDateFormatOverrides(prev => ({ ...prev, [field]: v as DateFormatOverride }))}
+                      >
+                        <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-[10px] h-6 w-36">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto" className="text-xs">Auto-detect</SelectItem>
+                          <SelectItem value="DMY" className="text-xs">Day-first (DD/MM)</SelectItem>
+                          <SelectItem value="MDY" className="text-xs">Month-first (MM/DD)</SelectItem>
+                          <SelectItem value="ISO" className="text-xs">Year-first (ISO)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="flex-1 flex gap-6 min-h-0">
-              {/* Left: Column mapping */}
               <div className="w-1/2 overflow-y-auto space-y-2 pr-2">
                 <p className="text-xs text-muted-foreground mb-2 font-medium">Column Mapping</p>
                 {csvData.headers.map((header, idx) => (
@@ -293,7 +445,6 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
                 ))}
               </div>
 
-              {/* Right: Live preview */}
               <div className="w-1/2 overflow-auto border-l border-white/[0.06] pl-4">
                 <p className="text-xs text-muted-foreground mb-2 font-medium">Live Preview (first 5 rows)</p>
                 <div className="overflow-x-auto">
@@ -342,7 +493,6 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
 
         {step === "preview" && csvData && (
           <div className="flex-1 flex flex-col min-h-0">
-            {/* Validation summary */}
             {errors.length > 0 ? (
               <div className="space-y-1 pb-3">
                 <div className="flex items-center gap-2 text-loss text-sm font-medium">
@@ -363,7 +513,6 @@ export function CSVImportModal({ open, onOpenChange, accountId, onImportComplete
               </div>
             )}
 
-            {/* Scrollable table */}
             <div className="flex-1 overflow-auto min-h-0 border border-white/[0.06] rounded-lg">
               <table className="w-full text-[11px]">
                 <thead className="sticky top-0 bg-black/80 backdrop-blur z-10">

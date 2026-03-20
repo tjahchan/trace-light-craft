@@ -50,7 +50,7 @@ interface DateTokens {
 }
 
 function tokenize(raw: string): DateTokens | null {
-  const s = raw.trim();
+  const s = raw.trim().replace(/^#+/, "").replace(/^'+/, "").trim();
   if (!s) return null;
 
   // Strip trailing Z or timezone offset
