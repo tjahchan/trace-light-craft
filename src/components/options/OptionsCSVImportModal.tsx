@@ -64,6 +64,8 @@ export function OptionsCSVImportModal({
   const [report, setReport] = useState<ImportReport | null>(null);
   const [importing, setImporting] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
+  const [dateFormatOverrides, setDateFormatOverrides] = useState<Record<string, DateFormatOverride>>({});
+  const [dateAnalysis, setDateAnalysis] = useState<Record<string, ColumnDateAnalysis>>({});
 
   const availableFields = useMemo(() => getAvailableFields(), []);
 
