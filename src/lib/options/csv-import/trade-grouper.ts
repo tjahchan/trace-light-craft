@@ -49,7 +49,7 @@ export function groupExecutionsIntoTrades(rows: ParsedOptionsRow[]): GroupedTrad
   const entryMap = new Map<string, ParsedOptionsRow[]>();
   const exitMap = new Map<string, ParsedOptionsRow[]>();
 
-  for (const row of validRows) {
+  for (const row of usableRows) {
     const key = groupKey(row);
     const effect = row.action?.rowEffect;
 
