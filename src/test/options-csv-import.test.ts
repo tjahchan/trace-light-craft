@@ -110,8 +110,8 @@ describe("normalizePremium", () => {
     expect(r!.premiumPerShare).toBeCloseTo(1234.56);
   });
 
-  it("handles parentheses as negative", () => {
-    const r = normalizePremium("(470.00)", null, 2, 100);
+  it("handles parentheses as negative via totalAmount", () => {
+    const r = normalizePremium(null, "(470.00)", 2, 100);
     expect(r).not.toBeNull();
     expect(r!.premiumPerShare).toBeCloseTo(2.35, 2);
   });
