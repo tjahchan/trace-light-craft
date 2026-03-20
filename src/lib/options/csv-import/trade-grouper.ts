@@ -44,7 +44,8 @@ function groupKey(row: ParsedOptionsRow): string {
  * Matches entry rows with exit rows by underlying/strike/expiry/side.
  */
 export function groupExecutionsIntoTrades(rows: ParsedOptionsRow[]): GroupedTrade[] {
-  const validRows = rows.filter(r => r.isValid && !r.isDuplicate);
+  // Include rows that have core data even with some validation errors
+  const usableRows = rows.filter(r => !r.isDuplicate && r.underlyingTicker && r.optionType);
   const entryMap = new Map<string, ParsedOptionsRow[]>();
   const exitMap = new Map<string, ParsedOptionsRow[]>();
 

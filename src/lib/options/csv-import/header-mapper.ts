@@ -42,14 +42,20 @@ const HEADER_ALIASES: Record<OptionsField, string[]> = {
 function matchHeader(header: string): { field: OptionsField; confidence: ConfidenceLevel } | null {
   const lower = header.toLowerCase().replace(/[_\-#]/g, " ").replace(/\s+/g, " ").trim();
 
+  // Pass 1: exact alias match (highest priority)
   for (const [field, aliases] of Object.entries(HEADER_ALIASES) as [OptionsField, string[]][]) {
     if (field === "skip") continue;
-    // Exact match
     if (aliases.includes(lower)) return { field, confidence: "high" };
-    // Partial / contains match
+  }
+
+  // Pass 2: contains match, but only if the match is substantial (avoid "price" matching "strikeprice")
+  for (const [field, aliases] of Object.entries(HEADER_ALIASES) as [OptionsField, string[]][]) {
+    if (field === "skip") continue;
     for (const alias of aliases) {
-      if (lower.includes(alias) || alias.includes(lower)) {
-        return { field, confidence: lower === alias ? "high" : "medium" };
+      // Only match if lengths are similar (within 2x) to avoid spurious substring matches
+      if ((lower.includes(alias) || alias.includes(lower)) && 
+          Math.max(lower.length, alias.length) <= Math.min(lower.length, alias.length) * 2.5) {
+        return { field, confidence: "medium" };
       }
     }
   }
