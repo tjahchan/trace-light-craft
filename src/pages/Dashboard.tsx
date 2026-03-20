@@ -56,6 +56,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [importOpen, setImportOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [optionsCsvOpen, setOptionsCsvOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
