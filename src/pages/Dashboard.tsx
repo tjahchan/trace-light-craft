@@ -192,6 +192,10 @@ export default function Dashboard() {
       symbol: t.symbol, side: t.side, qty: t.quantity,
       entry: t.entry_price, exit: t.exit_price, sl: t.sl,
       pnl: t.pnl || 0, session: "", hasNote: !!t.note,
+      tradeType: t.trade_type || "standard",
+      optionType: t.option_type,
+      strikePrice: t.strike_price,
+      numContracts: t.num_contracts,
     })),
   [dbTrades]);
 
@@ -535,7 +539,14 @@ export default function Dashboard() {
                         </td>
                         <td className="p-3 text-foreground">{pos.alias || "—"}</td>
                         <td className="p-3 font-mono text-xs text-muted-foreground">{pos.closedAt}</td>
-                        <td className="p-3 font-mono font-medium text-foreground">{pos.symbol}</td>
+                        <td className="p-3 font-mono font-medium text-foreground">
+                          <div className="flex items-center gap-1.5">
+                            {pos.symbol}
+                            {pos.tradeType === "options" && (
+                              <span className="px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/25">OPT</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-3"><span className={pos.side === "Long" ? "badge-long" : "badge-short"}>{pos.side}</span></td>
                         <td className="p-3 text-right font-mono text-foreground">{pos.qty}</td>
                         <td className="p-3 text-right font-mono text-foreground">{pos.entry}</td>
