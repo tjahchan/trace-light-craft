@@ -278,6 +278,44 @@ export function OptionsCSVImportModal({
               </div>
             )}
 
+            {/* Date format detection info */}
+            {Object.keys(dateAnalysis).length > 0 && (
+              <div className="mb-3 space-y-1.5">
+                {Object.entries(dateAnalysis).map(([field, analysis]) => (
+                  <div key={field} className="flex items-center justify-between gap-2 py-1.5 px-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <div className="flex items-center gap-2">
+                      {analysis.requiresUserReview ? (
+                        <AlertTriangle className="h-3 w-3 text-yellow-400 shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="h-3 w-3 text-profit shrink-0" />
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
+                        <span className="font-medium text-foreground capitalize">{field}</span>
+                        {" — "}
+                        {describeFormat(analysis)}
+                      </span>
+                    </div>
+                    {analysis.requiresUserReview && (
+                      <Select
+                        value={dateFormatOverrides[field] || "auto"}
+                        onValueChange={(v) => setDateFormatOverrides(prev => ({ ...prev, [field]: v as DateFormatOverride }))}
+                      >
+                        <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-[10px] h-6 w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto" className="text-xs">Auto-detect</SelectItem>
+                          <SelectItem value="DMY" className="text-xs">Day/Month/Year</SelectItem>
+                          <SelectItem value="MDY" className="text-xs">Month/Day/Year</SelectItem>
+                          <SelectItem value="ISO" className="text-xs">Year-Month-Day</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex-1 flex gap-6 min-h-0">
               {/* Left: Column mapping */}
               <div className="w-1/2 overflow-y-auto space-y-1.5 pr-2">
