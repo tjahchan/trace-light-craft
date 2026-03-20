@@ -838,66 +838,156 @@ export type Database = {
       trades: {
         Row: {
           account_id: string
+          capital_at_risk: number | null
           close_time: string | null
+          close_type: string | null
           commissions: number | null
+          contract_multiplier: number | null
           created_at: string
+          current_premium: number | null
+          delta: number | null
+          directional_thesis: string | null
+          entry_fees: number | null
+          entry_premium: number | null
           entry_price: number
+          entry_reason: string | null
+          exit_fees: number | null
+          exit_premium: number | null
           exit_price: number | null
+          exit_reason: string | null
+          expiration_date: string | null
+          gamma: number | null
           id: string
+          iv_entry: number | null
+          iv_exit: number | null
           note: string | null
+          num_contracts: number | null
           open_time: string | null
+          option_status: string | null
+          option_type: string | null
           pnl: number | null
+          position_direction: string | null
           quantity: number
+          rho: number | null
           side: string
           sl: number | null
           status: string
+          strategy_label: string | null
+          strike_price: number | null
           symbol: string
           tags: string[] | null
+          theta: number | null
           tp: number | null
+          trade_type: string
+          underlying_price_current: number | null
+          underlying_price_entry: number | null
+          underlying_price_exit: number | null
+          underlying_ticker: string | null
           updated_at: string
           user_id: string
+          vega: number | null
         }
         Insert: {
           account_id: string
+          capital_at_risk?: number | null
           close_time?: string | null
+          close_type?: string | null
           commissions?: number | null
+          contract_multiplier?: number | null
           created_at?: string
+          current_premium?: number | null
+          delta?: number | null
+          directional_thesis?: string | null
+          entry_fees?: number | null
+          entry_premium?: number | null
           entry_price?: number
+          entry_reason?: string | null
+          exit_fees?: number | null
+          exit_premium?: number | null
           exit_price?: number | null
+          exit_reason?: string | null
+          expiration_date?: string | null
+          gamma?: number | null
           id?: string
+          iv_entry?: number | null
+          iv_exit?: number | null
           note?: string | null
+          num_contracts?: number | null
           open_time?: string | null
+          option_status?: string | null
+          option_type?: string | null
           pnl?: number | null
+          position_direction?: string | null
           quantity?: number
+          rho?: number | null
           side?: string
           sl?: number | null
           status?: string
+          strategy_label?: string | null
+          strike_price?: number | null
           symbol: string
           tags?: string[] | null
+          theta?: number | null
           tp?: number | null
+          trade_type?: string
+          underlying_price_current?: number | null
+          underlying_price_entry?: number | null
+          underlying_price_exit?: number | null
+          underlying_ticker?: string | null
           updated_at?: string
           user_id: string
+          vega?: number | null
         }
         Update: {
           account_id?: string
+          capital_at_risk?: number | null
           close_time?: string | null
+          close_type?: string | null
           commissions?: number | null
+          contract_multiplier?: number | null
           created_at?: string
+          current_premium?: number | null
+          delta?: number | null
+          directional_thesis?: string | null
+          entry_fees?: number | null
+          entry_premium?: number | null
           entry_price?: number
+          entry_reason?: string | null
+          exit_fees?: number | null
+          exit_premium?: number | null
           exit_price?: number | null
+          exit_reason?: string | null
+          expiration_date?: string | null
+          gamma?: number | null
           id?: string
+          iv_entry?: number | null
+          iv_exit?: number | null
           note?: string | null
+          num_contracts?: number | null
           open_time?: string | null
+          option_status?: string | null
+          option_type?: string | null
           pnl?: number | null
+          position_direction?: string | null
           quantity?: number
+          rho?: number | null
           side?: string
           sl?: number | null
           status?: string
+          strategy_label?: string | null
+          strike_price?: number | null
           symbol?: string
           tags?: string[] | null
+          theta?: number | null
           tp?: number | null
+          trade_type?: string
+          underlying_price_current?: number | null
+          underlying_price_entry?: number | null
+          underlying_price_exit?: number | null
+          underlying_ticker?: string | null
           updated_at?: string
           user_id?: string
+          vega?: number | null
         }
         Relationships: [
           {
