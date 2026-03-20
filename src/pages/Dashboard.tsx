@@ -20,6 +20,7 @@ import {
 } from "recharts";
 import { TradeImportModal } from "@/components/TradeImportModal";
 import { CSVImportModal } from "@/components/CSVImportModal";
+import { OptionsCSVImportModal } from "@/components/options/OptionsCSVImportModal";
 import { ManageAccountsModal, type Account } from "@/components/ManageAccountsModal";
 import { DepositWithdrawModal } from "@/components/DepositWithdrawModal";
 import {
