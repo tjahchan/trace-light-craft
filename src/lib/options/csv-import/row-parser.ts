@@ -98,7 +98,7 @@ export function parseRow(
   // ─── Expiration
   let expirationDate: string | null = getField(row, mappings, "expiration");
   if (expirationDate) {
-    const parsed = parseDate(expirationDate);
+    const parsed = parseDateRobust(expirationDate, null, dateColumnAnalysis?.expiration);
     expirationDate = parsed ? parsed.split("T")[0] : expirationDate;
   }
   if (!expirationDate && symbolParseResult) {
