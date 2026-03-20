@@ -420,6 +420,36 @@ export function OptionsTradeForm({ accountId, onTradeCreated, onClose }: Options
           )}
         </div>
 
+        {/* Inline Estimated P&L Card */}
+        <div className={cn(
+          "rounded-xl p-4 text-center font-mono border",
+          inlinePnl != null && inlinePnl > 0
+            ? "bg-profit/10 border-profit/20"
+            : inlinePnl != null && inlinePnl < 0
+              ? "bg-loss/10 border-loss/20"
+              : "bg-white/[0.03] border-white/[0.06]"
+        )}>
+          <p className="text-[10px] text-muted-foreground mb-1">
+            {isClosed ? "Estimated P&L" : "Estimated (Unrealized)"}
+          </p>
+          <p className={cn(
+            "text-2xl font-medium",
+            inlinePnl != null && inlinePnl >= 0 ? "text-profit" : inlinePnl != null ? "text-loss" : "text-muted-foreground"
+          )}>
+            {inlinePnl != null
+              ? `${inlinePnl >= 0 ? "+" : ""}$${Math.abs(inlinePnl).toFixed(2)}`
+              : "Enter current price"}
+          </p>
+          {breakEven != null && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Break-Even: <span className="font-mono text-foreground">${breakEven.toFixed(2)}</span>
+            </p>
+          )}
+          {positionSummary && (
+            <p className="text-[10px] text-muted-foreground mt-1">{positionSummary}</p>
+          )}
+        </div>
+
         {/* Entry Date/Time */}
         <div className="space-y-3">
           <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Date & Time</p>
