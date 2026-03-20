@@ -1,16 +1,17 @@
 /**
- * Options Trade Calculation Engine
- * All formulas treat premium as per-share values (standard options quoting).
+ * Options Trade Calculation Engine — Legacy Compatibility Layer
+ *
+ * Re-exports from the modular options engine at src/lib/options/.
+ * Existing imports from this file continue to work unchanged.
  */
 
-export type OptionType = "call" | "put";
-export type PositionDirection = "long" | "short";
-export type OptionStatus = "open" | "closed" | "expired" | "assigned" | "exercised";
-export type Moneyness = "ITM" | "ATM" | "OTM";
+export type { Moneyness } from "./options/types";
+export type { OptionType, PositionSide as PositionDirection, OptionTradeStatus as OptionStatus } from "./options/types";
 
+// Legacy OptionsTradeInput shape mapped to new OptionLegInput
 export interface OptionsTradeInput {
-  optionType: OptionType;
-  positionDirection: PositionDirection;
+  optionType: "call" | "put";
+  positionDirection: "long" | "short";
   strikePrice: number;
   entryPremium: number;
   exitPremium?: number | null;
@@ -25,288 +26,114 @@ export interface OptionsTradeInput {
   expirationDate?: string | null;
   entryDate?: string | null;
   capitalAtRisk?: number | null;
-  status: OptionStatus;
+  status: "open" | "closed" | "expired" | "assigned" | "exercised";
 }
 
 export interface OptionsCalculations {
   premiumValuePerContract: number;
-  totalEntryCost: number; // positive = outflow for long, negative = credit for short
+  totalEntryCost: number;
   totalExitValue: number | null;
   realizedPnl: number | null;
   unrealizedPnl: number | null;
   percentReturn: number | null;
   percentReturnLabel: string;
   breakEven: number;
-  maxProfit: number | null; // null = unlimited
+  maxProfit: number | null;
   maxProfitLabel: string;
-  maxLoss: number | null; // null = unlimited
+  maxLoss: number | null;
   maxLossLabel: string;
   intrinsicValue: number | null;
   extrinsicValue: number | null;
   notionalExposure: number | null;
   distanceToStrikePct: number | null;
-  moneyness: Moneyness | null;
+  moneyness: "ITM" | "ATM" | "OTM" | null;
   daysToExpiration: number | null;
   daysRemaining: number | null;
   totalFees: number;
 }
 
+import { calculateOptionLeg } from "./options/calculations";
+import type { OptionLegInput, OptionTradeStatus } from "./options/types";
+
+/** Map legacy status to new status */
+function mapStatus(s: string): OptionTradeStatus {
+  if (s === "expired") return "expired_worthless";
+  return s as OptionTradeStatus;
+}
+
 /**
- * Core calculation engine for options trades.
+ * Legacy-compatible calculation function.
+ * Delegates to the new modular engine internally.
  */
 export function calculateOptions(input: OptionsTradeInput): OptionsCalculations {
-  const {
-    optionType,
-    positionDirection,
-    strikePrice,
-    entryPremium,
-    exitPremium,
-    currentPremium,
-    numContracts,
-    contractMultiplier,
-    entryFees,
-    exitFees,
-    underlyingPriceEntry,
-    underlyingPriceCurrent,
-    expirationDate,
-    entryDate,
-    capitalAtRisk,
-    status,
-  } = input;
+  const legInput: OptionLegInput = {
+    optionType: input.optionType,
+    positionSide: input.positionDirection,
+    strikePrice: input.strikePrice,
+    expirationDate: input.expirationDate ?? null,
+    multiplier: input.contractMultiplier || 100,
+    contracts: input.numContracts,
+    entryPremium: input.entryPremium,
+    exitPremium: input.exitPremium,
+    currentPremium: input.currentPremium,
+    entryDateTime: input.entryDate ?? null,
+    exitDateTime: null,
+    entryFees: input.entryFees || 0,
+    exitFees: input.exitFees || 0,
+    underlyingPriceEntry: input.underlyingPriceEntry,
+    underlyingPriceExit: input.underlyingPriceExit,
+    underlyingPriceCurrent: input.underlyingPriceCurrent,
+    capitalAtRisk: input.capitalAtRisk,
+    status: mapStatus(input.status),
+  };
 
-  const isLong = positionDirection === "long";
-  const isCall = optionType === "call";
-  const totalFees = (entryFees || 0) + (exitFees || 0);
-  const mult = contractMultiplier || 100;
-
-  // Premium value per contract
-  const premiumValuePerContract = entryPremium * mult;
-
-  // Total entry cost / credit
-  const rawEntryCost = entryPremium * mult * numContracts;
-  const totalEntryCost = isLong
-    ? rawEntryCost + (entryFees || 0)
-    : rawEntryCost - (entryFees || 0); // credit received net of fees
-
-  // Total exit value
-  let totalExitValue: number | null = null;
-  const effectiveExitPremium = status === "expired" ? 0 : exitPremium;
-  
-  if (effectiveExitPremium != null) {
-    const rawExitValue = effectiveExitPremium * mult * numContracts;
-    totalExitValue = isLong
-      ? rawExitValue - (exitFees || 0)
-      : rawExitValue + (exitFees || 0);
-  }
-
-  // Realized PnL (only for closed/expired trades)
-  let realizedPnl: number | null = null;
-  if (status !== "open" && effectiveExitPremium != null) {
-    if (isLong) {
-      realizedPnl = ((effectiveExitPremium - entryPremium) * mult * numContracts) - totalFees;
-    } else {
-      realizedPnl = ((entryPremium - effectiveExitPremium) * mult * numContracts) - totalFees;
-    }
-  }
-
-  // Unrealized PnL (for open trades)
-  let unrealizedPnl: number | null = null;
-  if (status === "open" && currentPremium != null) {
-    if (isLong) {
-      unrealizedPnl = ((currentPremium - entryPremium) * mult * numContracts) - (entryFees || 0);
-    } else {
-      unrealizedPnl = ((entryPremium - currentPremium) * mult * numContracts) - (entryFees || 0);
-    }
-  }
-
-  // Percent return
-  let percentReturn: number | null = null;
-  let percentReturnLabel = "Return %";
-  const pnlValue = realizedPnl ?? unrealizedPnl;
-  if (pnlValue != null) {
-    if (isLong) {
-      const basis = totalEntryCost;
-      if (basis > 0) {
-        percentReturn = (pnlValue / basis) * 100;
-      }
-    } else {
-      if (capitalAtRisk && capitalAtRisk > 0) {
-        percentReturn = (pnlValue / capitalAtRisk) * 100;
-        percentReturnLabel = "Return on Capital";
-      } else {
-        // Fallback to premium collected basis
-        const premiumBasis = rawEntryCost;
-        if (premiumBasis > 0) {
-          percentReturn = (pnlValue / premiumBasis) * 100;
-          percentReturnLabel = "Return on Premium (approx.)";
-        }
-      }
-    }
-  }
-
-  // Break-even at expiration
-  let breakEven: number;
-  if (isCall) {
-    breakEven = strikePrice + entryPremium;
-  } else {
-    breakEven = strikePrice - entryPremium;
-  }
-
-  // Max profit / max loss
-  let maxProfit: number | null = null;
-  let maxProfitLabel = "";
-  let maxLoss: number | null = null;
-  let maxLossLabel = "";
-
-  if (isLong && isCall) {
-    maxLoss = totalEntryCost;
-    maxLossLabel = `$${maxLoss.toFixed(2)}`;
-    maxProfit = null;
-    maxProfitLabel = "Unlimited";
-  } else if (isLong && !isCall) {
-    maxLoss = totalEntryCost;
-    maxLossLabel = `$${maxLoss.toFixed(2)}`;
-    maxProfit = ((strikePrice - entryPremium) * mult * numContracts) - totalFees;
-    maxProfitLabel = maxProfit > 0 ? `$${maxProfit.toFixed(2)}` : "$0.00";
-  } else if (!isLong && isCall) {
-    maxProfit = rawEntryCost - totalFees;
-    maxProfitLabel = `$${maxProfit.toFixed(2)}`;
-    maxLoss = null;
-    maxLossLabel = "Unlimited";
-  } else {
-    // Short put
-    maxProfit = rawEntryCost - totalFees;
-    maxProfitLabel = `$${maxProfit.toFixed(2)}`;
-    maxLoss = ((strikePrice - entryPremium) * mult * numContracts) + totalFees;
-    maxLossLabel = `$${maxLoss.toFixed(2)}`;
-  }
-
-  // Intrinsic & extrinsic value
-  let intrinsicValue: number | null = null;
-  let extrinsicValue: number | null = null;
-  const underlyingNow = underlyingPriceCurrent ?? underlyingPriceEntry;
-  if (underlyingNow != null && strikePrice > 0) {
-    if (isCall) {
-      intrinsicValue = Math.max(underlyingNow - strikePrice, 0);
-    } else {
-      intrinsicValue = Math.max(strikePrice - underlyingNow, 0);
-    }
-    const marketPrice = currentPremium ?? (status !== "open" ? effectiveExitPremium : entryPremium);
-    if (marketPrice != null) {
-      extrinsicValue = marketPrice - intrinsicValue;
-    }
-  }
-
-  // Notional exposure
-  let notionalExposure: number | null = null;
-  if (underlyingNow != null) {
-    notionalExposure = underlyingNow * mult * numContracts;
-  }
-
-  // Distance to strike
-  let distanceToStrikePct: number | null = null;
-  if (underlyingNow != null && underlyingNow > 0) {
-    if (isCall) {
-      distanceToStrikePct = ((strikePrice - underlyingNow) / underlyingNow) * 100;
-    } else {
-      distanceToStrikePct = ((underlyingNow - strikePrice) / underlyingNow) * 100;
-    }
-  }
-
-  // Moneyness
-  let moneyness: Moneyness | null = null;
-  if (underlyingNow != null && strikePrice > 0) {
-    const threshold = underlyingNow * 0.005; // 0.5% ATM zone
-    if (isCall) {
-      if (underlyingNow > strikePrice + threshold) moneyness = "ITM";
-      else if (underlyingNow < strikePrice - threshold) moneyness = "OTM";
-      else moneyness = "ATM";
-    } else {
-      if (underlyingNow < strikePrice - threshold) moneyness = "ITM";
-      else if (underlyingNow > strikePrice + threshold) moneyness = "OTM";
-      else moneyness = "ATM";
-    }
-  }
-
-  // Days to expiration
-  let daysToExpiration: number | null = null;
-  let daysRemaining: number | null = null;
-  if (expirationDate) {
-    const expiry = new Date(expirationDate);
-    if (entryDate) {
-      const entry = new Date(entryDate);
-      daysToExpiration = Math.max(0, Math.ceil((expiry.getTime() - entry.getTime()) / (1000 * 60 * 60 * 24)));
-    }
-    const now = new Date();
-    daysRemaining = Math.max(0, Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-  }
+  const { metrics } = calculateOptionLeg(legInput);
 
   return {
-    premiumValuePerContract,
-    totalEntryCost,
-    totalExitValue,
-    realizedPnl,
-    unrealizedPnl,
-    percentReturn,
-    percentReturnLabel,
-    breakEven,
-    maxProfit,
-    maxProfitLabel,
-    maxLoss,
-    maxLossLabel,
-    intrinsicValue,
-    extrinsicValue,
-    notionalExposure,
-    distanceToStrikePct,
-    moneyness,
-    daysToExpiration,
-    daysRemaining,
-    totalFees,
+    premiumValuePerContract: metrics.premiumValuePerContract,
+    totalEntryCost: metrics.totalEntryCost,
+    totalExitValue: metrics.totalExitValue,
+    realizedPnl: metrics.realizedPnl,
+    unrealizedPnl: metrics.unrealizedPnl,
+    percentReturn: metrics.returnPct,
+    percentReturnLabel: metrics.returnBasisLabel,
+    breakEven: metrics.breakEvenPrice,
+    maxProfit: metrics.maxProfit,
+    maxProfitLabel: metrics.maxProfitLabel,
+    maxLoss: metrics.maxLoss,
+    maxLossLabel: metrics.maxLossLabel,
+    intrinsicValue: metrics.intrinsicValuePerShare,
+    extrinsicValue: metrics.extrinsicValuePerShare,
+    notionalExposure: metrics.currentNotional ?? metrics.entryNotional,
+    distanceToStrikePct: metrics.distanceToStrikePct,
+    moneyness: metrics.moneyness,
+    daysToExpiration: metrics.daysToExpirationAtEntry,
+    daysRemaining: metrics.daysRemaining,
+    totalFees: metrics.totalFees,
   };
 }
 
-/**
- * Format position label e.g. "Long Call", "Short Put"
- */
-export function getPositionLabel(direction: PositionDirection, optionType: OptionType): string {
-  const d = direction === "long" ? "Long" : "Short";
-  const o = optionType === "call" ? "Call" : "Put";
-  return `${d} ${o}`;
-}
+// Re-export display helpers from new engine
+export { getPositionLabel, getMoneynessBadge } from "./options/analytics";
 
 /**
- * Get moneyness badge color
- */
-export function getMoneynessBadge(m: Moneyness | null): { label: string; className: string } {
-  switch (m) {
-    case "ITM": return { label: "ITM", className: "bg-profit/15 text-profit border-profit/25" };
-    case "ATM": return { label: "ATM", className: "bg-amber-500/15 text-amber-400 border-amber-500/25" };
-    case "OTM": return { label: "OTM", className: "bg-loss/15 text-loss border-loss/25" };
-    default: return { label: "—", className: "bg-white/5 text-muted-foreground border-white/10" };
-  }
-}
-
-/**
- * Validate options trade inputs. Returns array of error messages.
+ * Legacy validation — delegates to new engine.
  */
 export function validateOptionsInput(input: Partial<OptionsTradeInput>): string[] {
-  const errors: string[] = [];
-  if (!input.optionType) errors.push("Option type (Call/Put) is required");
-  if (!input.positionDirection) errors.push("Position direction (Long/Short) is required");
-  if (!input.strikePrice || input.strikePrice <= 0) errors.push("Strike price must be positive");
-  if (!input.entryPremium || input.entryPremium < 0) errors.push("Entry premium cannot be negative");
-  if (!input.numContracts || input.numContracts <= 0) errors.push("Number of contracts must be positive");
-  if (input.contractMultiplier != null && input.contractMultiplier <= 0) errors.push("Contract multiplier must be positive");
-  if (input.exitPremium != null && input.exitPremium < 0) errors.push("Exit premium cannot be negative");
-  if (input.status === "closed" && input.exitPremium == null) errors.push("Exit premium is required for closed trades");
-  if (input.expirationDate) {
-    const exp = new Date(input.expirationDate);
-    if (isNaN(exp.getTime())) errors.push("Expiration date is invalid");
-  }
-  if (input.entryDate && input.expirationDate) {
-    if (new Date(input.entryDate) > new Date(input.expirationDate)) {
-      // Warning, not blocking
-    }
-  }
-  return errors;
+  const { validateOptionLeg } = require("./options/validation");
+  const mapped: any = {
+    optionType: input.optionType,
+    positionSide: input.positionDirection,
+    strikePrice: input.strikePrice,
+    entryPremium: input.entryPremium,
+    exitPremium: input.exitPremium,
+    currentPremium: input.currentPremium,
+    contracts: input.numContracts,
+    multiplier: input.contractMultiplier,
+    entryFees: input.entryFees,
+    exitFees: input.exitFees,
+    status: input.status ? mapStatus(input.status) : undefined,
+  };
+  const result = validateOptionLeg(mapped);
+  return result.errors;
 }
