@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
+import { deriveBreakEven } from "@/lib/options/calculations";
 import { CalendarIcon, Clock, ChevronDown, ChevronRight, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +38,7 @@ import {
   type OptionStatus,
   type OptionsTradeInput,
 } from "@/lib/options-utils";
-import { OptionsLiveSummary } from "./OptionsLiveSummary";
+
 
 interface OptionsTradeFormProps {
   accountId: string;
@@ -254,10 +255,45 @@ export function OptionsTradeForm({ accountId, onTradeCreated, onClose }: Options
   const inputCls = "bg-white/[0.04] border-white/[0.08] font-mono";
   const labelCls = "text-[10px] text-muted-foreground uppercase tracking-wider";
 
+  // Compact inline P&L calculation
+  const inlinePnl = useMemo(() => {
+    const ep = parseFloat(entryPremium);
+    const cp = currentPremium ? parseFloat(currentPremium) : null;
+    const xp = exitPremium ? parseFloat(exitPremium) : null;
+    const mult = parseInt(contractMultiplier) || 100;
+    const contracts = parseInt(numContracts) || 0;
+    const eFees = parseFloat(entryFees) || 0;
+    const dir = positionDirection as PositionDirection;
+    if (!dir || !ep || !contracts) return null;
+
+    const markPrice = isClosed ? xp : cp;
+    if (markPrice == null) return null;
+
+    const pnl = dir === "long"
+      ? (markPrice - ep) * mult * contracts - eFees
+      : (ep - markPrice) * mult * contracts - eFees;
+    return pnl;
+  }, [entryPremium, exitPremium, currentPremium, contractMultiplier, numContracts, entryFees, positionDirection, isClosed]);
+
+  const breakEven = useMemo(() => {
+    const strike = parseFloat(strikePrice);
+    const ep = parseFloat(entryPremium);
+    const ot = optionType as OptionType;
+    if (!strike || !ep || !ot) return null;
+    return deriveBreakEven(ot, strike, ep);
+  }, [strikePrice, entryPremium, optionType]);
+
+  const positionSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (optionType) parts.push(optionType.toUpperCase());
+    if (positionDirection) parts.push(positionDirection.toUpperCase());
+    const c = parseInt(numContracts);
+    if (c) parts.push(`${c} CONTRACT${c > 1 ? "S" : ""}`);
+    return parts.join(" • ");
+  }, [optionType, positionDirection, numContracts]);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 max-h-[75vh] overflow-y-auto">
-      {/* Left: Form */}
-      <div className="space-y-5 pr-1">
+    <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
         {/* Status selector */}
         <div className="flex rounded-xl bg-white/[0.05] p-1 gap-0.5">
           {(["open", "closed", "expired"] as OptionStatus[]).map((s) => (
@@ -381,6 +417,36 @@ export function OptionsTradeForm({ accountId, onTradeCreated, onClose }: Options
                 </div>
               )}
             </div>
+          )}
+        </div>
+
+        {/* Inline Estimated P&L Card */}
+        <div className={cn(
+          "rounded-xl p-4 text-center font-mono border",
+          inlinePnl != null && inlinePnl > 0
+            ? "bg-profit/10 border-profit/20"
+            : inlinePnl != null && inlinePnl < 0
+              ? "bg-loss/10 border-loss/20"
+              : "bg-white/[0.03] border-white/[0.06]"
+        )}>
+          <p className="text-[10px] text-muted-foreground mb-1">
+            {isClosed ? "Estimated P&L" : "Estimated (Unrealized)"}
+          </p>
+          <p className={cn(
+            "text-2xl font-medium",
+            inlinePnl != null && inlinePnl >= 0 ? "text-profit" : inlinePnl != null ? "text-loss" : "text-muted-foreground"
+          )}>
+            {inlinePnl != null
+              ? `${inlinePnl >= 0 ? "+" : ""}$${Math.abs(inlinePnl).toFixed(2)}`
+              : "Enter current price"}
+          </p>
+          {breakEven != null && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Break-Even: <span className="font-mono text-foreground">${breakEven.toFixed(2)}</span>
+            </p>
+          )}
+          {positionSummary && (
+            <p className="text-[10px] text-muted-foreground mt-1">{positionSummary}</p>
           )}
         </div>
 
@@ -530,23 +596,10 @@ export function OptionsTradeForm({ accountId, onTradeCreated, onClose }: Options
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Save button (mobile only — desktop has summary panel) */}
-        <div className="lg:hidden">
-          <Button className="w-full" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : status !== "open" ? "Save Options Trade" : "Open Options Position"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Right: Live Summary */}
-      <div className="space-y-4 lg:sticky lg:top-0">
-        <OptionsLiveSummary input={summaryInput} />
-        <div className="hidden lg:block">
-          <Button className="w-full" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : status !== "open" ? "Save Options Trade" : "Open Options Position"}
-          </Button>
-        </div>
-      </div>
+        {/* CTA at bottom */}
+        <Button className="w-full mt-2" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : status !== "open" ? "Save Options Trade" : "Open Options Position"}
+        </Button>
     </div>
   );
 }
