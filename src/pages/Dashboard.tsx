@@ -192,6 +192,10 @@ export default function Dashboard() {
       symbol: t.symbol, side: t.side, qty: t.quantity,
       entry: t.entry_price, exit: t.exit_price, sl: t.sl,
       pnl: t.pnl || 0, session: "", hasNote: !!t.note,
+      tradeType: t.trade_type || "standard",
+      optionType: t.option_type,
+      strikePrice: t.strike_price,
+      numContracts: t.num_contracts,
     })),
   [dbTrades]);
 
