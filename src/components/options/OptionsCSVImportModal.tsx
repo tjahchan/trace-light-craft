@@ -119,11 +119,12 @@ export function OptionsCSVImportModal({
   };
 
   const proceedToPreview = () => {
-    const result = runImportPipeline(rawHeaders, rawRows, mappingOverrides);
+    const result = runImportPipeline(rawHeaders, rawRows, mappingOverrides, dateFormatOverrides);
     setMappings(result.mappings);
     setParsedRows(result.parsedRows);
     setGroupedTrades(result.groupedTrades);
     setReport(result.report);
+    setDateAnalysis(result.dateAnalysis);
     setStep("preview");
   };
 
