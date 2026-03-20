@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
+import { deriveBreakEven } from "@/lib/options/calculations";
 import { CalendarIcon, Clock, ChevronDown, ChevronRight, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
