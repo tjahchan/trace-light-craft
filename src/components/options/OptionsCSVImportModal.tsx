@@ -25,11 +25,14 @@ import {
   parseCSVText,
   runImportPipeline,
   getAvailableFields,
+  describeFormat,
   type ColumnMapping,
   type GroupedTrade,
   type ImportReport,
   type OptionsField,
   type ParsedOptionsRow,
+  type ColumnDateAnalysis,
+  type DateFormatOverride,
 } from "@/lib/options/csv-import";
 
 interface OptionsCSVImportModalProps {
@@ -61,6 +64,8 @@ export function OptionsCSVImportModal({
   const [report, setReport] = useState<ImportReport | null>(null);
   const [importing, setImporting] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
+  const [dateFormatOverrides, setDateFormatOverrides] = useState<Record<string, DateFormatOverride>>({});
+  const [dateAnalysis, setDateAnalysis] = useState<Record<string, ColumnDateAnalysis>>({});
 
   const availableFields = useMemo(() => getAvailableFields(), []);
 
@@ -76,6 +81,8 @@ export function OptionsCSVImportModal({
     setReport(null);
     setImporting(false);
     setSearchFilter("");
+    setDateFormatOverrides({});
+    setDateAnalysis({});
   };
 
   const handleFile = useCallback((file: File) => {
@@ -90,6 +97,7 @@ export function OptionsCSVImportModal({
       // Run initial pipeline with auto-mapping
       const result = runImportPipeline(headers, rows);
       setMappings(result.mappings);
+      setDateAnalysis(result.dateAnalysis);
       setStep("mapping");
     };
     reader.readAsText(file);
@@ -111,11 +119,12 @@ export function OptionsCSVImportModal({
   };
 
   const proceedToPreview = () => {
-    const result = runImportPipeline(rawHeaders, rawRows, mappingOverrides);
+    const result = runImportPipeline(rawHeaders, rawRows, mappingOverrides, dateFormatOverrides);
     setMappings(result.mappings);
     setParsedRows(result.parsedRows);
     setGroupedTrades(result.groupedTrades);
     setReport(result.report);
+    setDateAnalysis(result.dateAnalysis);
     setStep("preview");
   };
 
@@ -266,6 +275,44 @@ export function OptionsCSVImportModal({
                 <Badge variant="outline" className="text-[10px]">{report.detectedBroker !== "unknown" ? report.detectedBroker.replace("_", " ") : "Generic format"}</Badge>
                 <span>•</span>
                 <span>{fileName}</span>
+              </div>
+            )}
+
+            {/* Date format detection info */}
+            {Object.keys(dateAnalysis).length > 0 && (
+              <div className="mb-3 space-y-1.5">
+                {Object.entries(dateAnalysis).map(([field, analysis]) => (
+                  <div key={field} className="flex items-center justify-between gap-2 py-1.5 px-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <div className="flex items-center gap-2">
+                      {analysis.requiresUserReview ? (
+                        <AlertTriangle className="h-3 w-3 text-yellow-400 shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="h-3 w-3 text-profit shrink-0" />
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
+                        <span className="font-medium text-foreground capitalize">{field}</span>
+                        {" — "}
+                        {describeFormat(analysis)}
+                      </span>
+                    </div>
+                    {analysis.requiresUserReview && (
+                      <Select
+                        value={dateFormatOverrides[field] || "auto"}
+                        onValueChange={(v) => setDateFormatOverrides(prev => ({ ...prev, [field]: v as DateFormatOverride }))}
+                      >
+                        <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-[10px] h-6 w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto" className="text-xs">Auto-detect</SelectItem>
+                          <SelectItem value="DMY" className="text-xs">Day/Month/Year</SelectItem>
+                          <SelectItem value="MDY" className="text-xs">Month/Day/Year</SelectItem>
+                          <SelectItem value="ISO" className="text-xs">Year-Month-Day</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 

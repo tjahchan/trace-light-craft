@@ -10,6 +10,7 @@ import type { OptionType } from "../types";
 import { parseOptionSymbol } from "./symbol-parser";
 import { normalizeAction } from "./action-normalizer";
 import { normalizePremium, cleanNumeric } from "./premium-normalizer";
+import { parseImportedDate, analyzeColumnDateFormat, type ColumnDateAnalysis, type DateFormatOverride } from "./date-parser";
 
 function getField(row: string[], mappings: ColumnMapping[], field: OptionsField): string | null {
   const mapping = mappings.find(m => m.mappedField === field);
@@ -18,24 +19,17 @@ function getField(row: string[], mappings: ColumnMapping[], field: OptionsField)
   return val?.trim() || null;
 }
 
-function parseDate(dateStr: string | null, timeStr?: string | null): string | null {
+function parseDateRobust(
+  dateStr: string | null,
+  timeStr?: string | null,
+  columnAnalysis?: ColumnDateAnalysis,
+): string | null {
   if (!dateStr) return null;
   let combined = dateStr;
   if (timeStr) combined = `${dateStr} ${timeStr}`;
 
-  // Try ISO format
-  const d = new Date(combined);
-  if (!isNaN(d.getTime())) return d.toISOString();
-
-  // Try MM/DD/YYYY
-  const parts = combined.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-  if (parts) {
-    const year = parts[3].length === 2 ? `20${parts[3]}` : parts[3];
-    const tryDate = new Date(`${year}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`);
-    if (!isNaN(tryDate.getTime())) return tryDate.toISOString();
-  }
-
-  return null;
+  const result = parseImportedDate(combined, columnAnalysis);
+  return result.normalizedValue;
 }
 
 function parseOptionType(value: string | null): OptionType | null {
@@ -51,6 +45,7 @@ export function parseRow(
   rowIndex: number,
   headers: string[],
   mappings: ColumnMapping[],
+  dateColumnAnalysis?: Record<string, ColumnDateAnalysis>,
 ): ParsedOptionsRow {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -103,7 +98,7 @@ export function parseRow(
   // ─── Expiration
   let expirationDate: string | null = getField(row, mappings, "expiration");
   if (expirationDate) {
-    const parsed = parseDate(expirationDate);
+    const parsed = parseDateRobust(expirationDate, null, dateColumnAnalysis?.expiration);
     expirationDate = parsed ? parsed.split("T")[0] : expirationDate;
   }
   if (!expirationDate && symbolParseResult) {
@@ -154,7 +149,9 @@ export function parseRow(
   const dateRaw = getField(row, mappings, "date");
   const timeRaw = getField(row, mappings, "time");
   const dateTimeRaw = getField(row, mappings, "dateTime");
-  const dateTime = dateTimeRaw ? parseDate(dateTimeRaw) : parseDate(dateRaw, timeRaw);
+  const dateTime = dateTimeRaw
+    ? parseDateRobust(dateTimeRaw, null, dateColumnAnalysis?.dateTime || dateColumnAnalysis?.date)
+    : parseDateRobust(dateRaw, timeRaw, dateColumnAnalysis?.date);
 
   // ─── Greeks & IV
   const iv = parseOptionalNum(getField(row, mappings, "iv"));

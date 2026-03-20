@@ -1,8 +1,8 @@
 /**
  * Options CSV Import — Main Pipeline
  *
- * Orchestrates: CSV parse → detect broker → map headers → parse rows →
- * detect duplicates → group into trades → validate → produce report
+ * Orchestrates: CSV parse → detect broker → map headers → analyze dates →
+ * parse rows → detect duplicates → group into trades → validate → produce report
  */
 
 export { parseOptionSymbol, looksLikeOptionSymbol } from "./symbol-parser";
@@ -12,9 +12,13 @@ export { normalizePremium, cleanNumeric } from "./premium-normalizer";
 export { detectBrokerFormat } from "./broker-detector";
 export { parseRow } from "./row-parser";
 export { groupExecutionsIntoTrades, markDuplicates, markExistingDuplicates, fingerprintRow } from "./trade-grouper";
+export { parseImportedDate, parseDateColumn, analyzeColumnDateFormat, validateDateRange, describeFormat } from "./date-parser";
+export type { DateParseResult, ColumnDateAnalysis, DateFormatOverride, DateConfidence } from "./date-parser";
 export * from "./types";
 
 import type { ColumnMapping, ImportReport, ParsedOptionsRow, GroupedTrade, OptionsField } from "./types";
+import type { ColumnDateAnalysis, DateFormatOverride } from "./date-parser";
+import { analyzeColumnDateFormat } from "./date-parser";
 import { detectBrokerFormat } from "./broker-detector";
 import { mapCsvHeaders } from "./header-mapper";
 import { parseRow } from "./row-parser";
@@ -58,17 +62,28 @@ export function parseCSVText(text: string): { headers: string[]; rows: string[][
 }
 
 /**
+ * Extract values for a mapped field from rows
+ */
+function getColumnValues(rows: string[][], mappings: ColumnMapping[], field: OptionsField): (string | null)[] {
+  const mapping = mappings.find(m => m.mappedField === field);
+  if (!mapping) return [];
+  return rows.map(row => row[mapping.csvColumnIndex]?.trim() || null);
+}
+
+/**
  * Run the full import pipeline
  */
 export function runImportPipeline(
   headers: string[],
   rows: string[][],
   mappingOverrides?: Record<number, OptionsField>,
+  dateFormatOverrides?: Record<string, DateFormatOverride>,
 ): {
   mappings: ColumnMapping[];
   parsedRows: ParsedOptionsRow[];
   groupedTrades: GroupedTrade[];
   report: ImportReport;
+  dateAnalysis: Record<string, ColumnDateAnalysis>;
 } {
   // 1. Detect broker
   const detection = detectBrokerFormat(headers, rows.slice(0, 10));
@@ -86,18 +101,29 @@ export function runImportPipeline(
     });
   }
 
-  // 4. Parse each row
+  // 4. Analyze date columns before row parsing
+  const dateFields: OptionsField[] = ["date", "time", "dateTime", "expiration"];
+  const dateAnalysis: Record<string, ColumnDateAnalysis> = {};
+  for (const field of dateFields) {
+    const values = getColumnValues(rows, mappings, field);
+    if (values.length > 0 && values.some(v => v !== null)) {
+      const override = dateFormatOverrides?.[field];
+      dateAnalysis[field] = analyzeColumnDateFormat(values, override);
+    }
+  }
+
+  // 5. Parse each row with date context
   const parsedRows: ParsedOptionsRow[] = rows.map((row, i) =>
-    parseRow(row, i, headers, mappings)
+    parseRow(row, i, headers, mappings, dateAnalysis)
   );
 
-  // 5. Detect internal duplicates
+  // 6. Detect internal duplicates
   markDuplicates(parsedRows);
 
-  // 6. Group into trades
+  // 7. Group into trades
   const groupedTrades = groupExecutionsIntoTrades(parsedRows);
 
-  // 7. Build report
+  // 8. Build report
   const report: ImportReport = {
     totalRows: rows.length,
     optionsRows: parsedRows.filter(r => r.optionType != null).length,
@@ -110,5 +136,5 @@ export function runImportPipeline(
     trades: groupedTrades,
   };
 
-  return { mappings, parsedRows, groupedTrades, report };
+  return { mappings, parsedRows, groupedTrades, report, dateAnalysis };
 }
