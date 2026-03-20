@@ -55,6 +55,7 @@ export interface OptionsCalculations {
 }
 
 import { calculateOptionLeg } from "./options/calculations";
+import { validateOptionLeg as _validateOptionLeg } from "./options/validation";
 import type { OptionLegInput, OptionTradeStatus } from "./options/types";
 
 /** Map legacy status to new status */
