@@ -597,6 +597,7 @@ export default function Dashboard() {
 
       <TradeImportModal open={importOpen} onOpenChange={setImportOpen} accountId={selectedAccountId} onTradeCreated={refreshAll} />
       <CSVImportModal open={csvOpen} onOpenChange={setCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
+      <OptionsCSVImportModal open={optionsCsvOpen} onOpenChange={setOptionsCsvOpen} accountId={selectedAccountId} onImportComplete={refreshAll} />
       <ManageAccountsModal open={manageOpen} onOpenChange={setManageOpen} accounts={accounts} onAccountsChange={setAccounts} userId={user?.id || ""} onBalanceRefresh={() => reconcile()} />
       <DepositWithdrawModal
         open={depositOpen} onOpenChange={setDepositOpen}
