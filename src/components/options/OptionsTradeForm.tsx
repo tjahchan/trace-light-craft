@@ -38,7 +38,7 @@ import {
   type OptionStatus,
   type OptionsTradeInput,
 } from "@/lib/options-utils";
-import { OptionsLiveSummary } from "./OptionsLiveSummary";
+
 
 interface OptionsTradeFormProps {
   accountId: string;
