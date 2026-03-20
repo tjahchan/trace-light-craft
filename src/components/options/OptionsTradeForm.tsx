@@ -596,23 +596,10 @@ export function OptionsTradeForm({ accountId, onTradeCreated, onClose }: Options
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Save button (mobile only — desktop has summary panel) */}
-        <div className="lg:hidden">
-          <Button className="w-full" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : status !== "open" ? "Save Options Trade" : "Open Options Position"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Right: Live Summary */}
-      <div className="space-y-4 lg:sticky lg:top-0">
-        <OptionsLiveSummary input={summaryInput} />
-        <div className="hidden lg:block">
-          <Button className="w-full" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : status !== "open" ? "Save Options Trade" : "Open Options Position"}
-          </Button>
-        </div>
-      </div>
+        {/* CTA at bottom */}
+        <Button className="w-full mt-2" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : status !== "open" ? "Save Options Trade" : "Open Options Position"}
+        </Button>
     </div>
   );
 }

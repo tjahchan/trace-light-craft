@@ -146,10 +146,7 @@ export function TradeImportModal({ open, onOpenChange, accountId, onTradeCreated
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(
-        "backdrop-blur-xl bg-black/60 border-white/[0.1]",
-        tradeType === "options" ? "max-w-3xl" : "max-w-lg"
-      )}>
+      <DialogContent className="backdrop-blur-xl bg-black/60 border-white/[0.1] max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-foreground">New Trade</DialogTitle>
         </DialogHeader>
