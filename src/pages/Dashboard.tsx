@@ -360,42 +360,68 @@ export default function Dashboard() {
 
           <div className="mt-2 h-24">
             {accountsLoaded && isValidAccount ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={finalChartData}>
-                  <XAxis dataKey="date" axisLine={false} tickLine={false}
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis hide={false} axisLine={false} tickLine={false}
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                    tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
-                    width={40} domain={["dataMin - 200", "dataMax + 200"]} />
-                  <Line type="monotone" dataKey="balance" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
-                  <RechartsTooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload || !payload[0]) return null;
-                      const point = payload[0].payload;
-                      return (
-                        <div style={{ background: "rgba(0,0,0,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", padding: "8px 12px", fontFamily: "monospace", fontSize: "11px", color: "#fff", maxWidth: "220px" }}>
-                          <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
-                          <div style={{ color: "hsl(217, 91%, 60%)" }}>Balance: ${point.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                          {point.trades?.length > 0 && (
-                            <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4 }}>
-                              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 2 }}>Trades:</div>
-                              {point.trades.map((t: any, i: number) => (
-                                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                  <span>{t.symbol}</span>
-                                  <span style={{ color: t.pnl >= 0 ? "hsl(142, 71%, 45%)" : "hsl(0, 84%, 60%)" }}>
-                                    {t.pnl >= 0 ? "+" : ""}${Math.abs(t.pnl).toFixed(2)}
-                                  </span>
+              (() => {
+                const balances = finalChartData.map((d: any) => d.balance);
+                const dataMin = Math.min(...balances);
+                const dataMax = Math.max(...balances);
+                const range = dataMax - dataMin;
+                // Smart padding: use 10% of range, minimum $50 so flat lines still look good
+                const padding = Math.max(range * 0.1, 50);
+                const yMin = Math.floor((dataMin - padding) / 10) * 10;
+                const yMax = Math.ceil((dataMax + padding) / 10) * 10;
+                const yRange = yMax - yMin;
+                // Pick a nice tick step: aim for 3 ticks
+                const rawStep = yRange / 3;
+                const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+                const niceSteps = [1, 2, 2.5, 5, 10];
+                const step = niceSteps.find(s => s * magnitude >= rawStep)! * magnitude;
+                const ticks: number[] = [];
+                let t = Math.ceil(yMin / step) * step;
+                while (t <= yMax) {
+                  ticks.push(t);
+                  t += step;
+                }
+                if (ticks.length < 2) ticks.push(yMin, yMax);
+
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={finalChartData}>
+                      <XAxis dataKey="date" axisLine={false} tickLine={false}
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} interval="preserveStartEnd" />
+                      <YAxis axisLine={false} tickLine={false}
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                        tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v}`}
+                        width={44} domain={[yMin, yMax]} ticks={ticks} />
+                      <Line type="monotone" dataKey="balance" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
+                      <RechartsTooltip
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload || !payload[0]) return null;
+                          const point = payload[0].payload;
+                          return (
+                            <div style={{ background: "rgba(0,0,0,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", padding: "8px 12px", fontFamily: "monospace", fontSize: "11px", color: "#fff", maxWidth: "220px" }}>
+                              <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                              <div style={{ color: "hsl(217, 91%, 60%)" }}>Balance: ${point.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              {point.trades?.length > 0 && (
+                                <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4 }}>
+                                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 2 }}>Trades:</div>
+                                  {point.trades.map((t: any, i: number) => (
+                                    <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                      <span>{t.symbol}</span>
+                                      <span style={{ color: t.pnl >= 0 ? "hsl(142, 71%, 45%)" : "hsl(0, 84%, 60%)" }}>
+                                        {t.pnl >= 0 ? "+" : ""}${Math.abs(t.pnl).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
+                              )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+                          );
+                        }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                );
+              })()
             ) : (
               <div className="h-full flex items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
