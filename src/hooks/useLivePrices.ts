@@ -43,7 +43,7 @@ export function useLivePrices(symbols: string[]): LivePriceData {
 
   useEffect(() => {
     fetchAll();
-    intervalRef.current = setInterval(fetchAll, 15000);
+    intervalRef.current = setInterval(fetchAll, 5000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
