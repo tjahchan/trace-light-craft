@@ -463,17 +463,116 @@ async function syncTradeLockerAccount(userId: string, integration: any, brokerAc
       }
     }
 
+    // ========== Reconcile open→closed positions ==========
+    let reconciled = 0;
+    try {
+      const { data: openTrades } = await supabaseAdmin.from("trades")
+        .select("id, symbol, side, quantity, entry_price, open_time, tags")
+        .eq("user_id", userId).eq("account_id", momentraAccountId)
+        .eq("status", "open").contains("tags", ["tradelocker"]);
+
+      if (openTrades && openTrades.length > 0) {
+        // Get current open positions from TradeLocker
+        const currentOpenResult = await tlRequestSafe(
+          server, "GET", `/trade/accounts/${tlAcctId}/positions`, token, undefined, accNum
+        );
+        const currentOpenRaw = currentOpenResult?.d?.positions || currentOpenResult?.positions || [];
+        const currentOpenArr = Array.isArray(currentOpenRaw) ? currentOpenRaw : [];
+
+        // Parse current open positions
+        let openPosCols: string[] = [];
+        try {
+          const config = await tlRequestSafe(server, "GET", "/trade/config", token, undefined, accNum);
+          const d = config?.d || config || {};
+          if (d.positions?.columns) openPosCols = extractColumnNames(d.positions.columns);
+        } catch {}
+        if (openPosCols.length === 0) openPosCols = ["id","tradableInstrumentId","accountId","qty","side","avgPrice","unrealizedPnl","swap","commission","openTimestamp","stopLoss","takeProfit","trailingOffset"];
+        const currentOpenObjects = parseColumnarData(currentOpenArr, openPosCols);
+
+        const currentOpenPosIds = new Set<string>();
+        for (const pos of currentOpenObjects) {
+          currentOpenPosIds.add(String(pos.id || pos.positionId || ""));
+        }
+
+        // Check raw activities for matching open positions
+        const { data: rawActivities } = await supabaseAdmin.from("broker_activities_raw")
+          .select("source_activity_id, raw_payload")
+          .eq("account_id", brokerAccount.id).eq("source_provider", "tradelocker")
+          .like("source_activity_id", "openpos_%");
+
+        for (const trade of openTrades) {
+          if (!rawActivities) continue;
+          const matchingRaw = rawActivities.find((ra: any) => {
+            const payload = ra.raw_payload || {};
+            const rawEntry = Number(payload.avgPrice || payload.openPrice || 0);
+            return Math.abs(rawEntry - trade.entry_price) / Math.max(trade.entry_price, 0.0001) < 0.001
+              && Math.abs(Number(payload.qty || 0)) === trade.quantity;
+          });
+          if (!matchingRaw) continue;
+
+          const posIdMatch = matchingRaw.source_activity_id.replace("openpos_", "");
+          if (currentOpenPosIds.has(posIdMatch)) continue; // Still open
+
+          console.log(`[AutoSync] Position ${posIdMatch} closed, looking up exit details...`);
+
+          let exitPrice: number | null = null;
+          let closeTime: string | null = null;
+          let realizedPnl = 0;
+          let commission = 0;
+
+          for (const ep of [
+            `/trade/accounts/${tlAcctId}/positionsHistory`,
+            `/trade/accounts/${tlAcctId}/positions/history`,
+          ]) {
+            const histResult = await tlRequestSafe(server, "GET", ep, token, undefined, accNum);
+            if (!histResult) continue;
+            const rawData = histResult.d?.positionsHistory || histResult.d?.positions || histResult.d?.closedPositions || [];
+            const histCols = histResult.d?.columns || histResult.columns || [];
+            const histObjects = parseColumnarData(Array.isArray(rawData) ? rawData : [], histCols);
+            const closedPos = histObjects.find((p: any) => String(p.id || p.positionId || "") === posIdMatch);
+            if (closedPos) {
+              exitPrice = Number(closedPos.closePrice || closedPos.exitPrice || 0) || null;
+              closeTime = msToIso(Number(closedPos.closeTimestamp || closedPos.closedAt || closedPos.lastModifiedAt || 0));
+              realizedPnl = Number(closedPos.pnl || 0);
+              commission = Math.abs(Number(closedPos.commission || 0));
+              realizedPnl = realizedPnl - commission + Number(closedPos.swap || 0);
+              break;
+            }
+          }
+
+          const updateData: Record<string, any> = {
+            status: "closed",
+            close_time: closeTime || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          if (exitPrice) updateData.exit_price = exitPrice;
+          if (realizedPnl !== 0) updateData.pnl = realizedPnl;
+          if (commission > 0) updateData.commissions = commission;
+          const newTags = (trade.tags || []).filter((t: string) => t !== "open-position");
+          newTags.push("auto-closed");
+          updateData.tags = newTags;
+
+          await supabaseAdmin.from("trades").update(updateData).eq("id", trade.id);
+          console.log(`[AutoSync] ✓ Reconciled trade ${trade.id} (${trade.symbol}) as closed`);
+          reconciled++;
+        }
+      }
+    } catch (e: any) {
+      console.error("[AutoSync] Reconciliation failed:", e.message);
+    }
+
     await supabaseAdmin.from("sync_jobs").update({
-      status: imported > 0 ? "completed" : "completed_no_data",
+      status: (imported > 0 || reconciled > 0) ? "completed" : "completed_no_data",
       completed_at: new Date().toISOString(), activities_imported: imported,
+      meta: { reconciled_closed: reconciled },
     }).eq("id", job?.id);
 
     await supabaseAdmin.from("broker_connections")
       .update({ last_synced_at: new Date().toISOString() })
       .eq("id", brokerAccount.connection_id);
 
-    console.log(`[AutoSync] Complete for user ${userId}: ${imported} imported`);
-    return imported;
+    console.log(`[AutoSync] Complete for user ${userId}: ${imported} imported, ${reconciled} reconciled`);
+    return imported + reconciled;
   } catch (err: any) {
     await supabaseAdmin.from("sync_jobs").update({
       status: "failed", completed_at: new Date().toISOString(), error_message: err.message,

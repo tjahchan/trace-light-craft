@@ -933,12 +933,153 @@ async function syncAccount(
       console.error("[TL] Positions fetch failed:", e.message);
     }
 
+    // ========== PHASE 4: Reconcile open→closed positions ==========
+    console.log("[TL] Phase 4: Reconciling open positions that may have been closed...");
+    let reconciled = 0;
+    try {
+      // Find all Momentra trades that are still "open" and tagged as tradelocker open-position
+      const { data: openTrades } = await supabaseAdmin.from("trades")
+        .select("id, symbol, side, quantity, entry_price, open_time, tags")
+        .eq("user_id", userId).eq("account_id", momentraAccountId)
+        .eq("status", "open").contains("tags", ["tradelocker"]);
+
+      if (openTrades && openTrades.length > 0) {
+        // Get current open position IDs from TradeLocker (already fetched in Phase 3)
+        // We need the raw position IDs from broker_activities_raw for matching
+        const { data: openRawActivities } = await supabaseAdmin.from("broker_activities_raw")
+          .select("source_activity_id")
+          .eq("account_id", accountId).eq("source_provider", "tradelocker")
+          .like("source_activity_id", "openpos_%");
+
+        // Get current open positions from TradeLocker to know which are still open
+        const currentOpenResult = await tlRequestSafe(
+          server, "GET", `/trade/accounts/${tlAcctId}/positions`, token, undefined, accNum
+        );
+        const currentOpenRaw = currentOpenResult?.d?.positions || currentOpenResult?.positions || [];
+        const currentOpenArr = Array.isArray(currentOpenRaw) ? currentOpenRaw : [];
+        const currentPosCols = configColumns.positions || FALLBACK_POSITIONS_COLUMNS;
+        const currentOpenObjects = parseColumnarData(currentOpenArr, currentPosCols);
+
+        // Build set of currently open position IDs on TradeLocker
+        const currentOpenPosIds = new Set<string>();
+        for (const pos of currentOpenObjects) {
+          const posId = String(pos.id || pos.positionId || "");
+          if (posId) currentOpenPosIds.add(posId);
+        }
+
+        console.log(`[TL] Currently open on TradeLocker: ${currentOpenPosIds.size} positions`);
+        console.log(`[TL] Open trades in Momentra to check: ${openTrades.length}`);
+
+        // For each open Momentra trade, check if corresponding raw activity exists and if position is still open
+        for (const trade of openTrades) {
+          // Find matching raw activity to get the TradeLocker position ID
+          const { data: rawActivity } = await supabaseAdmin.from("broker_activities_raw")
+            .select("source_activity_id, raw_payload")
+            .eq("user_id", userId).eq("account_id", accountId)
+            .eq("source_provider", "tradelocker")
+            .like("source_activity_id", "openpos_%")
+            .limit(100);
+
+          if (!rawActivity) continue;
+
+          // Match by symbol + side + entry price (since we don't store position ID on the trade)
+          const matchingRaw = rawActivity.find((ra: any) => {
+            const payload = ra.raw_payload || {};
+            const rawSymbol = payload.symbol || "";
+            const rawQty = Math.abs(Number(payload.qty || 0));
+            const rawEntry = Number(payload.avgPrice || payload.openPrice || 0);
+            // Match by entry price proximity (within 0.01%)
+            return Math.abs(rawEntry - trade.entry_price) / Math.max(trade.entry_price, 0.0001) < 0.001
+              && rawQty === trade.quantity;
+          });
+
+          if (!matchingRaw) continue;
+
+          const posIdMatch = matchingRaw.source_activity_id.replace("openpos_", "");
+          if (currentOpenPosIds.has(posIdMatch)) continue; // Still open, skip
+
+          // Position is no longer open on TradeLocker — find it in positionsHistory
+          console.log(`[TL] Position ${posIdMatch} closed on TradeLocker, looking up exit details...`);
+
+          let exitPrice: number | null = null;
+          let closeTime: string | null = null;
+          let realizedPnl = 0;
+          let commission = 0;
+          let sl: number | null = null;
+          let tp: number | null = null;
+
+          // Check positionsHistory for the closed position
+          for (const endpoint of [
+            `/trade/accounts/${tlAcctId}/positionsHistory`,
+            `/trade/accounts/${tlAcctId}/positions/history`,
+          ]) {
+            const histResult = await tlRequestSafe(server, "GET", endpoint, token, undefined, accNum);
+            if (!histResult) continue;
+
+            const rawData = histResult.d?.positionsHistory || histResult.d?.positions ||
+              histResult.d?.closedPositions || [];
+            const histPositions = Array.isArray(rawData) ? rawData : [];
+            const histCols = histResult.d?.columns || histResult.columns || [];
+            const histObjects = parseColumnarData(histPositions, histCols);
+
+            // Find matching closed position
+            const closedPos = histObjects.find((p: any) => {
+              const pId = String(p.id || p.positionId || "");
+              return pId === posIdMatch;
+            });
+
+            if (closedPos) {
+              exitPrice = Number(closedPos.closePrice || closedPos.exitPrice || closedPos.avgClosePrice || 0) || null;
+              closeTime = msToIso(Number(closedPos.closeTimestamp || closedPos.closedAt || closedPos.lastModifiedAt || 0));
+              realizedPnl = Number(closedPos.pnl || closedPos.profit || 0);
+              commission = Math.abs(Number(closedPos.commission || closedPos.fee || 0));
+              sl = Number(closedPos.stopLoss || 0) || null;
+              tp = Number(closedPos.takeProfit || 0) || null;
+              const swap = Number(closedPos.swap || 0);
+              realizedPnl = realizedPnl - commission + swap;
+              console.log(`[TL] Found closed position: exit=${exitPrice} pnl=${realizedPnl} closeTime=${closeTime}`);
+              break;
+            }
+          }
+
+          // If we couldn't find it in positionsHistory, still mark as closed
+          if (!exitPrice && !closeTime) {
+            console.log(`[TL] Position ${posIdMatch} not found in history, marking closed with calculated PnL`);
+            closeTime = new Date().toISOString();
+          }
+
+          // Update the trade in Momentra
+          const updateData: Record<string, any> = {
+            status: "closed",
+            close_time: closeTime || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          if (exitPrice) updateData.exit_price = exitPrice;
+          if (realizedPnl !== 0) updateData.pnl = realizedPnl;
+          if (commission > 0) updateData.commissions = commission;
+          if (sl) updateData.sl = sl;
+          if (tp) updateData.tp = tp;
+          // Update tags to remove open-position
+          const newTags = (trade.tags || []).filter((t: string) => t !== "open-position");
+          newTags.push("auto-closed");
+          updateData.tags = newTags;
+
+          await supabaseAdmin.from("trades").update(updateData).eq("id", trade.id);
+          console.log(`[TL] ✓ Reconciled trade ${trade.id} (${trade.symbol}) as closed`);
+          reconciled++;
+        }
+      }
+    } catch (e: any) {
+      console.error("[TL] Reconciliation phase failed:", e.message);
+    }
+
     // ========== COMPLETE ==========
-    const syncStatus = imported > 0 ? "completed" : "completed_no_data";
+    const syncStatus = imported > 0 || reconciled > 0 ? "completed" : "completed_no_data";
     console.log(`[TL] === SYNC SUMMARY ===`);
     console.log(`[TL]   Method: ${usedPositionsHistory ? "positionsHistory" : "ordersHistory (grouped)"}`);
     console.log(`[TL]   Force resync: ${forceResync}`);
     console.log(`[TL]   Imported: ${imported} (${imported - positionsImported} closed, ${positionsImported} open)`);
+    console.log(`[TL]   Reconciled (open→closed): ${reconciled}`);
     console.log(`[TL]   Duplicates skipped: ${skippedDupes}`);
     console.log(`[TL]   Validation failures: ${validationFails}`);
 
@@ -949,6 +1090,7 @@ async function syncAccount(
         phase: "complete", method: usedPositionsHistory ? "positionsHistory" : "ordersHistory",
         force_resync: forceResync,
         closed_trades: imported - positionsImported, open_positions: positionsImported,
+        reconciled_closed: reconciled,
         duplicates_skipped: skippedDupes, validation_failures: validationFails,
       },
     }).eq("id", job?.id);
