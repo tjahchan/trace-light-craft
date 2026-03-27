@@ -1090,6 +1090,7 @@ async function syncAccount(
         phase: "complete", method: usedPositionsHistory ? "positionsHistory" : "ordersHistory",
         force_resync: forceResync,
         closed_trades: imported - positionsImported, open_positions: positionsImported,
+        reconciled_closed: reconciled,
         duplicates_skipped: skippedDupes, validation_failures: validationFails,
       },
     }).eq("id", job?.id);
